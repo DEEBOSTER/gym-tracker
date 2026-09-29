@@ -73,7 +73,43 @@ def init_database():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sets_workout ON workout_sets(workout_id);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sets_exercise ON workout_sets(exercise_id);")
 
-        # User profile table (bodyweight, height, goal, experience, injuries)
+        # Migration: ensure workouts has user_id
+        try:
+            cursor.execute("ALTER TABLE workouts ADD COLUMN user_id TEXT DEFAULT 'default';")
+        except Exception:
+            pass
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_workouts_user ON workouts(user_id);")
+
+        # Multi-user profile table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_profiles (
+                user_id TEXT PRIMARY KEY,
+                name TEXT DEFAULT 'Атлет',
+                gender TEXT DEFAULT 'male',
+                age INTEGER DEFAULT 28,
+                height REAL DEFAULT 180.0,
+                weight REAL DEFAULT 80.0,
+                experience_level TEXT DEFAULT 'intermediate',
+                fitness_goal TEXT DEFAULT 'hypertrophy',
+                injuries TEXT DEFAULT '',
+                equipment TEXT DEFAULT 'gym',
+                onboarding_completed INTEGER DEFAULT 0,
+                telegram_chat_id INTEGER DEFAULT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        # Migration from legacy user_profile to user_profiles
+        try:
+            cursor.execute("""
+                INSERT OR IGNORE INTO user_profiles (user_id, name, gender, age, height, weight, experience_level, fitness_goal, injuries, equipment, onboarding_completed, telegram_chat_id)
+                SELECT 'default', name, gender, age, height, weight, experience_level, fitness_goal, injuries, equipment, 1, telegram_chat_id
+                FROM user_profile WHERE id = 1;
+            """)
+        except Exception:
+            pass
+
+        # Also ensure legacy user_profile table exists for backward-compatibility
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS user_profile (
                 id INTEGER PRIMARY KEY,
@@ -86,17 +122,7 @@ def init_database():
                 fitness_goal TEXT DEFAULT 'hypertrophy',
                 injuries TEXT DEFAULT '',
                 equipment TEXT DEFAULT 'gym',
+                telegram_chat_id INTEGER DEFAULT NULL,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
-        """)
-
-        # Migration: ensure telegram_chat_id column exists
-        try:
-            cursor.execute("ALTER TABLE user_profile ADD COLUMN telegram_chat_id INTEGER DEFAULT NULL;")
-        except Exception:
-            pass
-
-        cursor.execute("""
-            INSERT OR IGNORE INTO user_profile (id, name, gender, age, height, weight, experience_level, fitness_goal, injuries, equipment)
-            VALUES (1, 'Атлет', 'male', 28, 180.0, 80.0, 'intermediate', 'hypertrophy', '', 'gym');
         """)

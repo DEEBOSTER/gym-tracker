@@ -1,13 +1,59 @@
-// --- GLOBAL NGROK & API INTERCEPTOR ---
+// --- TELEGRAM USER IDENTITY & API INTERCEPTOR ---
+function getTelegramUser() {
+  try {
+    const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+    if (tgUser && tgUser.id) {
+      return {
+        id: String(tgUser.id),
+        name: tgUser.first_name ? `${tgUser.first_name}${tgUser.last_name ? ' ' + tgUser.last_name : ''}` : 'Атлет'
+      };
+    }
+  } catch (e) {}
+
+  // Allow URL testing param ?tg_id=12345 or localStorage
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramId = urlParams.get('tg_id');
+    if (paramId) {
+      localStorage.setItem('gym_tracker_user_id', paramId);
+      if (urlParams.get('tg_name')) {
+        localStorage.setItem('gym_tracker_user_name', urlParams.get('tg_name'));
+      }
+    }
+    const savedId = localStorage.getItem('gym_tracker_user_id');
+    if (savedId) {
+      return {
+        id: savedId,
+        name: localStorage.getItem('gym_tracker_user_name') || 'Атлет'
+      };
+    }
+  } catch (e) {}
+
+  return { id: 'default', name: 'Атлет' };
+}
+
 const _origFetch = window.fetch;
 window.fetch = function(input, init = {}) {
   init.headers = init.headers || {};
+  const user = getTelegramUser();
   if (init.headers instanceof Headers) {
     if (!init.headers.has('ngrok-skip-browser-warning')) {
       init.headers.append('ngrok-skip-browser-warning', 'true');
     }
+    if (!init.headers.has('X-Telegram-User-Id')) {
+      init.headers.append('X-Telegram-User-Id', user.id);
+    }
+    if (!init.headers.has('X-Telegram-User-Name')) {
+      init.headers.append('X-Telegram-User-Name', encodeURIComponent(user.name));
+    }
   } else {
     init.headers['ngrok-skip-browser-warning'] = 'true';
+    if (!init.headers['X-Telegram-User-Id']) {
+      init.headers['X-Telegram-User-Id'] = user.id;
+    }
+    if (!init.headers['X-Telegram-User-Name']) {
+      init.headers['X-Telegram-User-Name'] = encodeURIComponent(user.name);
+    }
   }
   return _origFetch(input, init);
 };
@@ -724,6 +770,467 @@ function ExerciseVideoModal({ isOpen, onClose, exerciseName, guide }) {
 }
 
 // ==========================================
+// 🚀 PERSONALIZED ONBOARDING SCREEN
+// ==========================================
+function OnboardingScreen({ initialProfile, onComplete }) {
+  const tgUser = getTelegramUser();
+  const [step, setStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [formData, setFormData] = useState({
+    name: initialProfile?.name && initialProfile.name !== 'Атлет' ? initialProfile.name : (tgUser.name !== 'Атлет' ? tgUser.name : ''),
+    gender: initialProfile?.gender || 'male',
+    age: initialProfile?.age || 26,
+    height: initialProfile?.height || 178,
+    weight: initialProfile?.weight || 75,
+    experience_level: initialProfile?.experience_level || 'beginner',
+    fitness_goal: initialProfile?.fitness_goal || 'hypertrophy',
+    injuries: initialProfile?.injuries || '',
+    equipment: 'gym',
+    onboarding_completed: 1
+  });
+
+  const heightM = (parseFloat(formData.height) || 178) / 100;
+  const weightKg = parseFloat(formData.weight) || 75;
+  const bmi = heightM > 0 ? (weightKg / (heightM * heightM)).toFixed(1) : 23.5;
+
+  const commonInjuries = [
+    { id: 'none', label: '🛡️ Нет, всё в порядке' },
+    { id: 'плеч', label: '⚠️ Беречь плечи', tip: 'нейтральный хват, угол локтей 45°' },
+    { id: 'поясниц', label: '⚠️ Беречь поясницу', tip: 'стабилизация кора, без осевого перегруза' },
+    { id: 'колен', label: '⚠️ Беречь колени', tip: 'контроль траектории, без замка суставов' },
+    { id: 'кист', label: '⚠️ Беречь кисти/локти', tip: 'мягкий хват, фиксация запястий' }
+  ];
+
+  const toggleInjury = (id) => {
+    triggerHaptic('light');
+    if (id === 'none') {
+      setFormData(prev => ({ ...prev, injuries: '' }));
+      return;
+    }
+    const currentList = (formData.injuries || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    let updated;
+    if (currentList.some(item => item.includes(id))) {
+      updated = currentList.filter(item => !item.includes(id));
+    } else {
+      updated = [...currentList, id];
+    }
+    setFormData(prev => ({ ...prev, injuries: updated.join(', ') }));
+  };
+
+  const handleFinish = async () => {
+    setSubmitting(true);
+    triggerHaptic('medium');
+    try {
+      const payload = {
+        name: formData.name.trim() || tgUser.name || 'Атлет',
+        gender: formData.gender,
+        age: parseInt(formData.age) || 25,
+        height: parseFloat(formData.height) || 178,
+        weight: parseFloat(formData.weight) || 75,
+        experience_level: formData.experience_level,
+        fitness_goal: formData.fitness_goal,
+        injuries: formData.injuries,
+        equipment: 'gym',
+        onboarding_completed: 1
+      };
+
+      const res = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        triggerHaptic('success');
+        if (onComplete) onComplete(updated);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.detail || 'Не удалось сохранить настройки');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Ошибка подключения: ' + e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const estBench = Math.round(weightKg * 0.5 * (formData.gender === 'female' ? 0.6 : 1.0));
+  const estSquat = Math.round(weightKg * 0.6 * (formData.gender === 'female' ? 0.6 : 1.0));
+  const estPull = Math.round(weightKg * 0.45 * (formData.gender === 'female' ? 0.6 : 1.0));
+  const recReps = formData.fitness_goal === 'strength' ? '5–7 повт.' : formData.fitness_goal === 'fat_loss' ? '10–15 повт.' : '8–12 повт.';
+
+  return (
+    <div className="min-h-screen bg-gym-950 text-slate-100 flex flex-col justify-between max-w-lg mx-auto p-4 sm:p-6 font-sans">
+      {/* Top Header & Step Indicator */}
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-sky-500 flex items-center justify-center font-black text-gym-950 text-sm shadow-lg shadow-emerald-500/20">
+              ⚡
+            </div>
+            <div>
+              <span className="text-xs font-black text-white uppercase tracking-wider block">GymTracker</span>
+              <span className="text-[10px] text-emerald-400 font-bold">Персональная настройка</span>
+            </div>
+          </div>
+          <span className="text-xs font-mono font-bold text-slate-400 bg-gym-900 border border-gym-800 px-2.5 py-1 rounded-full">
+            Шаг {step} из 4
+          </span>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full bg-gym-900 h-1.5 rounded-full overflow-hidden border border-gym-800">
+          <div 
+            className="bg-gradient-to-r from-emerald-500 via-sky-500 to-emerald-400 h-full transition-all duration-300 rounded-full"
+            style={{ width: `${(step / 4) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* STEP 1: Body Parameters */}
+      {step === 1 && (
+        <div className="py-4 space-y-4 animate-in fade-in slide-in-from-right-4 duration-200">
+          <div className="space-y-1">
+            <h2 className="text-xl font-black text-white tracking-tight">
+              Привет! 👋 Давай познакомимся
+            </h2>
+            <p className="text-xs text-slate-400">
+              Укажи свои параметры, чтобы алгоритм точно подобрал стартовые веса и темп прогрессии.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {/* Name Input */}
+            <div className="bg-gym-900 border border-gym-800 rounded-2xl p-3.5 space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Твое имя / позывной</label>
+              <input
+                type="text"
+                placeholder="Например: Дмитрий"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full bg-transparent text-base font-bold text-white focus:outline-none placeholder-slate-600"
+              />
+            </div>
+
+            {/* Gender Selection */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Пол</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'male', label: '👨 Мужской', sub: 'Базовый силовой расчет' },
+                  { id: 'female', label: '👩 Женский', sub: 'Адаптивный женский расчет' }
+                ].map(g => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => { triggerHaptic('light'); setFormData({ ...formData, gender: g.id }); }}
+                    className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition active:scale-95 ${
+                      formData.gender === g.id
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-md ring-1 ring-emerald-400'
+                        : 'bg-gym-900 text-slate-400 border-gym-800 hover:text-white'
+                    }`}
+                  >
+                    <span className="text-sm font-black">{g.label}</span>
+                    <span className="text-[9px] text-slate-400 mt-0.5">{g.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Height, Weight, Age Grid */}
+            <div className="grid grid-cols-3 gap-2">
+              {/* Weight */}
+              <div className="bg-gym-900 border border-gym-800 rounded-2xl p-3 flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Вес</span>
+                <div className="flex items-baseline space-x-1 my-1">
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={formData.weight}
+                    onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || 0 })}
+                    className="w-16 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
+                  />
+                  <span className="text-xs text-slate-400 font-bold">кг</span>
+                </div>
+                <span className="text-[9px] text-emerald-400 font-mono">База для %</span>
+              </div>
+
+              {/* Height */}
+              <div className="bg-gym-900 border border-gym-800 rounded-2xl p-3 flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Рост</span>
+                <div className="flex items-baseline space-x-1 my-1">
+                  <input
+                    type="number"
+                    value={formData.height}
+                    onChange={(e) => setFormData({ ...formData, height: parseFloat(e.target.value) || 0 })}
+                    className="w-16 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
+                  />
+                  <span className="text-xs text-slate-400 font-bold">см</span>
+                </div>
+                <span className="text-[9px] text-slate-400 font-mono">ИМТ: {bmi}</span>
+              </div>
+
+              {/* Age */}
+              <div className="bg-gym-900 border border-gym-800 rounded-2xl p-3 flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Возраст</span>
+                <div className="flex items-baseline space-x-1 my-1">
+                  <input
+                    type="number"
+                    value={formData.age}
+                    onChange={(e) => setFormData({ ...formData, age: parseInt(e.target.value) || 0 })}
+                    className="w-14 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
+                  />
+                  <span className="text-xs text-slate-400 font-bold">лет</span>
+                </div>
+                <span className="text-[9px] text-slate-500 font-mono">ЦНС</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 2: Goal and Experience Level */}
+      {step === 2 && (
+        <div className="py-4 space-y-4 animate-in fade-in slide-in-from-right-4 duration-200">
+          <div className="space-y-1">
+            <h2 className="text-xl font-black text-white tracking-tight">
+              Твоя главная цель 🎯
+            </h2>
+            <p className="text-xs text-slate-400">
+              Это определит структуру рабочих подходов и диапазон целевых повторений.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {/* Goal Cards */}
+            <div className="space-y-2">
+              {[
+                { id: 'hypertrophy', icon: '🥩', title: 'Набор мышечной массы (Гипертрофия)', desc: 'Классический бодибилдинг с акцентом на объемы мышц', reps: '8–12 повторений в подходе' },
+                { id: 'strength', icon: '⚡', title: 'Развитие силы и мощности', desc: 'Увеличение рабочих весов в базовых движениях', reps: '5–7 тяжелых повторений' },
+                { id: 'fat_loss', icon: '🔥', title: 'Сушка, тонус и рельеф', desc: 'Высокая плотность сессии и поддержка дефицита калорий', reps: '10–15 плотных повторений' }
+              ].map(g => (
+                <div
+                  key={g.id}
+                  onClick={() => { triggerHaptic('light'); setFormData({ ...formData, fitness_goal: g.id }); }}
+                  className={`p-3.5 rounded-2xl border cursor-pointer transition active:scale-[0.99] flex items-start space-x-3 ${
+                    formData.fitness_goal === g.id
+                      ? 'bg-emerald-500/15 border-emerald-400 text-white shadow-lg ring-1 ring-emerald-400'
+                      : 'bg-gym-900 border-gym-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span className="text-2xl mt-0.5">{g.icon}</span>
+                  <div className="flex-1 space-y-0.5">
+                    <h4 className="text-sm font-black text-white">{g.title}</h4>
+                    <p className="text-[11px] text-slate-400 leading-snug">{g.desc}</p>
+                    <span className="inline-block text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md mt-1 font-bold">
+                      Целевые: {g.reps}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Experience Level */}
+            <div className="space-y-1.5 pt-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Опыт тренировок в зале</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'beginner', title: 'Новичок', sub: 'До 1 года', step: 'Плавный старт' },
+                  { id: 'intermediate', title: 'Средний', sub: '1–3 года', step: 'Базовый PPL' },
+                  { id: 'advanced', title: 'Опытный', sub: '3+ года', step: 'Высокий темп' }
+                ].map(l => (
+                  <button
+                    key={l.id}
+                    type="button"
+                    onClick={() => { triggerHaptic('light'); setFormData({ ...formData, experience_level: l.id }); }}
+                    className={`p-2.5 rounded-2xl border text-center transition active:scale-95 flex flex-col justify-between ${
+                      formData.experience_level === l.id
+                        ? 'bg-sky-500/20 text-sky-300 border-sky-400 font-black shadow-md ring-1 ring-sky-400'
+                        : 'bg-gym-900 text-slate-400 border-gym-800 hover:text-white'
+                    }`}
+                  >
+                    <span className="text-xs font-black">{l.title}</span>
+                    <span className="text-[9px] text-slate-400 mt-0.5">{l.sub}</span>
+                    <span className="text-[8px] text-sky-400 font-mono mt-1 font-bold">{l.step}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 3: Joint Safety & Injuries */}
+      {step === 3 && (
+        <div className="py-4 space-y-4 animate-in fade-in slide-in-from-right-4 duration-200">
+          <div className="space-y-1">
+            <h2 className="text-xl font-black text-white tracking-tight">
+              Защита суставов 🛡️
+            </h2>
+            <p className="text-xs text-slate-400">
+              Отметь суставы, требующие внимания. Gemini Coach автоматически настроит подсказки безопасной техники и исключит опасные углы.
+            </p>
+          </div>
+
+          <div className="space-y-2.5">
+            {commonInjuries.map(inj => {
+              const isNone = inj.id === 'none';
+              const active = isNone 
+                ? !formData.injuries 
+                : (formData.injuries || '').toLowerCase().includes(inj.id);
+
+              return (
+                <div
+                  key={inj.id}
+                  onClick={() => toggleInjury(inj.id)}
+                  className={`p-3.5 rounded-2xl border cursor-pointer transition active:scale-[0.99] flex items-center justify-between ${
+                    active
+                      ? isNone 
+                        ? 'bg-emerald-500/15 border-emerald-400 text-emerald-300 font-bold'
+                        : 'bg-rose-500/15 border-rose-400 text-rose-200 font-bold shadow-sm'
+                      : 'bg-gym-900 border-gym-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className="space-y-0.5 pr-2">
+                    <span className="text-sm font-black text-white block">{inj.label}</span>
+                    {inj.tip && <span className="text-[10px] text-slate-400 block">{inj.tip}</span>}
+                  </div>
+                  <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs font-black ${
+                    active
+                      ? isNone ? 'bg-emerald-500 text-gym-950 border-emerald-400' : 'bg-rose-500 text-white border-rose-400'
+                      : 'border-gym-700 bg-gym-950 text-transparent'
+                  }`}>
+                    ✓
+                  </div>
+                </div>
+              );
+            })}
+
+            <div className="pt-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">
+                Другие индивидуальные пожелания / травмы:
+              </label>
+              <input
+                type="text"
+                placeholder="Например: болит шея при подтягиваниях, грыжа поясницы"
+                value={formData.injuries}
+                onChange={(e) => setFormData({ ...formData, injuries: e.target.value })}
+                className="w-full bg-gym-900 border border-gym-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-rose-500 transition"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 4: Calibration Summary & Launch */}
+      {step === 4 && (
+        <div className="py-4 space-y-4 animate-in fade-in slide-in-from-right-4 duration-200">
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2 text-emerald-400 font-bold text-xs uppercase tracking-wider">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              <span>ИИ-калибровка завершена</span>
+            </div>
+            <h2 className="text-xl font-black text-white tracking-tight">
+              Твоя программа готова, {formData.name || 'Атлет'}! 🚀
+            </h2>
+            <p className="text-xs text-slate-400">
+              Алгоритм адаптировал 3-дневный сплит Push / Pull / Legs под твой вес тела ({weightKg} кг) и цель.
+            </p>
+          </div>
+
+          {/* Calibrated Program Card */}
+          <div className="bg-gradient-to-br from-gym-900 to-gym-950 border border-gym-700/80 rounded-3xl p-4 space-y-3.5 shadow-2xl">
+            <div className="flex items-center justify-between pb-2.5 border-b border-gym-800">
+              <div className="flex items-center space-x-2">
+                <span className="text-2xl">⚡</span>
+                <div>
+                  <h3 className="text-sm font-black text-white">Персональный PPL Сплит</h3>
+                  <p className="text-[10px] text-slate-400">Варианты А & Б для гипертрофии</p>
+                </div>
+              </div>
+              <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                {recReps}
+              </span>
+            </div>
+
+            {/* Estimated Initial Weights */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                🎯 Стартовые рабочие веса (расчет от веса тела):
+              </span>
+              <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                <div className="bg-gym-950/80 border border-gym-800/80 p-2.5 rounded-xl">
+                  <span className="text-[9px] text-slate-400 block uppercase">Жим лежа</span>
+                  <span className="text-base font-black text-sky-400">~{estBench} кг</span>
+                </div>
+                <div className="bg-gym-950/80 border border-gym-800/80 p-2.5 rounded-xl">
+                  <span className="text-[9px] text-slate-400 block uppercase">Приседания</span>
+                  <span className="text-base font-black text-emerald-400">~{estSquat} кг</span>
+                </div>
+                <div className="bg-gym-950/80 border border-gym-800/80 p-2.5 rounded-xl">
+                  <span className="text-[9px] text-slate-400 block uppercase">Тяга блока</span>
+                  <span className="text-base font-black text-amber-400">~{estPull} кг</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Safety notes badge */}
+            <div className="bg-gym-950/60 border border-gym-800/60 rounded-xl p-2.5 text-xs text-slate-300 flex items-start space-x-2">
+              <span className="text-base mt-0.5">🛡️</span>
+              <div className="text-[11px] leading-relaxed">
+                <strong>Безопасность суставов:</strong> {formData.injuries ? `включен защитный режим (${formData.injuries})` : 'полная рабочая амплитуда с контролем техники'}.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Navigation Buttons (Back & Next) */}
+      <div className="pt-4 border-t border-gym-800/80 flex items-center space-x-2">
+        {step > 1 && (
+          <button
+            type="button"
+            onClick={() => { triggerHaptic('light'); setStep(s => s - 1); }}
+            className="py-3.5 px-4 bg-gym-900 hover:bg-gym-850 text-slate-300 font-bold text-xs rounded-2xl border border-gym-800 transition active:scale-95"
+          >
+            ‹ Назад
+          </button>
+        )}
+
+        {step < 4 ? (
+          <button
+            type="button"
+            onClick={() => { triggerHaptic('medium'); setStep(s => s + 1); }}
+            className="flex-1 py-3.5 bg-gradient-to-r from-emerald-500 to-sky-500 hover:from-emerald-400 hover:to-sky-400 text-gym-950 font-black text-sm rounded-2xl shadow-lg shadow-emerald-500/20 active:scale-95 transition flex items-center justify-center space-x-2"
+          >
+            <span>ПРОДОЛЖИТЬ</span>
+            <Icons.Next />
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={handleFinish}
+            className="flex-1 py-4 bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 hover:from-emerald-300 text-gym-950 font-black text-sm uppercase tracking-wider rounded-2xl shadow-xl shadow-emerald-500/30 active:scale-95 transition flex items-center justify-center space-x-2"
+          >
+            {submitting ? (
+              <div className="w-5 h-5 border-2 border-gym-950 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <span>🚀 ПЕРЕЙТИ К ТРЕНИРОВКАМ</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
 // 📱 MAIN APPLICATION COMPONENT
 // ==========================================
 function App() {
@@ -735,6 +1242,7 @@ function App() {
   const [exerciseGuides, setExerciseGuides] = useState({});
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
 
   const [isMinimized, setIsMinimized] = useState(false);
 
@@ -775,6 +1283,29 @@ function App() {
   };
 
   const isInWorkoutFocus = !!activeWorkout && !isMinimized && activeTab === 'workout';
+  const needsOnboarding = userProfile && userProfile.onboarding_completed === 0;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gym-950 text-slate-100 p-6 space-y-4">
+        <div className="w-12 h-12 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
+        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Загрузка GymTracker...</p>
+      </div>
+    );
+  }
+
+  if (needsOnboarding || showOnboardingModal) {
+    return (
+      <OnboardingScreen
+        initialProfile={userProfile}
+        onComplete={(updated) => {
+          setUserProfile(updated);
+          setShowOnboardingModal(false);
+          loadAppData(true);
+        }}
+      />
+    );
+  }
 
   return (
     <div className={`flex flex-col min-h-screen bg-gym-950 text-slate-100 font-sans select-none ${isInWorkoutFocus ? 'pb-2' : 'pb-24'}`}>
@@ -819,47 +1350,41 @@ function App() {
 
       {/* Main Content Area */}
       <main className={`flex-1 max-w-lg mx-auto w-full px-3.5 ${isInWorkoutFocus ? 'pt-1' : 'pt-3'}`}>
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 space-y-4">
-            <div className="w-10 h-10 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
-            <p className="text-xs text-slate-400">Загрузка данных...</p>
-          </div>
-        ) : (
-          <>
-            {activeTab === 'workout' && (
-              <GuidedWorkoutScreen 
-                activeWorkout={activeWorkout} 
-                exercises={exercises} 
-                coachDays={coachDays}
-                exerciseGuides={exerciseGuides}
-                onRefresh={loadAppData}
-                onMinimize={() => setIsMinimized(true)}
-              />
-            )}
+        <>
+          {activeTab === 'workout' && (
+            <GuidedWorkoutScreen 
+              activeWorkout={activeWorkout} 
+              exercises={exercises} 
+              coachDays={coachDays}
+              exerciseGuides={exerciseGuides}
+              onRefresh={loadAppData}
+              onMinimize={() => setIsMinimized(true)}
+            />
+          )}
 
-            {activeTab === 'analytics' && (
-              <AnalyticsScreen exercises={exercises} />
-            )}
+          {activeTab === 'analytics' && (
+            <AnalyticsScreen exercises={exercises} />
+          )}
 
-            {activeTab === 'history' && (
-              <HistoryScreen workouts={historyWorkouts} />
-            )}
+          {activeTab === 'history' && (
+            <HistoryScreen workouts={historyWorkouts} />
+          )}
 
-            {activeTab === 'exercises' && (
-              <ExercisesScreen exercises={exercises} exerciseGuides={exerciseGuides} onRefresh={loadAppData} />
-            )}
+          {activeTab === 'exercises' && (
+            <ExercisesScreen exercises={exercises} exerciseGuides={exerciseGuides} onRefresh={loadAppData} />
+          )}
 
-            {activeTab === 'profile' && (
-              <ProfileScreen 
-                profile={userProfile} 
-                onUpdateProfile={(updated) => {
-                  setUserProfile(updated);
-                  loadAppData();
-                }} 
-              />
-            )}
-          </>
-        )}
+          {activeTab === 'profile' && (
+            <ProfileScreen 
+              profile={userProfile} 
+              onUpdateProfile={(updated) => {
+                setUserProfile(updated);
+                loadAppData();
+              }} 
+              onRestartOnboarding={() => setShowOnboardingModal(true)}
+            />
+          )}
+        </>
       </main>
 
       {/* Bottom Fixed Navigation Bar (Hidden during active workout focus) */}
@@ -2743,7 +3268,7 @@ function ExercisesScreen({ exercises, exerciseGuides = {}, onRefresh }) {
 // ==========================================
 // 👤 USER PROFILE SCREEN ("О СЕБЕ")
 // ==========================================
-function ProfileScreen({ profile, onUpdateProfile }) {
+function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding }) {
   const [formData, setFormData] = useState({
     name: 'Атлет',
     gender: 'male',
@@ -3025,6 +3550,17 @@ function ProfileScreen({ profile, onUpdateProfile }) {
             </>
           )}
         </button>
+
+        {/* Re-run Onboarding Wizard button */}
+        {onRestartOnboarding && (
+          <button
+            type="button"
+            onClick={onRestartOnboarding}
+            className="w-full py-3 bg-gym-950/80 hover:bg-gym-850 text-slate-300 font-bold text-xs rounded-2xl border border-gym-800 flex items-center justify-center space-x-2 transition active:scale-95 shadow-sm"
+          >
+            <span>🔄 Перенастроить вводные данные (Мастер опроса)</span>
+          </button>
+        )}
 
         {/* Info Box */}
         <div className="bg-gym-950/60 border border-gym-800/60 rounded-2xl p-3.5 space-y-1.5 text-xs text-slate-400">

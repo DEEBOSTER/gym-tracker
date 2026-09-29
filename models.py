@@ -75,7 +75,7 @@ class AnalyticsResponse(BaseModel):
     personal_record_volume: float
 
 class UserProfileModel(BaseModel):
-    id: int = 1
+    user_id: str = "default"
     name: str = "Атлет"
     gender: str = "male"
     age: int = 28
@@ -85,6 +85,7 @@ class UserProfileModel(BaseModel):
     fitness_goal: str = "hypertrophy"
     injuries: Optional[str] = ""
     equipment: Optional[str] = "gym"
+    onboarding_completed: Optional[int] = 0
     updated_at: Optional[str] = None
 
 class UserProfileUpdate(BaseModel):
@@ -97,4 +98,5 @@ class UserProfileUpdate(BaseModel):
     fitness_goal: Optional[str] = None
     injuries: Optional[str] = None
     equipment: Optional[str] = None
+    onboarding_completed: Optional[int] = None
 

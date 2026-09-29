@@ -4,10 +4,28 @@ import json
 from contextlib import asynccontextmanager
 from typing import List, Optional
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Header, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+import urllib.parse
+
+def get_current_user_id(
+    x_telegram_user_id: Optional[str] = Header(None)
+) -> str:
+    if x_telegram_user_id and str(x_telegram_user_id).strip() and str(x_telegram_user_id).strip() != "null" and str(x_telegram_user_id).strip() != "undefined":
+        return str(x_telegram_user_id).strip()
+    return "default"
+
+def get_current_user_name(
+    x_telegram_user_name: Optional[str] = Header(None)
+) -> str:
+    if x_telegram_user_name and str(x_telegram_user_name).strip() and str(x_telegram_user_name).strip() != "null":
+        try:
+            return urllib.parse.unquote(str(x_telegram_user_name).strip())
+        except Exception:
+            return str(x_telegram_user_name).strip()
+    return "Атлет"
 
 from pydantic import BaseModel
 from database import init_database, get_db
@@ -446,31 +464,83 @@ PPL_PROGRAMS = {
     }
 }
 
-def get_user_profile_dict(cursor) -> dict:
+def get_user_profile_dict(cursor, user_id: str = "default", user_name: str = "Атлет") -> dict:
     try:
-        cursor.execute("SELECT * FROM user_profile WHERE id = 1;")
+        cursor.execute("SELECT * FROM user_profiles WHERE user_id = ?;", (user_id,))
         row = cursor.fetchone()
         if row:
-            return dict(row)
-    except Exception:
-        pass
+            d = dict(row)
+            d["user_id"] = user_id
+            return d
+
+        # Check if other non-default users exist
+        cursor.execute("SELECT COUNT(*) as c FROM user_profiles WHERE user_id != 'default';")
+        other_users_count = cursor.fetchone()["c"]
+
+        cursor.execute("SELECT * FROM user_profiles WHERE user_id = 'default';")
+        default_row = cursor.fetchone()
+
+        # If this is the FIRST telegram user and there are default workouts/profile, migrate to Dima!
+        if other_users_count == 0 and default_row and user_id != "default":
+            cursor.execute("""
+                INSERT OR REPLACE INTO user_profiles (user_id, name, gender, age, height, weight, experience_level, fitness_goal, injuries, equipment, onboarding_completed, telegram_chat_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?);
+            """, (
+                user_id,
+                user_name if user_name != "Атлет" else (default_row["name"] or "Атлет"),
+                default_row["gender"] or "male",
+                default_row["age"] or 28,
+                default_row["height"] or 180.0,
+                default_row["weight"] or 80.0,
+                default_row["experience_level"] or "intermediate",
+                default_row["fitness_goal"] or "hypertrophy",
+                default_row["injuries"] or "",
+                default_row["equipment"] or "gym",
+                int(user_id) if user_id.isdigit() else None
+            ))
+            cursor.execute("UPDATE workouts SET user_id = ? WHERE user_id = 'default';", (user_id,))
+            cursor.execute("SELECT * FROM user_profiles WHERE user_id = ?;", (user_id,))
+            migrated_row = cursor.fetchone()
+            if migrated_row:
+                d = dict(migrated_row)
+                d["user_id"] = user_id
+                return d
+
+        # New user: onboarding_completed = 0!
+        onboard = 1 if user_id == "default" else 0
+        cursor.execute("""
+            INSERT OR REPLACE INTO user_profiles (user_id, name, gender, age, height, weight, experience_level, fitness_goal, injuries, equipment, onboarding_completed, telegram_chat_id)
+            VALUES (?, ?, 'male', 25, 178.0, 75.0, 'beginner', 'hypertrophy', '', 'gym', ?, ?);
+        """, (user_id, user_name or "Атлет", onboard, int(user_id) if user_id.isdigit() else None))
+
+        cursor.execute("SELECT * FROM user_profiles WHERE user_id = ?;", (user_id,))
+        new_row = cursor.fetchone()
+        if new_row:
+            d = dict(new_row)
+            d["user_id"] = user_id
+            return d
+    except Exception as e:
+        print(f"Error in get_user_profile_dict: {e}")
+
     return {
-        "id": 1,
-        "name": "Атлет",
+        "user_id": user_id,
+        "name": user_name or "Атлет",
         "gender": "male",
-        "age": 28,
-        "height": 180.0,
-        "weight": 80.0,
-        "experience_level": "intermediate",
+        "age": 25,
+        "height": 178.0,
+        "weight": 75.0,
+        "experience_level": "beginner",
         "fitness_goal": "hypertrophy",
         "injuries": "",
-        "equipment": "gym"
+        "equipment": "gym",
+        "onboarding_completed": 1 if user_id == "default" else 0
     }
 
-def enrich_exercise_item(ex, cursor, profile=None):
+def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default"):
     if profile is None:
-        profile = get_user_profile_dict(cursor)
+        profile = get_user_profile_dict(cursor, user_id=user_id)
 
+    uid = profile.get("user_id") or user_id
     user_weight = float(profile.get("weight") or 80.0)
     user_goal = profile.get("fitness_goal") or "hypertrophy"
     user_level = profile.get("experience_level") or "intermediate"
@@ -529,11 +599,12 @@ def enrich_exercise_item(ex, cursor, profile=None):
     if ex_row:
         ex_id = ex_row["id"]
         cursor.execute("""
-            SELECT weight, reps, workout_id, COALESCE(set_type, 'normal') as set_type, created_at 
-            FROM workout_sets 
-            WHERE exercise_id = ? 
-            ORDER BY workout_id DESC, set_number ASC;
-        """, (ex_id,))
+            SELECT s.weight, s.reps, s.workout_id, COALESCE(s.set_type, 'normal') as set_type, s.created_at 
+            FROM workout_sets s
+            JOIN workouts w ON s.workout_id = w.id
+            WHERE s.exercise_id = ? AND w.user_id = ?
+            ORDER BY s.workout_id DESC, s.set_number ASC;
+        """, (ex_id, uid))
         sets = cursor.fetchall()
         if sets:
             last_wid = sets[0]["workout_id"]
@@ -638,13 +709,13 @@ def enrich_exercise_item(ex, cursor, profile=None):
         "recommendation_note": rec_note
     }
 
-def enrich_single_plan(plan_template, cursor, profile=None):
+def enrich_single_plan(plan_template, cursor, profile=None, user_id: str = "default"):
     if profile is None:
-        profile = get_user_profile_dict(cursor)
+        profile = get_user_profile_dict(cursor, user_id=user_id)
 
     enriched_exercises = []
     for ex in plan_template["exercises"]:
-        enriched_exercises.append(enrich_exercise_item(ex, cursor, profile=profile))
+        enriched_exercises.append(enrich_exercise_item(ex, cursor, profile=profile, user_id=user_id))
 
     return {
         "type": plan_template["type"],
@@ -659,15 +730,18 @@ def enrich_single_plan(plan_template, cursor, profile=None):
 # --- WORKOUTS ENDPOINTS ---
 
 @app.get("/api/workouts/active", response_model=Optional[WorkoutDetailResponse])
-def get_active_workout():
+def get_active_workout(
+    user_id: str = Depends(get_current_user_id),
+    user_name: str = Depends(get_current_user_name)
+):
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             SELECT id, title, start_time, end_time, notes 
             FROM workouts 
-            WHERE end_time IS NULL 
+            WHERE user_id = ? AND end_time IS NULL 
             ORDER BY id DESC LIMIT 1;
-        """)
+        """, (user_id,))
         w_row = cursor.fetchone()
         if not w_row:
             return None
@@ -717,7 +791,8 @@ def get_active_workout():
                                 if ex["name"].strip().lower() == old_name.strip().lower():
                                     ex["name"] = new_name.strip()
                                     ex["tip"] = f"Замена на альтернативу: {new_name.strip()}"
-                planned_exercises = enrich_single_plan(template_copy, cursor)["exercises"]
+                profile = get_user_profile_dict(cursor, user_id=user_id, user_name=user_name)
+                planned_exercises = enrich_single_plan(template_copy, cursor, profile=profile, user_id=user_id)["exercises"]
 
         return {
             "id": w_row["id"],
@@ -732,22 +807,26 @@ def get_active_workout():
         }
 
 @app.post("/api/workouts/start", response_model=WorkoutDetailResponse)
-def start_workout(payload: WorkoutStart):
+def start_workout(
+    payload: WorkoutStart,
+    user_id: str = Depends(get_current_user_id),
+    user_name: str = Depends(get_current_user_name)
+):
     with get_db() as conn:
         cursor = conn.cursor()
-        # Check if active already exists
-        cursor.execute("SELECT id FROM workouts WHERE end_time IS NULL ORDER BY id DESC LIMIT 1;")
+        # Check if active already exists for this user
+        cursor.execute("SELECT id FROM workouts WHERE user_id = ? AND end_time IS NULL ORDER BY id DESC LIMIT 1;", (user_id,))
         active = cursor.fetchone()
         if active:
             # Return currently active workout instead of creating orphan duplicate
-            return get_active_workout()
+            return get_active_workout(user_id=user_id, user_name=user_name)
 
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute(
-            "INSERT INTO workouts (title, start_time, notes) VALUES (?, ?, ?);",
-            (payload.title or "Силовая тренировка", now_str, payload.notes or "")
+            "INSERT INTO workouts (user_id, title, start_time, notes) VALUES (?, ?, ?, ?);",
+            (user_id, payload.title or "Силовая тренировка", now_str, payload.notes or "")
         )
-    return get_active_workout()
+    return get_active_workout(user_id=user_id, user_name=user_name)
 
 def send_telegram_workout_summary(cursor, workout_id: int, chat_id: Optional[int] = None):
     """Sends a rich summary of the completed workout with volume, PRs, and tip to the user's Telegram."""
@@ -761,8 +840,25 @@ def send_telegram_workout_summary(cursor, workout_id: int, chat_id: Optional[int
         if not bot_token:
             return
 
+        # Fetch workout details
+        cursor.execute("SELECT id, user_id, title, start_time, end_time, notes FROM workouts WHERE id = ?;", (workout_id,))
+        w_row = cursor.fetchone()
+        if not w_row:
+            return
+
+        w_user_id = str(w_row["user_id"] or "default")
+
         # Determine target chat ID
         target_chat_id = chat_id
+        if not target_chat_id:
+            if w_user_id.isdigit():
+                target_chat_id = int(w_user_id)
+            else:
+                cursor.execute("SELECT telegram_chat_id FROM user_profiles WHERE user_id = ?;", (w_user_id,))
+                p_row = cursor.fetchone()
+                if p_row and p_row["telegram_chat_id"]:
+                    target_chat_id = p_row["telegram_chat_id"]
+
         if not target_chat_id:
             chat_id_file = os.path.join(base_dir, "telegram_chat_id.txt")
             if os.path.exists(chat_id_file):
@@ -770,12 +866,6 @@ def send_telegram_workout_summary(cursor, workout_id: int, chat_id: Optional[int
                     val = f.read().strip()
                     if val.isdigit():
                         target_chat_id = int(val)
-        
-        if not target_chat_id:
-            cursor.execute("SELECT telegram_chat_id FROM user_profile WHERE id = 1;")
-            p_row = cursor.fetchone()
-            if p_row and p_row["telegram_chat_id"]:
-                target_chat_id = p_row["telegram_chat_id"]
 
         if not target_chat_id:
             try:
@@ -792,12 +882,6 @@ def send_telegram_workout_summary(cursor, workout_id: int, chat_id: Optional[int
 
         if not target_chat_id:
             print("⚠️ [Telegram Report] Не найден chat_id для отправки отчета")
-            return
-
-        # Fetch workout details
-        cursor.execute("SELECT id, title, start_time, end_time, notes FROM workouts WHERE id = ?;", (workout_id,))
-        w_row = cursor.fetchone()
-        if not w_row:
             return
 
         w_title = w_row["title"] or "Силовая тренировка"
@@ -838,7 +922,7 @@ def send_telegram_workout_summary(cursor, workout_id: int, chat_id: Optional[int
         failure_sets = [s for s in all_sets if s["set_type"] == 'failure']
         total_tonnage = sum(s["weight"] * s["reps"] for s in all_sets)
 
-        # Detect PRs
+        # Detect PRs for this user
         records = []
         for ex_name, s_list in exercises_map.items():
             working = [s for s in s_list if s["set_type"] != 'warmup']
@@ -852,8 +936,8 @@ def send_telegram_workout_summary(cursor, workout_id: int, chat_id: Optional[int
                 SELECT MAX(s.weight) as prev_max_w, MAX(s.weight * (1.0 + s.reps / 30.0)) as prev_max_1rm
                 FROM workout_sets s
                 JOIN workouts w ON s.workout_id = w.id
-                WHERE s.exercise_id = ? AND s.workout_id != ? AND w.end_time IS NOT NULL AND s.set_type != 'warmup';
-            """, (ex_id, workout_id))
+                WHERE s.exercise_id = ? AND s.workout_id != ? AND w.user_id = ? AND w.end_time IS NOT NULL AND s.set_type != 'warmup';
+            """, (ex_id, workout_id, w_user_id))
             prev = cursor.fetchone()
             prev_max_w = prev["prev_max_w"] if prev and prev["prev_max_w"] is not None else 0
             prev_max_1rm = prev["prev_max_1rm"] if prev and prev["prev_max_1rm"] is not None else 0
@@ -953,10 +1037,14 @@ def send_telegram_workout_summary(cursor, workout_id: int, chat_id: Optional[int
         print(f"⚠️ [Telegram Report] Ошибка отправки отчета: {e}")
 
 @app.post("/api/workouts/{workout_id}/finish", response_model=WorkoutSummaryResponse)
-def finish_workout(workout_id: int, payload: WorkoutFinish):
+def finish_workout(
+    workout_id: int,
+    payload: WorkoutFinish,
+    user_id: str = Depends(get_current_user_id)
+):
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, title, start_time, notes FROM workouts WHERE id = ?;", (workout_id,))
+        cursor.execute("SELECT id, user_id, title, start_time, notes FROM workouts WHERE id = ?;", (workout_id,))
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Тренировка не найдена")
@@ -978,12 +1066,13 @@ def finish_workout(workout_id: int, payload: WorkoutFinish):
         send_telegram_workout_summary(cursor, workout_id, payload.telegram_chat_id)
 
         # Persist telegram_chat_id if provided
-        if payload.telegram_chat_id:
+        target_uid = row["user_id"] or user_id
+        if payload.telegram_chat_id and target_uid:
             try:
                 base_dir = os.path.dirname(os.path.abspath(__file__))
                 with open(os.path.join(base_dir, "telegram_chat_id.txt"), "w", encoding="utf-8") as f:
                     f.write(str(payload.telegram_chat_id))
-                cursor.execute("UPDATE user_profile SET telegram_chat_id = ? WHERE id = 1;", (payload.telegram_chat_id,))
+                cursor.execute("UPDATE user_profiles SET telegram_chat_id = ? WHERE user_id = ?;", (payload.telegram_chat_id, target_uid))
             except Exception:
                 pass
 
@@ -1003,7 +1092,12 @@ class SwapExerciseRequest(BaseModel):
     new_exercise_name: str
 
 @app.post("/api/workouts/{workout_id}/swap-exercise", response_model=WorkoutDetailResponse)
-def swap_workout_exercise(workout_id: int, payload: SwapExerciseRequest):
+def swap_workout_exercise(
+    workout_id: int,
+    payload: SwapExerciseRequest,
+    user_id: str = Depends(get_current_user_id),
+    user_name: str = Depends(get_current_user_name)
+):
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id, notes FROM workouts WHERE id = ? AND end_time IS NULL;", (workout_id,))
@@ -1015,10 +1109,13 @@ def swap_workout_exercise(workout_id: int, payload: SwapExerciseRequest):
         swap_tag = f"swap:{payload.old_exercise_name.strip()}->{payload.new_exercise_name.strip()}"
         new_notes = f"{notes}|{swap_tag}"
         cursor.execute("UPDATE workouts SET notes = ? WHERE id = ?;", (new_notes, workout_id))
-    return get_active_workout()
+    return get_active_workout(user_id=user_id, user_name=user_name)
 
 @app.get("/api/workouts", response_model=List[WorkoutSummaryResponse])
-def list_workouts(limit: int = 50):
+def list_workouts(
+    limit: int = 50,
+    user_id: str = Depends(get_current_user_id)
+):
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -1027,10 +1124,11 @@ def list_workouts(limit: int = 50):
                    COALESCE(SUM(s.weight * s.reps), 0) as total_volume
             FROM workouts w
             LEFT JOIN workout_sets s ON w.id = s.workout_id
+            WHERE w.user_id = ?
             GROUP BY w.id
             ORDER BY w.id DESC
             LIMIT ?;
-        """, (limit,))
+        """, (user_id, limit))
         rows = cursor.fetchall()
         result = []
         for r in rows:
@@ -1052,7 +1150,7 @@ def get_workout_detail(workout_id: int):
         cursor = conn.cursor()
         cursor.execute("SELECT id, title, start_time, end_time, notes FROM workouts WHERE id = ?;", (workout_id,))
         w_row = cursor.fetchone()
-        if not w_row:
+        if not row_exists(w_row):
             raise HTTPException(status_code=404, detail="Тренировка не найдена")
 
         cursor.execute("""
@@ -1074,6 +1172,9 @@ def get_workout_detail(workout_id: int):
             "is_active": w_row["end_time"] is None,
             "sets": sets
         }
+
+def row_exists(row):
+    return row is not None
 
 # --- SETS ENDPOINTS ---
 
@@ -1133,7 +1234,10 @@ def delete_workout_set(set_id: int):
 # --- ANALYTICS ENDPOINT ---
 
 @app.get("/api/analytics/{exercise_id}", response_model=AnalyticsResponse)
-def get_exercise_analytics(exercise_id: int):
+def get_exercise_analytics(
+    exercise_id: int,
+    user_id: str = Depends(get_current_user_id)
+):
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id, name FROM exercises WHERE id = ?;", (exercise_id,))
@@ -1141,7 +1245,7 @@ def get_exercise_analytics(exercise_id: int):
         if not ex:
             raise HTTPException(status_code=404, detail="Упражнение не найдено")
 
-        # Query aggregate progress per workout over time
+        # Query aggregate progress per workout over time for this user
         cursor.execute("""
             SELECT 
                 w.id as workout_id,
@@ -1152,10 +1256,10 @@ def get_exercise_analytics(exercise_id: int):
                 COUNT(s.id) as sets_count
             FROM workout_sets s
             JOIN workouts w ON s.workout_id = w.id
-            WHERE s.exercise_id = ?
+            WHERE s.exercise_id = ? AND w.user_id = ?
             GROUP BY w.id
             ORDER BY w.start_time ASC;
-        """, (exercise_id,))
+        """, (exercise_id, user_id))
         rows = cursor.fetchall()
 
         history: List[AnalyticsDataPoint] = []
@@ -1191,10 +1295,14 @@ def get_exercise_analytics(exercise_id: int):
 # --- COACH & PROGRESSIVE OVERLOAD ENDPOINTS ---
 
 @app.get("/api/coach/days")
-def get_all_coach_days(variant: Optional[str] = None):
+def get_all_coach_days(
+    variant: Optional[str] = None,
+    user_id: str = Depends(get_current_user_id),
+    user_name: str = Depends(get_current_user_name)
+):
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, title, notes FROM workouts WHERE end_time IS NOT NULL ORDER BY id DESC LIMIT 20;")
+        cursor.execute("SELECT id, title, notes FROM workouts WHERE user_id = ? AND end_time IS NOT NULL ORDER BY id DESC LIMIT 20;", (user_id,))
         recent = cursor.fetchall()
 
         # 1. Determine recommended next day type (push -> pull -> legs -> push)
@@ -1225,11 +1333,12 @@ def get_all_coach_days(variant: Optional[str] = None):
                         variant_recommendations[d] = "a"
                     break
 
+        profile = get_user_profile_dict(cursor, user_id=user_id, user_name=user_name)
         days_result = []
         for key, template in PPL_PROGRAMS.items():
             if variant and variant.lower() in ["a", "b"] and template.get("variant") != variant.lower():
                 continue
-            day_data = enrich_single_plan(template, cursor)
+            day_data = enrich_single_plan(template, cursor, profile=profile, user_id=user_id)
             is_rec = (template["type"] == rec_day and template.get("variant") == variant_recommendations.get(rec_day, "a"))
             day_data["is_recommended"] = is_rec
             day_data["is_day_recommended"] = (template["type"] == rec_day)
@@ -1239,8 +1348,11 @@ def get_all_coach_days(variant: Optional[str] = None):
         return days_result
 
 @app.get("/api/coach/next-workout")
-def get_next_workout_plan():
-    days = get_all_coach_days()
+def get_next_workout_plan(
+    user_id: str = Depends(get_current_user_id),
+    user_name: str = Depends(get_current_user_name)
+):
+    days = get_all_coach_days(variant=None, user_id=user_id, user_name=user_name)
     for d in days:
         if d.get("is_recommended"):
             return d
@@ -1251,34 +1363,48 @@ class StartDayRequest(BaseModel):
     variant: Optional[str] = "a" # 'a' | 'b'
 
 @app.post("/api/coach/start-day")
-def start_day_workout(payload: StartDayRequest):
+def start_day_workout(
+    payload: StartDayRequest,
+    user_id: str = Depends(get_current_user_id),
+    user_name: str = Depends(get_current_user_name)
+):
     var = (payload.variant or "a").lower()
     prog_key = f"{payload.day_type.lower()}_{var}"
     target_template = PPL_PROGRAMS.get(prog_key) or PPL_PROGRAMS.get(f"{payload.day_type.lower()}_a")
     title = target_template["title"]
     notes = f"day_type:{target_template['type']}|variant:{target_template['variant']}|{target_template['focus']}"
-    return start_workout(WorkoutStart(title=title, notes=notes))
+    return start_workout(WorkoutStart(title=title, notes=notes), user_id=user_id, user_name=user_name)
 
 @app.post("/api/coach/start-planned")
-def start_planned_workout():
-    plan = get_next_workout_plan()
+def start_planned_workout(
+    user_id: str = Depends(get_current_user_id),
+    user_name: str = Depends(get_current_user_name)
+):
+    plan = get_next_workout_plan(user_id=user_id, user_name=user_name)
     title = plan["title"]
     notes = f"day_type:{plan['type']}|variant:{plan.get('variant', 'a')}|{plan['focus']}"
-    return start_workout(WorkoutStart(title=title, notes=notes))
+    return start_workout(WorkoutStart(title=title, notes=notes), user_id=user_id, user_name=user_name)
 
 # --- USER PROFILE ENDPOINTS ---
 
 @app.get("/api/profile", response_model=UserProfileModel)
-def get_user_profile():
+def get_user_profile(
+    user_id: str = Depends(get_current_user_id),
+    user_name: str = Depends(get_current_user_name)
+):
     with get_db() as conn:
         cursor = conn.cursor()
-        return get_user_profile_dict(cursor)
+        return get_user_profile_dict(cursor, user_id=user_id, user_name=user_name)
 
 @app.put("/api/profile", response_model=UserProfileModel)
-def update_user_profile(payload: UserProfileUpdate):
+def update_user_profile(
+    payload: UserProfileUpdate,
+    user_id: str = Depends(get_current_user_id),
+    user_name: str = Depends(get_current_user_name)
+):
     with get_db() as conn:
         cursor = conn.cursor()
-        current = get_user_profile_dict(cursor)
+        current = get_user_profile_dict(cursor, user_id=user_id, user_name=user_name)
 
         updates = payload.dict(exclude_unset=True)
         for k, v in updates.items():
@@ -1287,10 +1413,11 @@ def update_user_profile(payload: UserProfileUpdate):
 
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute("""
-            UPDATE user_profile 
+            UPDATE user_profiles 
             SET name = ?, gender = ?, age = ?, height = ?, weight = ?,
-                experience_level = ?, fitness_goal = ?, injuries = ?, equipment = ?, updated_at = ?
-            WHERE id = 1;
+                experience_level = ?, fitness_goal = ?, injuries = ?, equipment = ?,
+                onboarding_completed = ?, updated_at = ?
+            WHERE user_id = ?;
         """, (
             current.get("name", "Атлет"),
             current.get("gender", "male"),
@@ -1301,7 +1428,9 @@ def update_user_profile(payload: UserProfileUpdate):
             current.get("fitness_goal", "hypertrophy"),
             current.get("injuries", ""),
             current.get("equipment", "gym"),
-            now_str
+            int(current.get("onboarding_completed", 1)),
+            now_str,
+            user_id
         ))
         current["updated_at"] = now_str
         return current
