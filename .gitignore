@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.exe
+.env
+cloudflared.exe
+ngrok.exe
+current_tunnel_url.txt
+mingit/
+*.log

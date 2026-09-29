@@ -1,0 +1,3047 @@
+// --- GLOBAL NGROK & API INTERCEPTOR ---
+const _origFetch = window.fetch;
+window.fetch = function(input, init = {}) {
+  init.headers = init.headers || {};
+  if (init.headers instanceof Headers) {
+    if (!init.headers.has('ngrok-skip-browser-warning')) {
+      init.headers.append('ngrok-skip-browser-warning', 'true');
+    }
+  } else {
+    init.headers['ngrok-skip-browser-warning'] = 'true';
+  }
+  return _origFetch(input, init);
+};
+
+const { useState, useEffect, useRef, useMemo } = React;
+
+// --- TELEGRAM WEBAPP & HAPTIC HELPERS ---
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  try {
+    tg.ready();
+    tg.expand();
+    if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
+  } catch (e) {
+    console.warn('Telegram init:', e);
+  }
+}
+
+const triggerHaptic = (type = 'light') => {
+  try {
+    if (window.Telegram?.WebApp?.HapticFeedback) {
+      const h = window.Telegram.WebApp.HapticFeedback;
+      if (type === 'success' || type === 'warning' || type === 'error') {
+        h.notificationOccurred(type);
+      } else {
+        h.impactOccurred(type);
+      }
+    }
+  } catch (e) {}
+};
+
+// --- ICONS (SVG) ---
+const Icons = {
+  Dumbbell: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10M8 5v14M16 5v14M20 7v10M8 12h8" />
+    </svg>
+  ),
+  Chart: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
+    </svg>
+  ),
+  History: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  List: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+    </svg>
+  ),
+  Plus: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+    </svg>
+  ),
+  Trash: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+  ),
+  Check: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+    </svg>
+  ),
+  Trophy: () => (
+    <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2 0h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+    </svg>
+  ),
+  User: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+  ),
+  Clock: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  TrendingUp: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+    </svg>
+  ),
+  Search: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  ),
+  ChevronDown: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  ),
+  Close: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  ),
+  Fire: () => (
+    <svg className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+      <path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.316.492-.474.966-.474 1.442 0 .54.19 1.05.51 1.48.243.327.42.705.42 1.145 0 .61-.39 1.155-.95 1.34a2.983 2.983 0 01-1.02.18c-1.32 0-2.45-.88-2.82-2.12-.13-.44-.45-.79-.89-.92a1 1 0 00-1.16.51c-.63 1.31-.95 2.68-.95 4.09 0 4.41 3.59 8 8 8s8-3.59 8-8c0-3.15-1.57-5.96-4.04-7.662z" clipRule="evenodd" />
+    </svg>
+  ),
+  Next: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    </svg>
+  )
+};
+
+const categoryColors = {
+  'Грудь': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  'Спина': 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+  'Плечи': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  'Руки': 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  'Трицепс': 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+  'Ноги': 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+  'Пресс': 'bg-teal-500/10 text-teal-400 border-teal-500/20',
+  'Базовые': 'bg-slate-500/10 text-slate-300 border-slate-500/20'
+};
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+};
+
+const formatTime = (seconds) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+};
+
+
+// ==========================================
+// 🔔 WEB AUDIO API CHIME (OFFLINE SOUND)
+// ==========================================
+function playChimeSound() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const playTone = (freq, start, duration) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, start);
+
+      gain.gain.setValueAtTime(0.001, start);
+      gain.gain.exponentialRampToValueAtTime(0.35, start + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(start);
+      osc.stop(start + duration);
+    };
+
+    const t = ctx.currentTime;
+    playTone(659.25, t, 0.18);       // E5
+    playTone(880.00, t + 0.18, 0.22); // A5
+    playTone(1318.51, t + 0.40, 0.45); // E6
+  } catch (e) {
+    console.warn('AudioContext sound failed:', e);
+  }
+}
+
+// ==========================================
+// 🪜 WARMUP LADDER CALCULATOR LOGIC
+// ==========================================
+function calculateWarmupLadder(targetWeight, exerciseName = '') {
+  const w = parseFloat(targetWeight) || 20;
+  const isDumbbell = (exerciseName || '').toLowerCase().includes('гантел');
+  const barWeight = isDumbbell ? 6 : 20;
+
+  if (w <= barWeight + 5) {
+    return [
+      { step: 1, label: 'Легкая разминка суставов', weight: Math.max(4, Math.round(w * 0.6)), reps: 10, pct: '60%' },
+      { step: 2, label: 'Целевой рабочий вес', weight: w, reps: 10, pct: '100%', isTarget: true }
+    ];
+  }
+
+  const step1Weight = barWeight;
+  const step2Weight = Math.max(barWeight, Math.round((w * 0.5) / 2.5) * 2.5);
+  const step3Weight = Math.max(step2Weight + 2.5, Math.round((w * 0.72) / 2.5) * 2.5);
+  
+  const ladder = [
+    { step: 1, label: isDumbbell ? 'Легкие гантели (разминка суставов)' : 'Пустой гриф (разминка суставов)', weight: step1Weight, reps: 12, pct: `${Math.round((step1Weight/w)*100)}%` },
+    { step: 2, label: '50% активация волокон', weight: step2Weight, reps: 6, pct: '50%' },
+    { step: 3, label: '70–75% нервная адаптация', weight: step3Weight, reps: 3, pct: '75%' }
+  ];
+
+  if (w >= 70) {
+    const step4Weight = Math.round((w * 0.88) / 2.5) * 2.5;
+    if (step4Weight > step3Weight && step4Weight < w) {
+      ladder.push({
+        step: 4,
+        label: '88% подводящий сингл перед базой',
+        weight: step4Weight,
+        reps: 1,
+        pct: '88%'
+      });
+    }
+  }
+
+  ladder.push({
+    step: ladder.length + 1,
+    label: 'Целевой рабочий подход',
+    weight: w,
+    reps: 10,
+    pct: '100%',
+    isTarget: true
+  });
+
+  return ladder;
+}
+
+
+// ==========================================
+// 🎨 STYLISH EXERCISE PICKER MODAL (FOR ANALYTICS & EXTRA)
+// ==========================================
+function ExercisePickerModal({ isOpen, onClose, exercises, selectedId, onSelect }) {
+  const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState('Все');
+
+  if (!isOpen) return null;
+
+  const categories = ['Все', 'Грудь', 'Спина', 'Плечи', 'Руки', 'Ноги', 'Пресс'];
+
+  const filtered = exercises.filter(ex => {
+    const matchesSearch = ex.name.toLowerCase().includes(search.toLowerCase());
+    const matchesCat = activeCategory === 'Все' || ex.category === activeCategory;
+    return matchesSearch && matchesCat;
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-150">
+      <div 
+        className="w-full max-w-lg bg-gym-900 border border-gym-700/80 rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-4 border-b border-gym-800 flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-extrabold text-white">Выберите упражнение</h3>
+            <p className="text-[11px] text-slate-400">Нажмите на карточку для выбора</p>
+          </div>
+          <button 
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gym-800 flex items-center justify-center text-slate-400 hover:text-white"
+          >
+            <Icons.Close />
+          </button>
+        </div>
+
+        <div className="p-3 border-b border-gym-800/80 bg-gym-950/50">
+          <div className="relative">
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+              <Icons.Search />
+            </div>
+            <input 
+              type="text"
+              placeholder="Поиск упражнения..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-gym-950 border border-gym-700 rounded-2xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              autoFocus
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">✕</button>
+            )}
+          </div>
+
+          <div className="flex space-x-1.5 overflow-x-auto no-scrollbar pt-2.5 pb-1">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`text-xs px-3 py-1 rounded-xl whitespace-nowrap font-bold transition ${
+                  activeCategory === cat ? 'bg-emerald-500 text-gym-950 shadow-sm' : 'bg-gym-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="overflow-y-auto p-3 space-y-2 flex-1">
+          {filtered.length === 0 ? (
+            <div className="py-12 text-center text-xs text-slate-400">Ничего не найдено</div>
+          ) : (
+            filtered.map((ex) => {
+              const isSelected = ex.id == selectedId;
+              const catClass = categoryColors[ex.category] || categoryColors['Базовые'];
+              return (
+                <div
+                  key={ex.id}
+                  onClick={() => {
+                    onSelect(ex.id);
+                    onClose();
+                  }}
+                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between active:scale-98 ${
+                    isSelected 
+                      ? 'bg-emerald-500/15 border-emerald-500/60 shadow-md' 
+                      : 'bg-gym-950/70 border-gym-800 hover:border-gym-700'
+                  }`}
+                >
+                  <div className="space-y-1 pr-2">
+                    <p className={`font-bold text-sm ${isSelected ? 'text-emerald-400' : 'text-slate-100'}`}>
+                      {ex.name}
+                    </p>
+                    <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md border ${catClass}`}>
+                      {ex.category || 'Базовые'}
+                    </span>
+                  </div>
+                  {isSelected && (
+                    <span className="w-6 h-6 rounded-full bg-emerald-500 text-gym-950 flex items-center justify-center text-xs font-black">
+                      ✓
+                    </span>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 🔄 SMART EXERCISE SWAP MODAL
+// ==========================================
+function SwapExerciseModal({ isOpen, onClose, currentEx, exercises, onSwap }) {
+  const [search, setSearch] = useState('');
+  if (!isOpen || !currentEx) return null;
+
+  const alternatives = currentEx.alternatives || [];
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-150">
+      <div 
+        className="w-full max-w-lg bg-gym-900 border border-gym-700/80 rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-4 border-b border-gym-800 flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-extrabold text-white">Замена упражнения</h3>
+            <p className="text-[11px] text-slate-400">
+              Заменяем: <span className="text-emerald-400 font-bold">{currentEx.name}</span>
+            </p>
+          </div>
+          <button 
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gym-800 flex items-center justify-center text-slate-400 hover:text-white"
+          >
+            <Icons.Close />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto p-4 space-y-4 flex-1">
+          {/* Direct Recommended Alternatives */}
+          {alternatives.length > 0 && (
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+                ⭐ Рекомендуемые аналоги (та же мышечная группа)
+              </span>
+              <div className="space-y-2">
+                {alternatives.map((altName) => (
+                  <div
+                    key={altName}
+                    onClick={() => {
+                      onSwap(currentEx.name, altName);
+                      onClose();
+                    }}
+                    className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 hover:border-emerald-400 cursor-pointer transition active:scale-98 flex items-center justify-between"
+                  >
+                    <div className="pr-2">
+                      <p className="font-bold text-sm text-white">{altName}</p>
+                      <p className="text-[10px] text-emerald-400 mt-0.5">Аналогичный вектор и биомеханика</p>
+                    </div>
+                    <span className="text-xs bg-emerald-500 text-gym-950 font-black px-3 py-1.5 rounded-xl whitespace-nowrap">
+                      Выбрать
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Search any other exercise from gym list */}
+          <div className="space-y-2 pt-2 border-t border-gym-800">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Все упражнения базы
+            </span>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Поиск по названию..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-gym-950 border border-gym-700 rounded-2xl pl-4 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              {exercises
+                .filter(e => e.name !== currentEx.name && e.name.toLowerCase().includes(search.toLowerCase()))
+                .slice(0, 20)
+                .map(e => (
+                  <div
+                    key={e.id}
+                    onClick={() => {
+                      onSwap(currentEx.name, e.name);
+                      onClose();
+                    }}
+                    className="p-2.5 rounded-xl bg-gym-950/60 border border-gym-800 hover:border-gym-700 cursor-pointer flex items-center justify-between text-xs transition active:scale-98"
+                  >
+                    <span className="text-slate-200 font-medium">{e.name}</span>
+                    <span className="text-[10px] text-slate-400">{e.category}</span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 🪜 WARMUP LADDER MODAL (SMART PYRAMID)
+// ==========================================
+function WarmupLadderModal({ isOpen, onClose, exerciseName, targetWeight, onSelectStep }) {
+  if (!isOpen) return null;
+  const ladder = calculateWarmupLadder(targetWeight, exerciseName);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-150">
+      <div 
+        className="w-full max-w-lg bg-gym-900 border border-gym-700/80 rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-4 border-b border-gym-800 flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-extrabold text-white flex items-center space-x-1.5">
+              <span>🪜 Разминочная лестница</span>
+            </h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Для: <span className="text-emerald-400 font-bold">{exerciseName}</span> (цель {targetWeight} кг)
+            </p>
+          </div>
+          <button 
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gym-800 flex items-center justify-center text-slate-400 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="p-4 space-y-2.5 overflow-y-auto flex-1">
+          <p className="text-xs text-slate-300 leading-relaxed bg-gym-950 p-3 rounded-2xl border border-gym-800">
+            💡 Разминочные сеты подготавливают суставы и ЦНС, не утомляя мышцы перед рабочим весом. Нажмите на нужный шаг, чтобы применить его:
+          </p>
+
+          <div className="space-y-2">
+            {ladder.map((step) => (
+              <div
+                key={step.step}
+                onClick={() => {
+                  onSelectStep(step.weight, step.reps, step.isTarget ? 'normal' : 'warmup');
+                  onClose();
+                }}
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between active:scale-98 ${
+                  step.isTarget
+                    ? 'bg-emerald-500/10 border-emerald-500/40 hover:border-emerald-400'
+                    : 'bg-gym-950/80 border-gym-800 hover:border-gym-700'
+                }`}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
+                      step.isTarget ? 'bg-emerald-500 text-gym-950' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                    }`}>
+                      {step.isTarget ? 'РАБОЧИЙ' : `ШАГ ${step.step} (${step.pct})`}
+                    </span>
+                    <span className="text-sm font-black text-white">{step.weight} кг × {step.reps} повт.</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">{step.label}</p>
+                </div>
+
+                <button className={`text-xs font-black px-3 py-1.5 rounded-xl transition ${
+                  step.isTarget ? 'bg-emerald-500 text-gym-950 shadow-sm' : 'bg-gym-800 text-slate-200 hover:bg-gym-700'
+                }`}>
+                  Выбрать
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-3 border-t border-gym-800 bg-gym-950">
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 bg-gym-800 hover:bg-gym-700 text-slate-300 font-bold text-xs rounded-xl"
+          >
+            Закрыть
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 🎬 EXERCISE VIDEO & TECHNIQUE MODAL
+// ==========================================
+function ExerciseVideoModal({ isOpen, onClose, exerciseName, guide }) {
+  const [videoTab, setVideoTab] = useState('animation'); // 'animation' | 'youtube'
+
+  if (!isOpen) return null;
+
+  const currentGuide = guide || {
+    name: exerciseName,
+    primary_muscle: "Основная группа мышц",
+    setup: "Примите устойчивое исходное положение, напрягите мышцы кора и сведите лопатки.",
+    technique: "Выполняйте движение подконтрольно: 2 секунды на негативную фазу, мощный концентрический подъем, пауза в точке сокращения.",
+    mistakes: "Избегайте читинга, раскачки корпусом и излишнего веса, ломающего траекторию.",
+    breathing: "Вдох на опускании/растяжении, выдох на преодолении нагрузки.",
+    joint_safety: "Контролируйте углы в суставах, не блокируйте локти и колени до щелчка."
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-150">
+      <div 
+        className="w-full max-w-lg bg-gym-900 border border-gym-700/80 rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-4 border-b border-gym-800 flex items-center justify-between bg-gym-950/60">
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+              <h3 className="text-base font-extrabold text-white leading-tight">
+                Техника упражнения
+              </h3>
+            </div>
+            <p className="text-[11px] text-sky-400 font-bold mt-0.5">
+              {currentGuide.primary_muscle || "Силовое упражнение"}
+            </p>
+          </div>
+          <button 
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gym-800 flex items-center justify-center text-slate-400 hover:text-white"
+          >
+            <Icons.Close />
+          </button>
+        </div>
+
+        {/* Modal Scrollable Content */}
+        <div className="overflow-y-auto p-4 space-y-4 flex-1">
+          {/* Exercise Title */}
+          <div>
+            <h2 className="text-xl font-black text-white tracking-tight">
+              {exerciseName}
+            </h2>
+            {currentGuide.secondary_muscles && (
+              <p className="text-xs text-slate-400 mt-0.5">
+                Синергисты: <span className="text-slate-300">{currentGuide.secondary_muscles}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Media Player Tabs */}
+          <div className="space-y-2">
+            <div className="flex bg-gym-950 border border-gym-800 rounded-xl p-1 text-xs">
+              <button
+                onClick={() => setVideoTab('animation')}
+                className={`flex-1 py-1.5 rounded-lg font-bold transition flex items-center justify-center space-x-1 ${
+                  videoTab === 'animation'
+                    ? 'bg-sky-500 text-gym-950 shadow font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>🔄 3D Анимация (Офлайн)</span>
+              </button>
+              {currentGuide.youtube_id && (
+                <button
+                  onClick={() => setVideoTab('youtube')}
+                  className={`flex-1 py-1.5 rounded-lg font-bold transition flex items-center justify-center space-x-1 ${
+                    videoTab === 'youtube'
+                      ? 'bg-sky-500 text-gym-950 shadow font-black'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>📺 Видео YouTube</span>
+                </button>
+              )}
+            </div>
+
+            {/* Video Viewport */}
+            <div className="w-full bg-gym-950 border border-gym-800 rounded-2xl overflow-hidden shadow-inner flex flex-col items-center justify-center min-h-[220px]">
+              {videoTab === 'animation' ? (
+                <div className="relative w-full flex flex-col items-center justify-center py-2 bg-gradient-to-b from-gym-950 via-gym-900/50 to-gym-950">
+                  {currentGuide.local_video || currentGuide.remote_video ? (
+                    <img 
+                      src={currentGuide.local_video || currentGuide.remote_video} 
+                      alt={exerciseName}
+                      className="max-h-64 object-contain rounded-xl"
+                    />
+                  ) : (
+                    <div className="py-12 text-slate-400 text-xs">Анимация загружается...</div>
+                  )}
+                  <span className="text-[10px] text-slate-400 mt-1 uppercase font-mono tracking-wider">
+                    ⚡ Зацикленная биомеханика движения
+                  </span>
+                </div>
+              ) : (
+                <div className="w-full aspect-video bg-black">
+                  {currentGuide.youtube_id && (
+                    <iframe
+                      className="w-full h-full"
+                      src={`https://www.youtube-nocookie.com/embed/${currentGuide.youtube_id}?autoplay=1&mute=1&playsinline=1`}
+                      title={exerciseName}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    ></iframe>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Structured Step-by-Step Technique Instructions */}
+          <div className="space-y-2.5 pt-1">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">
+              Пошаговая инструкция тренера
+            </h4>
+
+            {currentGuide.setup && (
+              <div className="bg-gym-950 border border-gym-800/80 rounded-2xl p-3.5 space-y-1">
+                <span className="text-[11px] font-extrabold text-sky-400 uppercase tracking-wider flex items-center space-x-1">
+                  <span>🎯 1. Исходное положение</span>
+                </span>
+                <p className="text-xs text-slate-200 leading-relaxed">
+                  {currentGuide.setup}
+                </p>
+              </div>
+            )}
+
+            {currentGuide.technique && (
+              <div className="bg-gym-950 border border-gym-800/80 rounded-2xl p-3.5 space-y-1">
+                <span className="text-[11px] font-extrabold text-emerald-400 uppercase tracking-wider flex items-center space-x-1">
+                  <span>⚙️ 2. Механика и траектория движения</span>
+                </span>
+                <p className="text-xs text-slate-200 leading-relaxed">
+                  {currentGuide.technique}
+                </p>
+              </div>
+            )}
+
+            {currentGuide.joint_safety && (
+              <div className="bg-gym-950 border border-emerald-500/30 rounded-2xl p-3.5 space-y-1">
+                <span className="text-[11px] font-extrabold text-emerald-400 uppercase tracking-wider flex items-center space-x-1">
+                  <span>🛡️ 3. Защита суставов (Gemini Coach)</span>
+                </span>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {currentGuide.joint_safety}
+                </p>
+              </div>
+            )}
+
+            {currentGuide.mistakes && (
+              <div className="bg-gym-950 border border-rose-500/20 rounded-2xl p-3.5 space-y-1">
+                <span className="text-[11px] font-extrabold text-rose-400 uppercase tracking-wider flex items-center space-x-1">
+                  <span>⚠️ 4. Чего категорически избегать</span>
+                </span>
+                <p className="text-xs text-rose-200/90 leading-relaxed">
+                  {currentGuide.mistakes}
+                </p>
+              </div>
+            )}
+
+            {currentGuide.breathing && (
+              <div className="bg-gym-950 border border-gym-800/80 rounded-2xl p-3.5 space-y-1">
+                <span className="text-[11px] font-extrabold text-amber-400 uppercase tracking-wider flex items-center space-x-1">
+                  <span>🫁 5. Дыхание</span>
+                </span>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {currentGuide.breathing}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer Button */}
+        <div className="p-3.5 border-t border-gym-800 bg-gym-950/80">
+          <button
+            onClick={onClose}
+            className="w-full py-3.5 bg-sky-500 hover:bg-sky-400 text-gym-950 font-black text-sm uppercase tracking-wider rounded-2xl shadow-lg shadow-sky-500/20 active:scale-98 transition flex items-center justify-center space-x-2"
+          >
+            <span>✓ ВСЕ ПОНЯТНО, К ПОДХОДУ</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 📱 MAIN APPLICATION COMPONENT
+// ==========================================
+function App() {
+  const [activeTab, setActiveTab] = useState('workout'); // 'workout' | 'analytics' | 'history' | 'exercises' | 'profile'
+  const [exercises, setExercises] = useState([]);
+  const [activeWorkout, setActiveWorkout] = useState(null);
+  const [historyWorkouts, setHistoryWorkouts] = useState([]);
+  const [coachDays, setCoachDays] = useState([]);
+  const [exerciseGuides, setExerciseGuides] = useState({});
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const [isMinimized, setIsMinimized] = useState(false);
+
+  useEffect(() => {
+    loadAppData(true);
+  }, []);
+
+  const loadAppData = async (showSpinner = false) => {
+    try {
+      if (showSpinner) setLoading(true);
+      const [exRes, activeRes, histRes, daysRes, guidesRes, profRes] = await Promise.all([
+        fetch('/api/exercises'),
+        fetch('/api/workouts/active'),
+        fetch('/api/workouts?limit=30'),
+        fetch('/api/coach/days'),
+        fetch('/api/exercises/guides'),
+        fetch('/api/profile')
+      ]);
+
+      const exData = await exRes.json();
+      const activeData = await activeRes.json();
+      const histData = await histRes.json();
+      const daysData = await daysRes.json();
+      const guidesData = await guidesRes.json();
+      const profData = await profRes.json();
+
+      setExercises(exData || []);
+      setActiveWorkout(activeData || null);
+      setHistoryWorkouts(histData || []);
+      setCoachDays(daysData || []);
+      setExerciseGuides(guidesData || {});
+      setUserProfile(profData || null);
+    } catch (err) {
+      console.error('Error loading data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isInWorkoutFocus = !!activeWorkout && !isMinimized && activeTab === 'workout';
+
+  return (
+    <div className={`flex flex-col min-h-screen bg-gym-950 text-slate-100 font-sans select-none ${isInWorkoutFocus ? 'pb-2' : 'pb-24'}`}>
+      {/* Top Header: Hidden in workout focus mode to maximize vertical space */}
+      {!isInWorkoutFocus && (
+        <header className="sticky top-0 z-40 bg-gym-900/95 backdrop-blur border-b border-gym-800 px-4 py-2.5 flex items-center justify-between">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-sky-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+              <svg className="w-4 h-4 text-gym-950 font-black" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M4 7v10M8 5v14M16 5v14M20 7v10M8 12h8" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-sm font-extrabold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+                GymTracker
+              </h1>
+              <p className="text-[9px] text-slate-400 font-medium uppercase">
+                {userProfile?.fitness_goal === 'strength' ? 'Силовой тренинг' : userProfile?.fitness_goal === 'fat_loss' ? 'Сушка и рельеф' : 'Набор массы'} • Gemini Coach
+              </p>
+            </div>
+          </div>
+
+          {activeWorkout ? (
+            <button 
+              onClick={() => { setIsMinimized(false); setActiveTab('workout'); }}
+              className="flex items-center space-x-2 bg-emerald-500/15 border border-emerald-500/40 px-3 py-1 rounded-full active:scale-95 transition"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 live-dot"></span>
+              <span className="text-xs font-bold text-emerald-400">Тренировка активна ▶</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setActiveTab('profile')}
+              className="text-xs text-slate-300 hover:text-white bg-gym-800/90 px-2.5 py-1 rounded-full border border-gym-700 flex items-center space-x-1 font-mono"
+            >
+              <span>{userProfile?.weight || 80} кг</span>
+              <span className="text-emerald-400">⚙️</span>
+            </button>
+          )}
+        </header>
+      )}
+
+      {/* Main Content Area */}
+      <main className={`flex-1 max-w-lg mx-auto w-full px-3.5 ${isInWorkoutFocus ? 'pt-1' : 'pt-3'}`}>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-24 space-y-4">
+            <div className="w-10 h-10 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
+            <p className="text-xs text-slate-400">Загрузка данных...</p>
+          </div>
+        ) : (
+          <>
+            {activeTab === 'workout' && (
+              <GuidedWorkoutScreen 
+                activeWorkout={activeWorkout} 
+                exercises={exercises} 
+                coachDays={coachDays}
+                exerciseGuides={exerciseGuides}
+                onRefresh={loadAppData}
+                onMinimize={() => setIsMinimized(true)}
+              />
+            )}
+
+            {activeTab === 'analytics' && (
+              <AnalyticsScreen exercises={exercises} />
+            )}
+
+            {activeTab === 'history' && (
+              <HistoryScreen workouts={historyWorkouts} />
+            )}
+
+            {activeTab === 'exercises' && (
+              <ExercisesScreen exercises={exercises} exerciseGuides={exerciseGuides} onRefresh={loadAppData} />
+            )}
+
+            {activeTab === 'profile' && (
+              <ProfileScreen 
+                profile={userProfile} 
+                onUpdateProfile={(updated) => {
+                  setUserProfile(updated);
+                  loadAppData();
+                }} 
+              />
+            )}
+          </>
+        )}
+      </main>
+
+      {/* Bottom Fixed Navigation Bar (Hidden during active workout focus) */}
+      {!isInWorkoutFocus && (
+        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-gym-900/95 backdrop-blur-md border-t border-gym-800 px-1 py-2 max-w-lg mx-auto">
+          <div className="grid grid-cols-5 gap-0.5">
+            <NavButton 
+              active={activeTab === 'workout'} 
+              onClick={() => { setIsMinimized(false); setActiveTab('workout'); }}
+              icon={<Icons.Dumbbell />}
+              label="Тренинг"
+              badge={activeWorkout ? "•" : null}
+            />
+            <NavButton 
+              active={activeTab === 'analytics'} 
+              onClick={() => setActiveTab('analytics')}
+              icon={<Icons.Chart />}
+              label="Анализ"
+            />
+            <NavButton 
+              active={activeTab === 'history'} 
+              onClick={() => setActiveTab('history')}
+              icon={<Icons.History />}
+              label="История"
+            />
+            <NavButton 
+              active={activeTab === 'exercises'} 
+              onClick={() => setActiveTab('exercises')}
+              icon={<Icons.List />}
+              label="База"
+            />
+            <NavButton 
+              active={activeTab === 'profile'} 
+              onClick={() => setActiveTab('profile')}
+              icon={<Icons.User />}
+              label="О себе"
+            />
+          </div>
+        </nav>
+      )}
+    </div>
+  );
+}
+
+function NavButton({ active, onClick, icon, label, badge }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative flex flex-col items-center justify-center py-2 px-1 rounded-2xl transition-all duration-150 active:scale-95 ${
+        active ? 'bg-gym-800 text-emerald-400 font-bold shadow-inner' : 'text-slate-400 hover:text-slate-200'
+      }`}
+    >
+      <div className="relative">
+        {icon}
+        {badge && (
+          <span className="absolute -top-1 -right-1.5 text-emerald-400 text-xs font-black animate-pulse">
+            {badge}
+          </span>
+        )}
+      </div>
+      <span className="text-[11px] mt-1 tracking-tight">{label}</span>
+    </button>
+  );
+}
+
+// ==========================================
+// 🚀 FULLY GUIDED WORKOUT SCREEN (STEP-BY-STEP FLOW)
+// ==========================================
+function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuides = {}, onRefresh, onMinimize }) {
+  // Navigation inside the plan
+  const [currentPlanIndex, setCurrentPlanIndex] = useState(0);
+  const [selectedVariant, setSelectedVariant] = useState('a');
+  const [showSwapModal, setShowSwapModal] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [showCoachTip, setShowCoachTip] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [weight, setWeight] = useState(20);
+  const [reps, setReps] = useState(10);
+  const [setType, setSetType] = useState('normal'); // 'normal' | 'warmup' | 'drop' | 'failure'
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [workoutDuration, setWorkoutDuration] = useState(0);
+
+  // Auto-switch variant tab if coach recommends variant B
+  useEffect(() => {
+    const rec = coachDays.find(d => d.is_recommended);
+    if (rec?.variant) {
+      setSelectedVariant(rec.variant);
+    }
+  }, [coachDays]);
+
+  // Rest Timer & Warmup Modal State
+  const [restSecondsLeft, setRestSecondsLeft] = useState(0);
+  const [restActive, setRestActive] = useState(false);
+  const [restPreset, setRestPreset] = useState(90);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [showWarmupModal, setShowWarmupModal] = useState(false);
+
+  // List of planned exercises for today's session
+  const plannedList = activeWorkout?.planned_exercises || [];
+
+  // Group finished sets by exercise name
+  const setsByExercise = useMemo(() => {
+    if (!activeWorkout) return {};
+    return activeWorkout.sets.reduce((acc, s) => {
+      acc[s.exercise_name] = acc[s.exercise_name] || [];
+      acc[s.exercise_name].push(s);
+      return acc;
+    }, {});
+  }, [activeWorkout]);
+
+  // Current active exercise in the plan
+  const currentPlanEx = plannedList[currentPlanIndex] || plannedList[0];
+
+  // Auto-fill weight when currentPlanIndex changes
+  useEffect(() => {
+    if (currentPlanEx) {
+      setSetType('normal');
+      setWeight(currentPlanEx.recommended_weight || 20);
+      // parse target reps (e.g. "8–10" -> 10, "12–15" -> 12)
+      const targetRepsNum = parseInt(currentPlanEx.target_reps?.split('–')[1] || currentPlanEx.target_reps?.split('-')[0] || 10);
+      setReps(targetRepsNum || 10);
+    }
+  }, [currentPlanIndex, activeWorkout?.id]);
+
+  // Timer
+  useEffect(() => {
+    if (!activeWorkout) return;
+    const startTime = new Date(activeWorkout.start_time).getTime();
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      setWorkoutDuration(Math.max(0, Math.floor((now - startTime) / 1000)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activeWorkout]);
+
+  // Rest Timer Countdown
+  useEffect(() => {
+    let timer;
+    if (restActive && restSecondsLeft > 0) {
+      timer = setInterval(() => {
+        setRestSecondsLeft((prev) => {
+          if (prev <= 1) {
+            setRestActive(false);
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            if (soundEnabled) playChimeSound();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [restActive, restSecondsLeft, soundEnabled]);
+
+  // Start selected day with variant
+  const handleStartDay = async (dayType, variant = 'a') => {
+    try {
+      const res = await fetch('/api/coach/start-day', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ day_type: dayType, variant: variant })
+      });
+      if (res.ok) {
+        setCurrentPlanIndex(0);
+        onRefresh();
+      } else {
+        alert('Ошибка при запуске');
+      }
+    } catch (e) {
+      alert('Ошибка соединения с сервером');
+    }
+  };
+
+  // Swap exercise in active workout
+  const handleSwapExercise = async (oldName, newName) => {
+    try {
+      const res = await fetch(`/api/workouts/${activeWorkout.id}/swap-exercise`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          old_exercise_name: oldName,
+          new_exercise_name: newName
+        })
+      });
+      if (res.ok) {
+        onRefresh();
+      } else {
+        alert('Ошибка при замене упражнения');
+      }
+    } catch (e) {
+      alert('Ошибка соединения при замене упражнения');
+    }
+  };
+
+  // Finish workout
+  const handleFinishWorkout = async () => {
+    if (!confirm('Завершить тренировку и сохранить результаты?')) return;
+    try {
+      const tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+      const res = await fetch(`/api/workouts/${activeWorkout.id}/finish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telegram_chat_id: tgUserId || null
+        })
+      });
+      if (res.ok) {
+        alert('🎉 Отличная работа! Тренировка сохранена в историю, а сводка отправлена вам в Telegram.');
+        onRefresh();
+      }
+    } catch (e) {
+      alert('Ошибка при завершении');
+    }
+  };
+
+  // Add Set with automatic step progression & set types
+  const handleAddSet = async () => {
+    if (!activeWorkout || !currentPlanEx) return;
+    setIsSubmitting(true);
+
+    // Find DB exercise ID
+    const match = exercises.find(e => e.name.toLowerCase() === currentPlanEx.name.toLowerCase());
+    const exId = match ? match.id : exercises[0]?.id;
+
+    try {
+      const res = await fetch(`/api/workouts/${activeWorkout.id}/sets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          exercise_id: exId,
+          weight: parseFloat(weight),
+          reps: parseInt(reps),
+          set_type: setType
+        })
+      });
+
+      if (res.ok) {
+        // Start rest timer
+        setRestSecondsLeft(restPreset);
+        setRestActive(true);
+
+        // Only working sets count towards exercise completion (warmup does not count towards working sets!)
+        const currentSets = setsByExercise[currentPlanEx.name] || [];
+        const prevWorkingCount = currentSets.filter(s => (s.set_type || 'normal') !== 'warmup').length;
+        const newWorkingCount = prevWorkingCount + (setType !== 'warmup' ? 1 : 0);
+        
+        // After logging warmup, automatically switch back to 'normal' for real working sets
+        if (setType === 'warmup') {
+          setSetType('normal');
+          if (currentPlanEx.recommended_weight) {
+            setWeight(currentPlanEx.recommended_weight);
+          }
+        }
+
+        if (newWorkingCount >= currentPlanEx.target_sets) {
+          // This exercise is complete! Automatically move to next exercise if available
+          if (currentPlanIndex < plannedList.length - 1) {
+            setCurrentPlanIndex(prev => prev + 1);
+          }
+        }
+
+        onRefresh();
+      }
+    } catch (e) {
+      alert('Ошибка при записи подхода');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const adjustWeight = (delta) => setWeight((prev) => Math.max(0, Math.round((prev + delta) * 10) / 10));
+  const adjustReps = (delta) => setReps((prev) => Math.max(1, prev + delta));
+
+  // ==========================================
+  // 1. ВЫБОР ДНЯ (ЕСЛИ ТРЕНИРОВКА ЕЩЕ НЕ НАЧАТА)
+  // ==========================================
+  if (!activeWorkout) {
+    const recommendedDay = coachDays.find(d => d.is_recommended) || coachDays[0];
+    const filteredDays = coachDays.filter(d => d.variant === selectedVariant);
+    const displayDays = filteredDays.length > 0 ? filteredDays : coachDays.slice(0, 3);
+
+    return (
+      <div className="space-y-4 pt-1">
+        <div className="text-center py-2">
+          <h2 className="text-2xl font-black text-white tracking-tight">Выберите тренировку</h2>
+          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+            ИИ подстраивает веса под ваши результаты и чередует упражнения для непрерывного прогресса.
+          </p>
+        </div>
+
+        {/* Variant A vs Variant B Periodization Toggle */}
+        <div className="bg-gym-900 border border-gym-800 rounded-2xl p-1.5 shadow-lg">
+          <div className="flex space-x-1.5">
+            <button
+              onClick={() => setSelectedVariant('a')}
+              className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 ${
+                selectedVariant === 'a'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-gym-950 shadow-md font-black'
+                  : 'text-slate-400 hover:text-white hover:bg-gym-800/50'
+              }`}
+            >
+              <span className="flex items-center space-x-1">
+                <span>⚡ Вариант А</span>
+                {recommendedDay?.variant === 'a' && <span className="text-[10px]">⭐</span>}
+              </span>
+              <span className="text-[9px] opacity-80 uppercase tracking-wider mt-0.5">Базовый силовой</span>
+            </button>
+
+            <button
+              onClick={() => setSelectedVariant('b')}
+              className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 ${
+                selectedVariant === 'b'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-gym-950 shadow-md font-black'
+                  : 'text-slate-400 hover:text-white hover:bg-gym-800/50'
+              }`}
+            >
+              <span className="flex items-center space-x-1">
+                <span>🔄 Вариант Б</span>
+                {recommendedDay?.variant === 'b' && <span className="text-[10px]">⭐</span>}
+              </span>
+              <span className="text-[9px] opacity-80 uppercase tracking-wider mt-0.5">Смена углов & памп</span>
+            </button>
+          </div>
+
+          <div className="text-[11px] text-center text-slate-400 pt-2 pb-0.5 font-medium">
+            {recommendedDay?.variant === selectedVariant ? (
+              <span className="text-emerald-400">
+                ✨ Рекомендация тренера: сегодня тренируем <strong>{recommendedDay?.title?.split('—')[0]}</strong>
+              </span>
+            ) : (
+              <span>Чередование вариантов развивает мышцы под разными углами и предотвращает застой</span>
+            )}
+          </div>
+        </div>
+
+        {/* Big 3 Cards for Push / Pull / Legs of selected variant */}
+        <div className="grid grid-cols-1 gap-3">
+          {displayDays.map((day) => {
+            const isRec = day.is_recommended;
+            const dayTypeColor = day.type === 'push' ? 'from-rose-950/60 to-gym-900 border-rose-500/40' 
+                               : day.type === 'pull' ? 'from-sky-950/60 to-gym-900 border-sky-500/40' 
+                               : 'from-emerald-950/60 to-gym-900 border-emerald-500/40';
+
+            return (
+              <div
+                key={`${day.type}_${day.variant}`}
+                className={`bg-gradient-to-r ${dayTypeColor} border rounded-3xl p-5 shadow-xl transition-all relative overflow-hidden`}
+              >
+                {isRec && (
+                  <div className="absolute top-0 right-0 bg-emerald-500 text-gym-950 text-[10px] font-black px-3.5 py-1 rounded-bl-2xl uppercase tracking-wider shadow">
+                    ⭐ Рекомендуется сегодня
+                  </div>
+                )}
+
+                <div className="mb-2">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                      {day.focus}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-black text-white mt-0.5">{day.title}</h3>
+                </div>
+
+                {/* Exercises Preview with pre-calculated weights & progression badges */}
+                <div className="bg-gym-950/70 border border-gym-800/80 rounded-2xl p-3 my-3 space-y-2">
+                  {day.exercises.map((ex, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs font-mono">
+                      <div className="flex items-center space-x-1.5 truncate max-w-[65%]">
+                        <span className="text-slate-400 text-[10px]">{i + 1}.</span>
+                        <span className="text-slate-200 truncate">{ex.name.split('(')[0].trim()}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 whitespace-nowrap">
+                        {ex.progression_badge && (
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-black ${
+                            ex.progression_status === 'INCREASE' 
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' 
+                              : 'bg-gym-800 text-slate-400'
+                          }`}>
+                            {ex.progression_badge}
+                          </span>
+                        )}
+                        <span className="text-emerald-400 font-bold">
+                          {ex.target_sets}×{ex.target_reps} • <strong className="text-white">{ex.recommended_weight} кг</strong>
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => handleStartDay(day.type, day.variant)}
+                  className={`w-full py-3.5 rounded-2xl font-black text-sm uppercase tracking-wide transition flex items-center justify-center space-x-2 shadow-lg active:scale-98 ${
+                    isRec 
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-gym-950 shadow-emerald-500/20' 
+                      : 'bg-gym-800 hover:bg-white hover:text-gym-950 text-white'
+                  }`}
+                >
+                  <Icons.Plus />
+                  <span>ВЫБРАТЬ {day.type.toUpperCase()} ({day.variant.toUpperCase()}) И НАЧАТЬ</span>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // 2. ИДЕТ АВТОМАТИЧЕСКАЯ ТРЕНИРОВКА (GUIDED STEPPER)
+  // ==========================================
+  const allCurrentSets = setsByExercise[currentPlanEx?.name] || [];
+  const workingSetsDone = allCurrentSets.filter(s => (s.set_type || 'normal') !== 'warmup').length;
+  const currentSetNum = workingSetsDone + 1;
+  const totalTargetSets = currentPlanEx?.target_sets || 3;
+  const isCurrentExCompleted = workingSetsDone >= totalTargetSets;
+
+  // Calculate overall workout completion percentage based on working sets
+  const totalPlannedSetsAll = plannedList.reduce((sum, p) => sum + p.target_sets, 0);
+  const totalLoggedWorkingSetsAll = activeWorkout.sets.filter(s => (s.set_type || 'normal') !== 'warmup').length;
+  const overallProgressPct = totalPlannedSetsAll > 0 ? Math.min(100, Math.round((totalLoggedWorkingSetsAll / totalPlannedSetsAll) * 100)) : 0;
+  const isFullWorkoutComplete = plannedList.every(p => {
+    const ws = (setsByExercise[p.name] || []).filter(s => (s.set_type || 'normal') !== 'warmup');
+    return ws.length >= p.target_sets;
+  });
+
+  return (
+    <div className="space-y-3 pb-2 select-none">
+      {/* 1. Sleek Compact Header */}
+      <div className="flex items-center justify-between py-1 px-0.5">
+        <div className="flex items-center space-x-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 live-dot"></span>
+          <h2 className="text-sm font-extrabold text-white tracking-tight truncate max-w-[150px] sm:max-w-xs">
+            {activeWorkout.title}
+          </h2>
+        </div>
+
+        <div className="flex items-center space-x-1.5">
+          <span className="text-xs font-mono font-bold text-slate-300 bg-gym-900 border border-gym-800 px-2 py-1 rounded-xl">
+            ⏱ {formatTime(workoutDuration)}
+          </span>
+
+          {onMinimize && (
+            <button
+              onClick={onMinimize}
+              title="Свернуть тренировку"
+              className="text-[11px] font-bold text-slate-400 hover:text-white bg-gym-800 px-2 py-1 rounded-xl border border-gym-700 active:scale-95 transition"
+            >
+              Свернуть
+            </button>
+          )}
+
+          <button
+            onClick={handleFinishWorkout}
+            className="text-[11px] font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 px-2.5 py-1 rounded-xl border border-rose-500/30 active:scale-95 transition"
+          >
+            Завершить
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Story-style Segmented Progress Bar */}
+      <div className="space-y-1 px-0.5">
+        <div className="flex space-x-1">
+          {plannedList.map((p, idx) => {
+            const ws = (setsByExercise[p.name] || []).filter(s => (s.set_type || 'normal') !== 'warmup');
+            const complete = ws.length >= p.target_sets;
+            const isCurrent = idx === currentPlanIndex;
+            return (
+              <button
+                key={p.name}
+                onClick={() => setCurrentPlanIndex(idx)}
+                className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${
+                  complete
+                    ? 'bg-emerald-400'
+                    : isCurrent
+                    ? 'bg-sky-400 ring-2 ring-sky-400/40'
+                    : 'bg-gym-800'
+                }`}
+                title={`${idx + 1}. ${p.name}`}
+              />
+            );
+          })}
+        </div>
+
+        <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+          <span>Упр {currentPlanIndex + 1} из {plannedList.length}</span>
+          <span className="text-emerald-400 font-bold">
+            {isCurrentExCompleted ? '✓ Упражнение выполнено' : (
+              setType === 'warmup' ? '🔥 Разминочный сет (W)' : `Подход ${currentSetNum} из ${totalTargetSets}`
+            )}
+          </span>
+        </div>
+      </div>
+
+      {/* 3. Rest Timer (Enhanced with Sound, Presets & +30s) */}
+      {restActive && (
+        <div className="bg-sky-950/90 border border-sky-500/40 rounded-2xl p-3 shadow-lg animate-in fade-in space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-sky-500 text-gym-950 flex items-center justify-center font-mono font-black text-base shadow animate-pulse">
+                {restSecondsLeft}
+              </div>
+              <div>
+                <div className="flex items-center space-x-1.5">
+                  <p className="text-xs font-black text-sky-200">Отдых между подходами</p>
+                  <span className="text-[10px] text-sky-400 font-mono">({restSecondsLeft}с)</span>
+                </div>
+                <p className="text-[10px] text-slate-400">Глубоко дышите и восстанавливайтесь</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !soundEnabled;
+                  setSoundEnabled(next);
+                  if (next) playChimeSound();
+                }}
+                title={soundEnabled ? 'Звук включен' : 'Звук выключен'}
+                className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs transition border ${
+                  soundEnabled 
+                    ? 'bg-sky-500/20 border-sky-500/40 text-sky-300' 
+                    : 'bg-gym-900 border-gym-700 text-slate-500'
+                }`}
+              >
+                {soundEnabled ? '🔔' : '🔕'}
+              </button>
+
+              <button
+                onClick={() => setRestActive(false)}
+                className="text-[11px] font-bold bg-gym-800 hover:bg-gym-700 text-slate-300 px-2.5 py-1.5 rounded-xl border border-gym-700 active:scale-95 transition"
+              >
+                Пропустить
+              </button>
+            </div>
+          </div>
+
+          {/* Quick presets & +30s extension */}
+          <div className="flex items-center justify-between pt-1 border-t border-sky-900/60 text-[11px]">
+            <div className="flex items-center space-x-1.5">
+              <span className="text-[10px] text-slate-400 font-mono">Таймер:</span>
+              {[60, 90, 120, 180].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => {
+                    setRestPreset(s);
+                    setRestSecondsLeft(s);
+                    triggerHaptic('light');
+                  }}
+                  className={`px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold border transition ${
+                    restSecondsLeft === s || restPreset === s
+                      ? 'bg-sky-500 text-gym-950 border-sky-400'
+                      : 'bg-gym-900 text-slate-400 border-gym-800 hover:text-white'
+                  }`}
+                >
+                  {s}с
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setRestSecondsLeft(prev => prev + 30);
+                triggerHaptic('light');
+              }}
+              className="bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-lg font-mono text-[10px] font-black active:scale-95 transition"
+            >
+              +30с ⏳
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 4. CURRENT EXERCISE CARD (Airy, Modern, Uncluttered) */}
+      {currentPlanEx && (
+        <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 shadow-xl space-y-3.5">
+          {/* Header: Title + Actions */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1">
+              <h3 className="text-lg font-black text-white leading-snug">
+                {currentPlanEx.name}
+              </h3>
+              <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                <span className="text-xs font-mono font-bold text-emerald-400">
+                  🎯 {currentPlanEx.recommended_weight} кг · {currentPlanEx.target_sets}×{currentPlanEx.target_reps}
+                </span>
+                {currentPlanEx.progression_badge && (
+                  <span className={`text-[10px] font-black px-1.5 py-0.2 rounded uppercase ${
+                    currentPlanEx.progression_status === 'INCREASE'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : currentPlanEx.progression_status === 'MAINTAIN'
+                      ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
+                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  }`}>
+                    {currentPlanEx.progression_badge}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-1.5 shrink-0 pt-0.5">
+              <button
+                type="button"
+                onClick={() => setShowWarmupModal(true)}
+                title="Разминочная лестница (пирамида подходов)"
+                className="text-xs text-amber-400 hover:text-white bg-amber-500/15 hover:bg-amber-500/25 px-2.5 py-1.5 rounded-xl border border-amber-500/40 flex items-center space-x-1 font-bold active:scale-95 transition shadow-sm"
+              >
+                <span>🪜 Разминка</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowVideoModal(true)}
+                className="text-xs text-sky-400 hover:text-white bg-sky-500/15 hover:bg-sky-500/25 px-2.5 py-1.5 rounded-xl border border-sky-500/40 flex items-center space-x-1 font-bold active:scale-95 transition shadow-sm"
+              >
+                <svg className="w-3.5 h-3.5 text-sky-400" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+                <span>Техника</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowSwapModal(true)}
+                title="Заменить упражнение"
+                className="w-8 h-8 rounded-xl bg-gym-800 hover:bg-gym-700 text-slate-300 hover:text-white flex items-center justify-center border border-gym-700 active:scale-95 transition text-xs"
+              >
+                🔄
+              </button>
+            </div>
+          </div>
+
+          {/* Coach Tip Toggle (Collapsible to keep UI airy) */}
+          {(currentPlanEx.recommendation_note || currentPlanEx.last_sets_summary?.length > 0 || currentPlanEx.tip) && (
+            <div>
+              <button
+                onClick={() => setShowCoachTip(prev => !prev)}
+                className="text-[11px] text-slate-400 hover:text-slate-200 flex items-center space-x-1 transition active:scale-95"
+              >
+                <span>💡 Подсказка и прошлая тренировка</span>
+                <span className="text-[9px]">{showCoachTip ? '▲' : '▼'}</span>
+              </button>
+
+              {showCoachTip && (
+                <div className="mt-2 bg-gym-950/80 border border-gym-800 rounded-2xl p-3 text-xs space-y-1.5 animate-in fade-in">
+                  {currentPlanEx.recommendation_note && (
+                    <p className="text-emerald-300 font-medium leading-relaxed">
+                      {currentPlanEx.recommendation_note}
+                    </p>
+                  )}
+                  {currentPlanEx.last_sets_summary?.length > 0 && (
+                    <p className="text-slate-400 text-[11px]">
+                      Прошлая тренировка: <strong className="text-white font-mono">{currentPlanEx.last_sets_summary.join(', ')}</strong>
+                    </p>
+                  )}
+                  {currentPlanEx.tip && (
+                    <p className="text-slate-400 text-[11px] italic">
+                      💡 {currentPlanEx.tip}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* IF COMPLETED */}
+          {isCurrentExCompleted ? (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-center space-y-2.5">
+              <p className="text-emerald-400 font-black text-sm">✓ Все {totalTargetSets} подхода выполнены!</p>
+              {currentPlanIndex < plannedList.length - 1 ? (
+                <button
+                  onClick={() => setCurrentPlanIndex(prev => prev + 1)}
+                  className="w-full py-3.5 bg-emerald-500 text-gym-950 font-black text-sm rounded-xl shadow-lg flex items-center justify-center space-x-1 active:scale-95 transition"
+                >
+                  <span>СЛЕДУЮЩЕЕ УПРАЖНЕНИЕ</span>
+                  <Icons.Next />
+                </button>
+              ) : (
+                <button
+                  onClick={handleFinishWorkout}
+                  className="w-full py-3.5 bg-emerald-500 text-gym-950 font-black text-sm rounded-xl shadow-lg active:scale-95 transition"
+                >
+                  🎉 ВСЯ ПРОГРАММА ВЫПОЛНЕНА! ЗАВЕРШИТЬ
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Set Type Pill Selector */}
+              <div className="bg-gym-950/90 border border-gym-800 p-1 rounded-2xl flex items-center space-x-1">
+                <button
+                  type="button"
+                  onClick={() => { setSetType('normal'); triggerHaptic('light'); }}
+                  className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 ${
+                    setType === 'normal'
+                      ? 'bg-emerald-500 text-gym-950 shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>Рабочий</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSetType('warmup');
+                    triggerHaptic('light');
+                    setWeight(prev => Math.max(10, Math.round((prev * 0.5) / 2.5) * 2.5));
+                  }}
+                  className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 ${
+                    setType === 'warmup'
+                      ? 'bg-amber-500 text-gym-950 shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span className="w-3.5 h-3.5 rounded bg-amber-500/20 text-amber-400 font-black text-[9px] flex items-center justify-center">W</span>
+                  <span>Разминка</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setSetType('drop'); triggerHaptic('light'); }}
+                  className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 ${
+                    setType === 'drop'
+                      ? 'bg-purple-500 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span className="w-3.5 h-3.5 rounded bg-purple-500/20 text-purple-300 font-black text-[9px] flex items-center justify-center">D</span>
+                  <span>Дропсет</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setSetType('failure'); triggerHaptic('light'); }}
+                  className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 ${
+                    setType === 'failure'
+                      ? 'bg-rose-500 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span className="w-3.5 h-3.5 rounded bg-rose-500/20 text-rose-300 font-black text-[9px] flex items-center justify-center">F</span>
+                  <span>Отказ</span>
+                </button>
+              </div>
+
+              {/* Steppers for Weight & Reps */}
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* Weight Stepper */}
+                <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3 flex flex-col items-center justify-between">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    Вес (кг)
+                  </span>
+
+                  <div className="flex items-center justify-between w-full my-1.5 px-0.5">
+                    <button
+                      onClick={() => { adjustWeight(-2.5); triggerHaptic('light'); }}
+                      className="w-9 h-9 rounded-xl bg-gym-800 active:bg-gym-700 text-slate-200 font-bold text-xs flex items-center justify-center active:scale-90 transition"
+                    >
+                      -2.5
+                    </button>
+
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={weight}
+                      onChange={(e) => setWeight(parseFloat(e.target.value) || 0)}
+                      className="w-16 text-center bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
+                    />
+
+                    <button
+                      onClick={() => { adjustWeight(+2.5); triggerHaptic('light'); }}
+                      className="w-9 h-9 rounded-xl bg-emerald-500/20 active:bg-emerald-500/40 text-emerald-400 border border-emerald-500/40 font-bold text-xs flex items-center justify-center active:scale-90 transition"
+                    >
+                      +2.5
+                    </button>
+                  </div>
+
+                  <div className="flex space-x-1.5 w-full justify-center">
+                    <button onClick={() => { adjustWeight(-5); triggerHaptic('light'); }} className="text-[10px] font-mono text-slate-400 bg-gym-900 px-2 py-0.5 rounded-lg border border-gym-800 active:bg-gym-800">-5</button>
+                    <button onClick={() => { adjustWeight(+5); triggerHaptic('light'); }} className="text-[10px] font-mono text-emerald-400/90 bg-gym-900 px-2 py-0.5 rounded-lg border border-gym-800 active:bg-gym-800">+5</button>
+                  </div>
+                </div>
+
+                {/* Reps Stepper */}
+                <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3 flex flex-col items-center justify-between">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    Повторения
+                  </span>
+
+                  <div className="flex items-center justify-between w-full my-1.5 px-0.5">
+                    <button
+                      onClick={() => { adjustReps(-1); triggerHaptic('light'); }}
+                      className="w-9 h-9 rounded-xl bg-gym-800 active:bg-gym-700 text-slate-200 font-bold text-sm flex items-center justify-center active:scale-90 transition"
+                    >
+                      -1
+                    </button>
+
+                    <input
+                      type="number"
+                      value={reps}
+                      onChange={(e) => setReps(parseInt(e.target.value) || 1)}
+                      className="w-16 text-center bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
+                    />
+
+                    <button
+                      onClick={() => { adjustReps(+1); triggerHaptic('light'); }}
+                      className="w-9 h-9 rounded-xl bg-sky-500/20 active:bg-sky-500/40 text-sky-400 border border-sky-500/40 font-bold text-sm flex items-center justify-center active:scale-90 transition"
+                    >
+                      +1
+                    </button>
+                  </div>
+
+                  <div className="flex space-x-1 w-full justify-center">
+                    {[8, 10, 12].map(r => (
+                      <button
+                        key={r}
+                        onClick={() => { setReps(r); triggerHaptic('light'); }}
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border transition ${
+                          reps === r
+                            ? 'bg-sky-500 text-gym-950 font-black border-sky-400'
+                            : 'bg-gym-900 text-slate-400 border-gym-800 active:bg-gym-800'
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Big Record Set Button */}
+              <button
+                onClick={() => {
+                  triggerHaptic('success');
+                  handleAddSet();
+                }}
+                disabled={isSubmitting}
+                className={`w-full py-4 font-black text-sm rounded-2xl shadow-lg active:scale-[0.98] transition flex items-center justify-center space-x-2 disabled:opacity-50 ${
+                  setType === 'warmup'
+                    ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-gym-950 shadow-amber-500/25'
+                    : setType === 'drop'
+                    ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-purple-500/25'
+                    : setType === 'failure'
+                    ? 'bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-rose-500/25'
+                    : 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-gym-950 shadow-emerald-500/25'
+                }`}
+              >
+                {isSubmitting ? (
+                  <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>
+                      {setType === 'warmup' && `ЗАПИСАТЬ РАЗМИНКУ (W) (${weight} кг × ${reps})`}
+                      {setType === 'drop' && `ЗАПИСАТЬ ДРОПСЕТ (D) (${weight} кг × ${reps})`}
+                      {setType === 'failure' && `ЗАПИСАТЬ ДО ОТКАЗА (F) (${weight} кг × ${reps})`}
+                      {setType === 'normal' && `ЗАПИСАТЬ ПОДХОД ${currentSetNum} ИЗ ${totalTargetSets} (${weight} кг × ${reps})`}
+                    </span>
+                  </>
+                )}
+              </button>
+            </>
+          )}
+
+          {/* Completed Sets Summary for CURRENT Exercise */}
+          {(setsByExercise[currentPlanEx.name] || []).length > 0 && (
+            <div className="pt-2 border-t border-gym-800/80">
+              <div className="flex items-center space-x-2 text-[11px] text-slate-400 flex-wrap gap-y-1">
+                <span className="font-bold text-slate-300">Выполнено:</span>
+                {(setsByExercise[currentPlanEx.name] || []).map((s, idx) => {
+                  const st = s.set_type || 'normal';
+                  if (st === 'warmup') {
+                    return (
+                      <span key={s.id || idx} className="bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1">
+                        <span className="text-[9px] bg-amber-500 text-gym-950 font-black px-1 rounded">W</span>
+                        <span>{s.weight} кг × {s.reps}</span>
+                      </span>
+                    );
+                  }
+                  if (st === 'drop') {
+                    return (
+                      <span key={s.id || idx} className="bg-purple-500/15 border border-purple-500/40 text-purple-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1">
+                        <span className="text-[9px] bg-purple-500 text-white font-black px-1 rounded">D</span>
+                        <span>{s.weight} кг × {s.reps}</span>
+                      </span>
+                    );
+                  }
+                  if (st === 'failure') {
+                    return (
+                      <span key={s.id || idx} className="bg-rose-500/15 border border-rose-500/40 text-rose-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1">
+                        <span className="text-[9px] bg-rose-500 text-white font-black px-1 rounded">F</span>
+                        <span>{s.weight} кг × {s.reps}</span>
+                      </span>
+                    );
+                  }
+                  return (
+                    <span key={s.id || idx} className="bg-gym-950 border border-gym-800 px-2 py-0.5 rounded-lg text-emerald-400 font-mono font-bold text-[10px]">
+                      #{s.set_number || idx + 1}: {s.weight} кг × {s.reps}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Quick Skip link if gym equipment is taken */}
+          {currentPlanIndex < plannedList.length - 1 && !isCurrentExCompleted && (
+            <div className="text-center pt-0.5">
+              <button
+                onClick={() => setCurrentPlanIndex(prev => prev + 1)}
+                className="text-[11px] text-slate-500 hover:text-slate-300 transition"
+              >
+                Тренажер занят? Пропустить ⏭
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Collapsed Accordion for All Done Sets of Today's Workout */}
+      {activeWorkout.sets.length > 0 && (
+        <div className="pt-1">
+          <button
+            onClick={() => setShowAllHistory(prev => !prev)}
+            className="w-full text-center text-xs text-slate-400 hover:text-slate-200 py-2 bg-gym-900/60 rounded-xl border border-gym-800/60 flex items-center justify-center space-x-1.5 transition"
+          >
+            <span>📋 История всех подходов за тренировку ({activeWorkout.sets.length})</span>
+            <span className="text-[10px]">{showAllHistory ? '▲ скрыть' : '▼ показать'}</span>
+          </button>
+
+          {showAllHistory && (
+            <div className="mt-2 space-y-2 animate-in fade-in">
+              {Object.keys(setsByExercise).map((exName) => (
+                <div key={exName} className="bg-gym-900 border border-gym-800 rounded-2xl p-3 space-y-1">
+                  <div className="flex items-center justify-between border-b border-gym-800/80 pb-1">
+                    <span className="font-bold text-xs text-white">{exName}</span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {setsByExercise[exName].length} подх.
+                    </span>
+                  </div>
+                  <div className="space-y-1 pt-1">
+                    {setsByExercise[exName].map((s) => {
+                      const st = s.set_type || 'normal';
+                      return (
+                        <div key={s.id} className="flex items-center justify-between text-xs font-mono py-1 px-2 rounded-lg bg-gym-950/60">
+                          <div className="flex items-center space-x-1.5">
+                            {st === 'warmup' && (
+                              <span className="text-[9px] font-black bg-amber-500 text-gym-950 px-1 py-0.2 rounded">W</span>
+                            )}
+                            {st === 'drop' && (
+                              <span className="text-[9px] font-black bg-purple-500 text-white px-1 py-0.2 rounded">D</span>
+                            )}
+                            {st === 'failure' && (
+                              <span className="text-[9px] font-black bg-rose-500 text-white px-1 py-0.2 rounded">F</span>
+                            )}
+                            <span className="text-slate-400">Сет {s.set_number}</span>
+                          </div>
+                          <span className="text-white font-bold">{s.weight} кг × {s.reps}</span>
+                          <span className="text-[10px] text-emerald-400">
+                            {st !== 'warmup' ? `1ПМ: ${Math.round(s.weight * (1 + s.reps / 30) * 10) / 10} кг` : 'разминка'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Swap Exercise Modal */}
+      <SwapExerciseModal
+        isOpen={showSwapModal}
+        onClose={() => setShowSwapModal(false)}
+        currentEx={currentPlanEx}
+        exercises={exercises}
+        onSwap={handleSwapExercise}
+      />
+
+      {/* Exercise Video & Technique Modal */}
+      <ExerciseVideoModal
+        isOpen={showVideoModal}
+        onClose={() => setShowVideoModal(false)}
+        exerciseName={currentPlanEx?.name}
+        guide={exerciseGuides[currentPlanEx?.name]}
+      />
+
+      {/* Warmup Ladder Modal (Smart Pyramid) */}
+      <WarmupLadderModal
+        isOpen={showWarmupModal}
+        onClose={() => setShowWarmupModal(false)}
+        exerciseName={currentPlanEx?.name}
+        targetWeight={currentPlanEx?.recommended_weight || weight}
+        onSelectStep={(stepWeight, stepReps, stepType) => {
+          setWeight(stepWeight);
+          setReps(stepReps);
+          setSetType(stepType);
+        }}
+      />
+    </div>
+  );
+}
+
+// ==========================================
+// 📊 ANALYTICS SCREEN WITH STYLISH PICKER
+// ==========================================
+function AnalyticsScreen({ exercises }) {
+  const [selectedExId, setSelectedExId] = useState(exercises[0]?.id || '');
+  const [showPickerModal, setShowPickerModal] = useState(false);
+  const [metric, setMetric] = useState('max_weight');
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const chartCanvasRef = useRef(null);
+  const chartInstanceRef = useRef(null);
+
+  useEffect(() => {
+    if (!selectedExId && exercises.length > 0) {
+      setSelectedExId(exercises[0].id);
+    }
+  }, [exercises]);
+
+  useEffect(() => {
+    if (!selectedExId) return;
+    loadAnalytics(selectedExId);
+  }, [selectedExId]);
+
+  const loadAnalytics = async (exId) => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/analytics/${exId}`);
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!data || !chartCanvasRef.current) return;
+    const ctx = chartCanvasRef.current.getContext('2d');
+
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.destroy();
+    }
+
+    const labels = data.history.map(item => formatDate(item.date));
+    let values = [];
+    let metricLabel = 'Рабочий вес (кг)';
+
+    if (metric === 'max_weight') {
+      values = data.history.map(i => i.max_weight);
+      metricLabel = 'Макс. рабочий вес (кг)';
+    } else if (metric === 'estimated_1rm') {
+      values = data.history.map(i => i.estimated_1rm);
+      metricLabel = 'Расчетный 1ПМ (кг)';
+    } else if (metric === 'total_volume') {
+      values = data.history.map(i => i.total_volume);
+      metricLabel = 'Общий тоннаж (кг)';
+    }
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
+    gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+    chartInstanceRef.current = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: metricLabel,
+            data: values,
+            borderColor: '#10b981',
+            backgroundColor: gradient,
+            borderWidth: 3,
+            fill: true,
+            tension: 0.35,
+            pointBackgroundColor: '#10b981',
+            pointBorderColor: '#0c121d',
+            pointBorderWidth: 2,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0c121d',
+            titleColor: '#f8fafc',
+            bodyColor: '#34d399',
+            borderColor: '#1e293b',
+            borderWidth: 1,
+            padding: 10,
+            displayColors: false,
+            callbacks: {
+              label: (ctx) => `${ctx.parsed.y} кг`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: { color: '#94a3b8', font: { size: 10 } }
+          },
+          y: {
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: { color: '#94a3b8', font: { size: 10 } },
+            beginAtZero: false
+          }
+        }
+      }
+    });
+
+    return () => {
+      if (chartInstanceRef.current) chartInstanceRef.current.destroy();
+    };
+  }, [data, metric]);
+
+  const selectedExObj = exercises.find(e => e.id == selectedExId);
+
+  return (
+    <div className="space-y-4">
+      {/* Exercise Picker Trigger Card */}
+      <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 shadow">
+        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+          Выберите упражнение для анализа
+        </label>
+        <div
+          onClick={() => setShowPickerModal(true)}
+          className="w-full bg-gym-950 border border-gym-700 hover:border-emerald-500/60 rounded-2xl px-4 py-3 flex items-center justify-between cursor-pointer transition active:scale-98"
+        >
+          <div className="space-y-0.5 truncate pr-2">
+            <span className="font-extrabold text-sm text-white block truncate">
+              {selectedExObj?.name || 'Выберите упражнение'}
+            </span>
+            <span className={`inline-block text-[10px] font-bold px-2 py-0.2 rounded border ${categoryColors[selectedExObj?.category] || categoryColors['Базовые']}`}>
+              {selectedExObj?.category || 'Базовые'}
+            </span>
+          </div>
+          <div className="text-slate-400 flex items-center space-x-1">
+            <span className="text-xs text-emerald-400 font-bold">Выбрать</span>
+            <Icons.ChevronDown />
+          </div>
+        </div>
+
+        {/* Metric Selector Pills */}
+        <div className="grid grid-cols-3 gap-1.5 mt-3">
+          <button
+            onClick={() => setMetric('max_weight')}
+            className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition ${
+              metric === 'max_weight' ? 'bg-emerald-500 text-gym-950 shadow-sm' : 'bg-gym-950 text-slate-400 hover:text-white'
+            }`}
+          >
+            Рабочий вес
+          </button>
+          <button
+            onClick={() => setMetric('estimated_1rm')}
+            className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition ${
+              metric === 'estimated_1rm' ? 'bg-emerald-500 text-gym-950 shadow-sm' : 'bg-gym-950 text-slate-400 hover:text-white'
+            }`}
+          >
+            1ПМ (Макс)
+          </button>
+          <button
+            onClick={() => setMetric('total_volume')}
+            className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition ${
+              metric === 'total_volume' ? 'bg-emerald-500 text-gym-950 shadow-sm' : 'bg-gym-950 text-slate-400 hover:text-white'
+            }`}
+          >
+            Тоннаж
+          </button>
+        </div>
+      </div>
+
+      {/* Chart Canvas Card */}
+      <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 shadow-xl">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-2">
+            <Icons.TrendingUp />
+            <h3 className="font-extrabold text-sm text-white truncate max-w-[200px]">{selectedExObj?.name}</h3>
+          </div>
+          <span className="text-[10px] text-slate-400 bg-gym-800 px-2 py-0.5 rounded-full font-mono">
+            {data?.history?.length || 0} тренировок
+          </span>
+        </div>
+
+        <div className="h-56 w-full relative">
+          {loading && (
+            <div className="absolute inset-0 bg-gym-900/80 flex items-center justify-center z-10">
+              <span className="text-xs text-slate-400">Обновление графика...</span>
+            </div>
+          )}
+
+          {data?.history?.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center px-4">
+              <p className="text-xs text-slate-400">Пока нет записей для этого упражнения.</p>
+              <p className="text-[11px] text-slate-500 mt-1">Запишите подходы в тренировке.</p>
+            </div>
+          ) : (
+            <canvas ref={chartCanvasRef}></canvas>
+          )}
+        </div>
+      </div>
+
+      {/* Records Cards */}
+      {data && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-gym-900 border border-gym-800 rounded-2xl p-3.5 flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+              <Icons.Trophy />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Рекорд веса</p>
+              <p className="text-lg font-black text-amber-400 font-mono">{data.personal_record_weight} кг</p>
+            </div>
+          </div>
+
+          <div className="bg-gym-900 border border-gym-800 rounded-2xl p-3.5 flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-400">
+              <Icons.Dumbbell />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Лучший тоннаж</p>
+              <p className="text-lg font-black text-emerald-400 font-mono">{data.personal_record_volume} кг</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Picker */}
+      <ExercisePickerModal 
+        isOpen={showPickerModal} 
+        onClose={() => setShowPickerModal(false)} 
+        exercises={exercises} 
+        selectedId={selectedExId} 
+        onSelect={(id) => setSelectedExId(id)} 
+      />
+    </div>
+  );
+}
+
+// ==========================================
+// 📜 HISTORY SCREEN
+// ==========================================
+function HistoryScreen({ workouts = [] }) {
+  const [selectedDate, setSelectedDate] = useState(null); // 'YYYY-MM-DD'
+  const [viewDate, setViewDate] = useState(new Date());
+  const [expandedWorkoutId, setExpandedWorkoutId] = useState(null);
+  const [workoutDetailsCache, setWorkoutDetailsCache] = useState({});
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // Group workouts by 'YYYY-MM-DD'
+  const workoutsByDate = useMemo(() => {
+    const map = {};
+    workouts.forEach((w) => {
+      if (!w.start_time) return;
+      const dateKey = w.start_time.split('T')[0].split(' ')[0];
+      if (!map[dateKey]) map[dateKey] = [];
+      map[dateKey].push(w);
+    });
+    return map;
+  }, [workouts]);
+
+  // Streak & monthly stats calculation
+  const stats = useMemo(() => {
+    if (!workouts || workouts.length === 0) {
+      return { streakWeeks: 0, monthCount: 0, monthVolume: 0, avgSets: 0 };
+    }
+
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth();
+
+    // Current month workouts
+    const thisMonthList = workouts.filter((w) => {
+      if (!w.start_time) return false;
+      const d = new Date(w.start_time);
+      return d.getFullYear() === curYear && d.getMonth() === curMonth;
+    });
+
+    const monthCount = thisMonthList.length;
+    const monthVolume = thisMonthList.reduce((sum, w) => sum + (w.total_volume || 0), 0);
+    const avgSets = workouts.length > 0 
+      ? Math.round(workouts.reduce((sum, w) => sum + (w.total_sets || 0), 0) / workouts.length) 
+      : 0;
+
+    // Consecutive active weeks calculation
+    const getWeekKey = (d) => {
+      const target = new Date(d.valueOf());
+      const dayNr = (d.getDay() + 6) % 7;
+      target.setDate(target.getDate() - dayNr + 3);
+      const firstThursday = target.valueOf();
+      target.setMonth(0, 1);
+      if (target.getDay() !== 4) {
+        target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+      }
+      const wk = 1 + Math.ceil((firstThursday - target) / 604800000);
+      return `${target.getFullYear()}-W${wk}`;
+    };
+
+    const activeWeeks = new Set();
+    workouts.forEach((w) => {
+      if (!w.start_time) return;
+      activeWeeks.add(getWeekKey(new Date(w.start_time)));
+    });
+
+    let streakWeeks = 0;
+    let checkDate = new Date(now);
+    const thisWeekKey = getWeekKey(checkDate);
+    if (!activeWeeks.has(thisWeekKey)) {
+      checkDate.setDate(checkDate.getDate() - 7);
+    }
+
+    while (true) {
+      const key = getWeekKey(checkDate);
+      if (activeWeeks.has(key)) {
+        streakWeeks++;
+        checkDate.setDate(checkDate.getDate() - 7);
+      } else {
+        break;
+      }
+      if (streakWeeks > 52) break;
+    }
+
+    return {
+      streakWeeks: Math.max(1, streakWeeks),
+      monthCount,
+      monthVolume,
+      avgSets
+    };
+  }, [workouts]);
+
+  // Calendar matrix calculation
+  const viewYear = viewDate.getFullYear();
+  const viewMonth = viewDate.getMonth();
+  const monthNames = [
+    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+  ];
+
+  const firstDayOfMonth = new Date(viewYear, viewMonth, 1).getDay();
+  const startingCol = (firstDayOfMonth + 6) % 7; // Monday = 0
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+  const handlePrevMonth = () => {
+    setViewDate(new Date(viewYear, viewMonth - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setViewDate(new Date(viewYear, viewMonth + 1, 1));
+  };
+
+  const handleTodayMonth = () => {
+    setViewDate(new Date());
+  };
+
+  // Toggle workout accordion details
+  const toggleWorkoutExpand = async (workoutId) => {
+    if (expandedWorkoutId === workoutId) {
+      setExpandedWorkoutId(null);
+      return;
+    }
+    setExpandedWorkoutId(workoutId);
+    if (!workoutDetailsCache[workoutId]) {
+      try {
+        setLoadingDetail(true);
+        const res = await fetch(`/api/workouts/${workoutId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setWorkoutDetailsCache((prev) => ({ ...prev, [workoutId]: data }));
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingDetail(false);
+      }
+    }
+  };
+
+  // Filter workouts by selected date
+  const filteredWorkouts = useMemo(() => {
+    if (!selectedDate) return workouts;
+    return workouts.filter((w) => w.start_time && w.start_time.startsWith(selectedDate));
+  }, [workouts, selectedDate]);
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  return (
+    <div className="space-y-4">
+      {/* 1. STREAK & MOTIVATIONAL STATS CARD */}
+      <div className="bg-gradient-to-br from-gym-900 via-gym-900 to-gym-950 border border-gym-800 rounded-3xl p-4 shadow-xl space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-xl shadow-inner animate-pulse">
+              🔥
+            </div>
+            <div>
+              <div className="flex items-center space-x-1.5">
+                <span className="text-lg font-black text-white">{stats.streakWeeks} {stats.streakWeeks === 1 ? 'неделя' : stats.streakWeeks < 5 ? 'недели' : 'недель'}</span>
+                <span className="text-[10px] bg-amber-500/20 text-amber-400 font-bold px-1.5 py-0.5 rounded-full uppercase">Стрик</span>
+              </div>
+              <p className="text-[11px] text-slate-400">Серия регулярных тренировок в зале</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 3 Metrics Grid */}
+        <div className="grid grid-cols-3 gap-2 pt-1 border-t border-gym-800/80 text-center font-mono">
+          <div className="bg-gym-950/70 border border-gym-800/60 rounded-xl p-2">
+            <span className="text-[10px] text-slate-500 block uppercase">За месяц</span>
+            <span className="text-sm font-black text-emerald-400">{stats.monthCount} трен.</span>
+          </div>
+
+          <div className="bg-gym-950/70 border border-gym-800/60 rounded-xl p-2">
+            <span className="text-[10px] text-slate-500 block uppercase">Тоннаж мес.</span>
+            <span className="text-sm font-black text-sky-400">
+              {stats.monthVolume >= 1000 ? `${(stats.monthVolume / 1000).toFixed(1)} т` : `${stats.monthVolume} кг`}
+            </span>
+          </div>
+
+          <div className="bg-gym-950/70 border border-gym-800/60 rounded-xl p-2">
+            <span className="text-[10px] text-slate-500 block uppercase">Ср. сетов</span>
+            <span className="text-sm font-black text-purple-300">{stats.avgSets}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. INTERACTIVE CALENDAR WIDGET */}
+      <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 shadow-xl space-y-3">
+        {/* Month Header & Controls */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="text-base font-black text-white">
+              {monthNames[viewMonth]} {viewYear}
+            </span>
+            {(viewMonth !== new Date().getMonth() || viewYear !== new Date().getFullYear()) && (
+              <button
+                onClick={handleTodayMonth}
+                className="text-[10px] font-bold text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 px-2 py-0.5 rounded-lg transition"
+              >
+                Сегодня
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={handlePrevMonth}
+              className="w-8 h-8 rounded-xl bg-gym-800 hover:bg-gym-700 active:scale-95 text-slate-300 flex items-center justify-center font-bold text-sm transition"
+              title="Предыдущий месяц"
+            >
+              ‹
+            </button>
+            <button
+              onClick={handleNextMonth}
+              className="w-8 h-8 rounded-xl bg-gym-800 hover:bg-gym-700 active:scale-95 text-slate-300 flex items-center justify-center font-bold text-sm transition"
+              title="Следующий месяц"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+
+        {/* Days of Week Header */}
+        <div className="grid grid-cols-7 gap-1 text-center font-mono text-[11px] font-bold text-slate-500 pb-1">
+          <span>Пн</span>
+          <span>Вт</span>
+          <span>Ср</span>
+          <span>Чт</span>
+          <span>Пт</span>
+          <span className="text-amber-500/70">Сб</span>
+          <span className="text-rose-500/70">Вс</span>
+        </div>
+
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-1.5 text-center">
+          {/* Empty cells before first day */}
+          {Array.from({ length: startingCol }).map((_, i) => (
+            <div key={`empty-${i}`} className="h-9" />
+          ))}
+
+          {/* Month Days */}
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const dayNum = i + 1;
+            const dayStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+            const dayWorkouts = workoutsByDate[dayStr] || [];
+            const hasWorkout = dayWorkouts.length > 0;
+            const isToday = dayStr === todayStr;
+            const isSelected = dayStr === selectedDate;
+
+            return (
+              <button
+                key={dayStr}
+                type="button"
+                onClick={() => {
+                  setSelectedDate((prev) => (prev === dayStr ? null : dayStr));
+                  triggerHaptic('light');
+                }}
+                className={`h-9 rounded-xl flex flex-col items-center justify-center relative transition-all active:scale-95 font-mono text-xs ${
+                  isSelected
+                    ? 'bg-emerald-500 text-gym-950 font-black shadow-lg shadow-emerald-500/30 ring-2 ring-emerald-300'
+                    : hasWorkout
+                    ? 'bg-emerald-500/20 text-emerald-300 font-extrabold border border-emerald-500/40 hover:bg-emerald-500/30'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-gym-800/60'
+                } ${isToday && !isSelected ? 'ring-1 ring-sky-400 font-bold text-white' : ''}`}
+              >
+                <span>{dayNum}</span>
+                {hasWorkout && !isSelected && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.8)] -mt-0.5" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Date Filter Badge if active */}
+        {selectedDate && (
+          <div className="pt-2 border-t border-gym-800 flex items-center justify-between text-xs animate-in fade-in">
+            <span className="text-slate-300">
+              Показаны тренировки за: <strong className="text-emerald-400">{formatDate(selectedDate)}</strong> ({filteredWorkouts.length})
+            </span>
+            <button
+              onClick={() => setSelectedDate(null)}
+              className="text-[11px] font-bold text-slate-400 hover:text-white bg-gym-800 px-2 py-0.5 rounded-lg border border-gym-700"
+            >
+              ✕ Сбросить
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 3. WORKOUTS LIST WITH EXPANDABLE DETAILED SETS */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+            {selectedDate ? `Сессии за ${formatDate(selectedDate)}` : `Все тренировки (${filteredWorkouts.length})`}
+          </h3>
+          {selectedDate && (
+            <button onClick={() => setSelectedDate(null)} className="text-[11px] text-sky-400 font-medium">
+              Показать все
+            </button>
+          )}
+        </div>
+
+        {filteredWorkouts.length === 0 ? (
+          <div className="bg-gym-900 border border-gym-800 rounded-3xl p-8 text-center text-slate-400 text-xs space-y-1">
+            <p className="text-base">🧘‍♂️</p>
+            <p className="font-bold text-slate-300">В этот день тренировок не было</p>
+            <p className="text-[11px] text-slate-500">Нажмите на другой день с зеленой точкой или сбросьте фильтр</p>
+          </div>
+        ) : (
+          filteredWorkouts.map((w) => {
+            const isExpanded = expandedWorkoutId === w.id;
+            const details = workoutDetailsCache[w.id];
+
+            // Group detailed sets by exercise name if available
+            const groupedSets = details?.sets?.reduce((acc, s) => {
+              acc[s.exercise_name] = acc[s.exercise_name] || [];
+              acc[s.exercise_name].push(s);
+              return acc;
+            }, {}) || {};
+
+            return (
+              <div
+                key={w.id}
+                className={`bg-gym-900 border rounded-3xl p-4 space-y-3 transition-all shadow-md ${
+                  isExpanded ? 'border-emerald-500/50 ring-1 ring-emerald-500/20' : 'border-gym-800 hover:border-gym-700'
+                }`}
+              >
+                {/* Header row */}
+                <div
+                  onClick={() => toggleWorkoutExpand(w.id)}
+                  className="flex items-start justify-between cursor-pointer gap-2 select-none"
+                >
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-black text-white text-sm leading-snug">{w.title}</span>
+                      {w.is_active && (
+                        <span className="text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-1.5 py-0.5 rounded-full uppercase live-dot">
+                          В процессе
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-slate-400 font-mono block">
+                      {formatDate(w.start_time)} • {new Date(w.start_time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <span className="text-[11px] font-bold text-sky-400 flex items-center space-x-1">
+                      <span>{isExpanded ? 'Скрыть ▲' : 'Детали ▼'}</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Quick stats pills */}
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gym-800/80 text-xs font-mono">
+                  <div className="text-slate-400 flex items-center space-x-1">
+                    <span>Подходов:</span>
+                    <strong className="text-white font-black">{w.total_sets}</strong>
+                  </div>
+                  <div className="text-slate-400 text-right flex items-center justify-end space-x-1">
+                    <span>Тоннаж:</span>
+                    <strong className="text-emerald-400 font-black">{w.total_volume ? `${w.total_volume.toLocaleString('ru-RU')} кг` : '0 кг'}</strong>
+                  </div>
+                </div>
+
+                {/* Expanded sets & exercises breakdown */}
+                {isExpanded && (
+                  <div className="pt-3 border-t border-gym-800 space-y-3 animate-in fade-in duration-200">
+                    {loadingDetail && !details ? (
+                      <div className="py-4 text-center text-xs text-slate-400 font-mono animate-pulse">
+                        Загрузка подходов...
+                      </div>
+                    ) : details ? (
+                      <div className="space-y-3">
+                        {w.notes && (
+                          <div className="bg-gym-950 p-2.5 rounded-xl border border-gym-800 text-[11px] text-slate-400">
+                            📝 {w.notes}
+                          </div>
+                        )}
+
+                        <div className="space-y-2.5">
+                          {Object.entries(groupedSets).map(([exName, sList]) => (
+                            <div key={exName} className="bg-gym-950/80 border border-gym-800/70 rounded-2xl p-3 space-y-2">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-extrabold text-white">{exName}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">{sList.length} сет.</span>
+                              </div>
+
+                              <div className="flex flex-wrap gap-1.5">
+                                {sList.map((s, idx) => {
+                                  const st = s.set_type || 'normal';
+                                  if (st === 'warmup') {
+                                    return (
+                                      <span
+                                        key={s.id || idx}
+                                        className="bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1"
+                                      >
+                                        <span className="text-[9px] bg-amber-500 text-gym-950 font-black px-1 rounded">W</span>
+                                        <span>{s.weight} кг × {s.reps}</span>
+                                      </span>
+                                    );
+                                  }
+                                  if (st === 'drop') {
+                                    return (
+                                      <span
+                                        key={s.id || idx}
+                                        className="bg-purple-500/15 border border-purple-500/40 text-purple-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1"
+                                      >
+                                        <span className="text-[9px] bg-purple-500 text-white font-black px-1 rounded">D</span>
+                                        <span>{s.weight} кг × {s.reps}</span>
+                                      </span>
+                                    );
+                                  }
+                                  if (st === 'failure') {
+                                    return (
+                                      <span
+                                        key={s.id || idx}
+                                        className="bg-rose-500/15 border border-rose-500/40 text-rose-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1"
+                                      >
+                                        <span className="text-[9px] bg-rose-500 text-white font-black px-1 rounded">F</span>
+                                        <span>{s.weight} кг × {s.reps}</span>
+                                      </span>
+                                    );
+                                  }
+                                  return (
+                                    <span
+                                      key={s.id || idx}
+                                      className="bg-gym-900 border border-gym-700/80 px-2 py-0.5 rounded-lg text-emerald-400 font-mono font-bold text-[10px]"
+                                    >
+                                      #{s.set_number || idx + 1}: {s.weight} кг × {s.reps}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center text-xs text-slate-500 py-2">
+                        Нет данных о подходах
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 📚 EXERCISES DIRECTORY SCREEN
+// ==========================================
+function ExercisesScreen({ exercises, exerciseGuides = {}, onRefresh }) {
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newExName, setNewExName] = useState('');
+  const [newExCat, setNewExCat] = useState('Грудь');
+  const [search, setSearch] = useState('');
+  const [selectedGuideEx, setSelectedGuideEx] = useState(null);
+
+  const filteredExercises = exercises.filter(ex => 
+    ex.name.toLowerCase().includes(search.toLowerCase()) || 
+    ex.category.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (!newExName.trim()) return;
+    try {
+      const res = await fetch('/api/exercises', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newExName.trim(), category: newExCat })
+      });
+      if (res.ok) {
+        setNewExName('');
+        setShowAddModal(false);
+        onRefresh();
+      } else {
+        const err = await res.json();
+        alert(err.detail || 'Ошибка при создании упражнения');
+      }
+    } catch (e) {
+      alert('Ошибка соединения');
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between px-1">
+        <h2 className="text-sm font-extrabold text-slate-300 uppercase tracking-wider">База упражнений</h2>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="bg-emerald-500 hover:bg-emerald-400 text-gym-950 font-bold text-xs px-3 py-1.5 rounded-xl flex items-center space-x-1 transition shadow-md shadow-emerald-500/20 active:scale-95"
+        >
+          <Icons.Plus />
+          <span>Добавить</span>
+        </button>
+      </div>
+
+      {/* Quick Search Bar */}
+      <div className="relative">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Поиск упражнения или группы мышц..."
+          className="w-full bg-gym-900 border border-gym-800 rounded-2xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition"
+        />
+        {search && (
+          <button 
+            onClick={() => setSearch('')}
+            className="absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      <div className="bg-gym-900 border border-gym-800 rounded-3xl divide-y divide-gym-800/80 overflow-hidden shadow">
+        {filteredExercises.length === 0 ? (
+          <div className="p-8 text-center text-slate-400 text-xs">
+            Ничего не найдено
+          </div>
+        ) : (
+          filteredExercises.map((ex) => {
+            const hasGuide = !!exerciseGuides[ex.name];
+            return (
+              <div key={ex.id} className="p-3.5 flex items-center justify-between hover:bg-gym-850 transition">
+                <div className="space-y-1 pr-2">
+                  <span className="font-bold text-sm text-slate-100 block">{ex.name}</span>
+                  <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-lg border ${categoryColors[ex.category] || categoryColors['Базовые']}`}>
+                    {ex.category}
+                  </span>
+                </div>
+                
+                {hasGuide && (
+                  <button
+                    onClick={() => setSelectedGuideEx(ex.name)}
+                    className="shrink-0 text-[11px] text-sky-400 hover:text-white bg-sky-500/15 hover:bg-sky-500/25 px-2.5 py-1.5 rounded-xl border border-sky-500/40 flex items-center space-x-1 font-bold active:scale-95 transition"
+                  >
+                    <svg className="w-3 h-3 text-sky-400" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    <span>Техника</span>
+                  </button>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Technique Modal in Exercise Encyclopedia */}
+      <ExerciseVideoModal
+        isOpen={!!selectedGuideEx}
+        onClose={() => setSelectedGuideEx(null)}
+        exerciseName={selectedGuideEx}
+        guide={exerciseGuides[selectedGuideEx]}
+      />
+
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-gym-900 border border-gym-700 rounded-3xl p-5 max-w-xs w-full space-y-4 shadow-2xl">
+            <h3 className="font-extrabold text-base text-white">Новое упражнение</h3>
+            <form onSubmit={handleCreate} className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Название</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Например: Жим лежа"
+                  value={newExName}
+                  onChange={(e) => setNewExName(e.target.value)}
+                  className="w-full bg-gym-950 border border-gym-700 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Категория</label>
+                <select
+                  value={newExCat}
+                  onChange={(e) => setNewExCat(e.target.value)}
+                  className="w-full bg-gym-950 border border-gym-700 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="Грудь">Грудь</option>
+                  <option value="Спина">Спина</option>
+                  <option value="Плечи">Плечи</option>
+                  <option value="Руки">Руки</option>
+                  <option value="Ноги">Ноги</option>
+                  <option value="Пресс">Пресс</option>
+                </select>
+              </div>
+
+              <div className="flex space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 py-2.5 bg-gym-800 text-slate-300 font-bold text-xs rounded-xl"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-emerald-500 text-gym-950 font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-500/20"
+                >
+                  Создать
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
+// 👤 USER PROFILE SCREEN ("О СЕБЕ")
+// ==========================================
+function ProfileScreen({ profile, onUpdateProfile }) {
+  const [formData, setFormData] = useState({
+    name: 'Атлет',
+    gender: 'male',
+    age: 28,
+    height: 180,
+    weight: 80,
+    experience_level: 'intermediate',
+    fitness_goal: 'hypertrophy',
+    injuries: '',
+    equipment: 'gym',
+    ...profile
+  });
+
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      setFormData(prev => ({ ...prev, ...profile }));
+    }
+  }, [profile]);
+
+  const heightM = (parseFloat(formData.height) || 180) / 100;
+  const weightKg = parseFloat(formData.weight) || 80;
+  const bmi = heightM > 0 ? (weightKg / (heightM * heightM)).toFixed(1) : 24.5;
+  const bmiLabel = bmi < 18.5 ? 'Дефицит веса' : bmi <= 25 ? 'Норма' : bmi <= 30 ? 'Плотное' : 'Избыток';
+
+  const commonInjuries = ['Плечи', 'Поясница', 'Колени', 'Кисти / Локти'];
+
+  const toggleInjury = (name) => {
+    const key = name.toLowerCase().split('/')[0].trim();
+    const currentList = (formData.injuries || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    let updated;
+    if (currentList.some(item => item.includes(key))) {
+      updated = currentList.filter(item => !item.includes(key));
+    } else {
+      updated = [...currentList, key];
+    }
+    setFormData(prev => ({ ...prev, injuries: updated.join(', ') }));
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setSaveSuccess(false);
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setFormData(updated);
+        if (typeof onUpdateProfile === 'function') {
+          onUpdateProfile(updated);
+        }
+        setSaveSuccess(true);
+        triggerHaptic('success');
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.detail || 'Ошибка при сохранении профиля');
+      }
+    } catch (err) {
+      console.error('Save profile error:', err);
+      alert('Ошибка при сохранении: ' + (err.message || 'Сбой соединения'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4 pb-4">
+      {/* Title */}
+      <div className="px-1">
+        <h2 className="text-sm font-extrabold text-slate-300 uppercase tracking-wider">Профиль спортсмена (О себе)</h2>
+        <p className="text-[11px] text-slate-400 mt-0.5">Данные тела и здоровья используются алгоритмом для адаптации тренировок</p>
+      </div>
+
+      <form onSubmit={handleSave} className="space-y-3">
+        {/* Section 1: Body stats */}
+        <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 space-y-3 shadow-lg">
+          <span className="text-[11px] font-black text-sky-400 uppercase tracking-wider block">
+            📏 Физические параметры
+          </span>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            {/* Weight */}
+            <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Вес тела</span>
+              <div className="flex items-baseline space-x-1 my-1">
+                <input
+                  type="number"
+                  step="0.5"
+                  required
+                  value={formData.weight}
+                  onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || 0 })}
+                  className="w-20 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
+                />
+                <span className="text-xs text-slate-400 font-bold">кг</span>
+              </div>
+              <span className="text-[9px] text-slate-500 font-mono">Расчет базовых весов</span>
+            </div>
+
+            {/* Height */}
+            <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Рост</span>
+              <div className="flex items-baseline space-x-1 my-1">
+                <input
+                  type="number"
+                  required
+                  value={formData.height}
+                  onChange={(e) => setFormData({ ...formData, height: parseFloat(e.target.value) || 0 })}
+                  className="w-20 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
+                />
+                <span className="text-xs text-slate-400 font-bold">см</span>
+              </div>
+              <span className="text-[9px] text-emerald-400 font-mono">ИМТ: {bmi} ({bmiLabel})</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            {/* Age */}
+            <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Возраст</span>
+              <div className="flex items-baseline space-x-1">
+                <input
+                  type="number"
+                  value={formData.age}
+                  onChange={(e) => setFormData({ ...formData, age: parseInt(e.target.value) || 0 })}
+                  className="w-16 bg-transparent text-xl font-black text-white focus:outline-none font-mono"
+                />
+                <span className="text-xs text-slate-400 font-bold">лет</span>
+              </div>
+            </div>
+
+            {/* Gender */}
+            <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Пол</span>
+              <div className="flex space-x-1 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, gender: 'male' })}
+                  className={`flex-1 py-1 rounded-xl text-xs font-bold transition ${formData.gender === 'male' ? 'bg-sky-500 text-gym-950 font-black' : 'bg-gym-800 text-slate-300'}`}
+                >
+                  Муж
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, gender: 'female' })}
+                  className={`flex-1 py-1 rounded-xl text-xs font-bold transition ${formData.gender === 'female' ? 'bg-sky-500 text-gym-950 font-black' : 'bg-gym-800 text-slate-300'}`}
+                >
+                  Жен
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: Goals & Level */}
+        <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 space-y-3 shadow-lg">
+          <span className="text-[11px] font-black text-emerald-400 uppercase tracking-wider block">
+            🎯 Главная цель и уровень
+          </span>
+
+          {/* Fitness Goal */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Цель тренировок</label>
+            <div className="grid grid-cols-3 gap-1.5 text-xs">
+              {[
+                { id: 'hypertrophy', label: '🥩 Масса', desc: '8–12 повт.' },
+                { id: 'strength', label: '⚡ Сила', desc: '5–7 повт.' },
+                { id: 'fat_loss', label: '🔥 Рельеф', desc: '10–15 повт.' }
+              ].map(g => (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, fitness_goal: g.id })}
+                  className={`p-2.5 rounded-2xl border flex flex-col items-center justify-center transition active:scale-95 ${
+                    formData.fitness_goal === g.id
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400 font-black shadow-md'
+                      : 'bg-gym-950/70 text-slate-400 border-gym-800 hover:text-white'
+                  }`}
+                >
+                  <span className="text-xs font-bold">{g.label}</span>
+                  <span className="text-[9px] text-slate-400 mt-0.5 font-mono">{g.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Experience Level */}
+          <div className="space-y-1 pt-1">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Опыт в силовом тренинге</label>
+            <div className="grid grid-cols-3 gap-1.5 text-xs">
+              {[
+                { id: 'beginner', label: 'Новичок', desc: '< 1 года' },
+                { id: 'intermediate', label: 'Средний', desc: '1–3 года' },
+                { id: 'advanced', label: 'Опытный', desc: '3+ года' }
+              ].map(l => (
+                <button
+                  key={l.id}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, experience_level: l.id })}
+                  className={`p-2 rounded-2xl border flex flex-col items-center justify-center transition active:scale-95 ${
+                    formData.experience_level === l.id
+                      ? 'bg-sky-500/20 text-sky-300 border-sky-400 font-black shadow-md'
+                      : 'bg-gym-950/70 text-slate-400 border-gym-800 hover:text-white'
+                  }`}
+                >
+                  <span className="text-xs font-bold">{l.label}</span>
+                  <span className="text-[9px] text-slate-400 mt-0.5">{l.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Joint Safety & Injuries */}
+        <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 space-y-2.5 shadow-lg">
+          <span className="text-[11px] font-black text-rose-400 uppercase tracking-wider block">
+            🛡️ Суставы и травмы (Ограничения)
+          </span>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Отметьте уязвимые суставы. Тренер автоматически добавит персональные акценты техники и защиты.
+          </p>
+
+          <div className="flex flex-wrap gap-1.5 pt-0.5">
+            {commonInjuries.map(inj => {
+              const key = inj.toLowerCase().split('/')[0].trim();
+              const active = (formData.injuries || '').toLowerCase().includes(key);
+              return (
+                <button
+                  key={inj}
+                  type="button"
+                  onClick={() => toggleInjury(inj)}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 flex items-center space-x-1 ${
+                    active
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-400 shadow-sm'
+                      : 'bg-gym-950/70 text-slate-400 border-gym-800 hover:text-white'
+                  }`}
+                >
+                  <span>{active ? '⚠️' : '🛡️'}</span>
+                  <span>{inj}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="pt-1">
+            <input
+              type="text"
+              placeholder="Дополнительные травмы (например: шея, колено)"
+              value={formData.injuries}
+              onChange={(e) => setFormData({ ...formData, injuries: e.target.value })}
+              className="w-full bg-gym-950 border border-gym-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition"
+            />
+          </div>
+        </div>
+
+        {/* Save Button */}
+        <button
+          type="submit"
+          disabled={saving}
+          className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 text-gym-950 font-black text-sm rounded-2xl shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition flex items-center justify-center space-x-2"
+        >
+          {saving ? (
+            <div className="w-5 h-5 border-2 border-gym-950 border-t-transparent rounded-full animate-spin"></div>
+          ) : saveSuccess ? (
+            <>
+              <Icons.Check />
+              <span>✓ ПРОФИЛЬ СОХРАНЕН! ПРОГРАММА АДАПТИРОВАНА</span>
+            </>
+          ) : (
+            <>
+              <Icons.Check />
+              <span>СОХРАНИТЬ ПРОФИЛЬ</span>
+            </>
+          )}
+        </button>
+
+        {/* Info Box */}
+        <div className="bg-gym-950/60 border border-gym-800/60 rounded-2xl p-3.5 space-y-1.5 text-xs text-slate-400">
+          <p className="font-bold text-slate-300">
+            🤖 Как профиль адаптирует тренировки:
+          </p>
+          <ul className="space-y-1 text-[11px] text-slate-400 list-disc list-inside">
+            <li><strong>Вес тела:</strong> расчет отягощений и % силы.</li>
+            <li><strong>Цель:</strong> автоматическая смена целевых повторений (сила: 5–7, масса: 8–12, рельеф: 10–15).</li>
+            <li><strong>Суставы:</strong> Gemini Coach предупреждает о безопасных углах прямо в карточке упражнения.</li>
+          </ul>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// Mount React Root
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
