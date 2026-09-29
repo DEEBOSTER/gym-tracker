@@ -495,23 +495,24 @@ def get_user_profile_dict(cursor, user_id: str = "default", user_name: str = "А
         cursor.execute("SELECT * FROM user_profiles WHERE user_id = 'default';")
         default_row = cursor.fetchone()
 
-        # If this is the FIRST telegram user and there are default workouts/profile, migrate to Dima!
+        # If this is the FIRST telegram user and there are default workouts/profile, migrate workouts
         if other_users_count == 0 and default_row and user_id != "default":
+            clean_uid = user_id.replace("tg_", "")
             cursor.execute("""
                 INSERT OR REPLACE INTO user_profiles (user_id, name, gender, age, height, weight, experience_level, fitness_goal, injuries, equipment, onboarding_completed, telegram_chat_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?);
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?);
             """, (
                 user_id,
                 user_name if user_name != "Атлет" else (default_row["name"] or "Атлет"),
                 default_row["gender"] or "male",
-                default_row["age"] or 28,
-                default_row["height"] or 180.0,
-                default_row["weight"] or 80.0,
-                default_row["experience_level"] or "intermediate",
+                default_row["age"] or 26,
+                default_row["height"] or 178.0,
+                default_row["weight"] or 75.0,
+                default_row["experience_level"] or "beginner",
                 default_row["fitness_goal"] or "hypertrophy",
                 default_row["injuries"] or "",
                 default_row["equipment"] or "gym",
-                int(user_id) if user_id.isdigit() else None
+                int(clean_uid) if clean_uid.isdigit() else None
             ))
             cursor.execute("UPDATE workouts SET user_id = ? WHERE user_id = 'default';", (user_id,))
             cursor.execute("SELECT * FROM user_profiles WHERE user_id = ?;", (user_id,))
@@ -521,12 +522,12 @@ def get_user_profile_dict(cursor, user_id: str = "default", user_name: str = "А
                 d["user_id"] = user_id
                 return d
 
-        # New user: onboarding_completed = 0!
-        onboard = 1 if user_id == "default" else 0
+        # New user: onboarding_completed MUST ALWAYS be 0!
+        clean_uid = user_id.replace("tg_", "")
         cursor.execute("""
             INSERT OR REPLACE INTO user_profiles (user_id, name, gender, age, height, weight, experience_level, fitness_goal, injuries, equipment, onboarding_completed, telegram_chat_id)
-            VALUES (?, ?, 'male', 25, 178.0, 75.0, 'beginner', 'hypertrophy', '', 'gym', ?, ?);
-        """, (user_id, user_name or "Атлет", onboard, int(user_id) if user_id.isdigit() else None))
+            VALUES (?, ?, 'male', 26, 178.0, 75.0, 'beginner', 'hypertrophy', '', 'gym', 0, ?);
+        """, (user_id, user_name or "Атлет", int(clean_uid) if clean_uid.isdigit() else None))
 
         cursor.execute("SELECT * FROM user_profiles WHERE user_id = ?;", (user_id,))
         new_row = cursor.fetchone()
@@ -541,14 +542,14 @@ def get_user_profile_dict(cursor, user_id: str = "default", user_name: str = "А
         "user_id": user_id,
         "name": user_name or "Атлет",
         "gender": "male",
-        "age": 25,
+        "age": 26,
         "height": 178.0,
         "weight": 75.0,
         "experience_level": "beginner",
         "fitness_goal": "hypertrophy",
         "injuries": "",
         "equipment": "gym",
-        "onboarding_completed": 1 if user_id == "default" else 0
+        "onboarding_completed": 0
     }
 
 def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default"):

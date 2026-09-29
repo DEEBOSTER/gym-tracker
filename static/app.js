@@ -1,35 +1,49 @@
 // --- TELEGRAM USER IDENTITY & API INTERCEPTOR ---
 function getTelegramUser() {
+  // 1. Telegram WebApp Mini App environment
   try {
     const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
     if (tgUser && tgUser.id) {
-      return {
-        id: String(tgUser.id),
-        name: tgUser.first_name ? `${tgUser.first_name}${tgUser.last_name ? ' ' + tgUser.last_name : ''}` : 'Атлет'
-      };
+      const tgId = 'tg_' + String(tgUser.id);
+      const fullName = tgUser.first_name 
+        ? `${tgUser.first_name}${tgUser.last_name ? ' ' + tgUser.last_name : ''}`.trim() 
+        : 'Атлет';
+      return { id: tgId, name: fullName };
     }
   } catch (e) {}
 
-  // Allow URL testing param ?tg_id=12345 or localStorage
+  // 2. Direct URL testing parameters: ?user_id=... or ?tg_id=...
   try {
     const urlParams = new URLSearchParams(window.location.search);
-    const paramId = urlParams.get('tg_id');
+    const paramId = urlParams.get('user_id') || urlParams.get('tg_id');
     if (paramId) {
-      localStorage.setItem('gym_tracker_user_id', paramId);
-      if (urlParams.get('tg_name')) {
-        localStorage.setItem('gym_tracker_user_name', urlParams.get('tg_name'));
+      const cleanId = paramId.startsWith('tg_') || paramId.startsWith('u_') ? paramId : 'tg_' + paramId;
+      localStorage.setItem('gym_tracker_user_id', cleanId);
+      const paramName = urlParams.get('user_name') || urlParams.get('tg_name');
+      if (paramName) {
+        localStorage.setItem('gym_tracker_user_name', paramName);
       }
-    }
-    const savedId = localStorage.getItem('gym_tracker_user_id');
-    if (savedId) {
       return {
-        id: savedId,
+        id: cleanId,
         name: localStorage.getItem('gym_tracker_user_name') || 'Атлет'
       };
     }
   } catch (e) {}
 
-  return { id: 'default', name: 'Атлет' };
+  // 3. Persistent browser / device ID (unique per browser, phone, or friend testing via web link)
+  try {
+    let savedId = localStorage.getItem('gym_tracker_user_id');
+    if (!savedId || savedId === 'default') {
+      savedId = 'u_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
+      localStorage.setItem('gym_tracker_user_id', savedId);
+    }
+    return {
+      id: savedId,
+      name: localStorage.getItem('gym_tracker_user_name') || 'Атлет'
+    };
+  } catch (e) {}
+
+  return { id: 'u_guest', name: 'Атлет' };
 }
 
 const _origFetch = window.fetch;
@@ -772,7 +786,7 @@ function ExerciseVideoModal({ isOpen, onClose, exerciseName, guide }) {
 // ==========================================
 // 🚀 PERSONALIZED ONBOARDING SCREEN
 // ==========================================
-function OnboardingScreen({ initialProfile, onComplete }) {
+function OnboardingScreen({ initialProfile, onComplete, onCancel }) {
   const tgUser = getTelegramUser();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -844,6 +858,9 @@ function OnboardingScreen({ initialProfile, onComplete }) {
       if (res.ok) {
         const updated = await res.json();
         triggerHaptic('success');
+        try {
+          localStorage.setItem('gym_tracker_onboarded_' + tgUser.id, '1');
+        } catch (e) {}
         if (onComplete) onComplete(updated);
       } else {
         const err = await res.json().catch(() => ({}));
@@ -876,9 +893,20 @@ function OnboardingScreen({ initialProfile, onComplete }) {
               <span className="text-[10px] text-emerald-400 font-bold">Персональная настройка</span>
             </div>
           </div>
-          <span className="text-xs font-mono font-bold text-slate-400 bg-gym-900 border border-gym-800 px-2.5 py-1 rounded-full">
-            Шаг {step} из 4
-          </span>
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-mono font-bold text-slate-400 bg-gym-900 border border-gym-800 px-2.5 py-1 rounded-full">
+              Шаг {step} из 4
+            </span>
+            {initialProfile && initialProfile.onboarding_completed === 1 && onCancel && (
+              <button 
+                type="button" 
+                onClick={onCancel} 
+                className="w-7 h-7 rounded-full bg-gym-900 border border-gym-800 text-slate-400 hover:text-white flex items-center justify-center text-xs transition active:scale-95"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Progress Bar */}
@@ -1283,7 +1311,10 @@ function App() {
   };
 
   const isInWorkoutFocus = !!activeWorkout && !isMinimized && activeTab === 'workout';
-  const needsOnboarding = userProfile && userProfile.onboarding_completed === 0;
+  
+  const currentUserId = getTelegramUser().id;
+  const isLocalOnboarded = localStorage.getItem('gym_tracker_onboarded_' + currentUserId) === '1';
+  const needsOnboarding = showOnboardingModal || (userProfile ? (userProfile.onboarding_completed !== 1) : !isLocalOnboarded);
 
   if (loading) {
     return (
@@ -1303,6 +1334,7 @@ function App() {
           setShowOnboardingModal(false);
           loadAppData(true);
         }}
+        onCancel={() => setShowOnboardingModal(false)}
       />
     );
   }
@@ -1381,7 +1413,12 @@ function App() {
                 setUserProfile(updated);
                 loadAppData();
               }} 
-              onRestartOnboarding={() => setShowOnboardingModal(true)}
+              onRestartOnboarding={() => {
+                try {
+                  localStorage.removeItem('gym_tracker_onboarded_' + getTelegramUser().id);
+                } catch (e) {}
+                setShowOnboardingModal(true);
+              }}
             />
           )}
         </>
