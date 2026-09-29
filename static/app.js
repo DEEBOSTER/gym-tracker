@@ -835,20 +835,26 @@ function OnboardingScreen({ initialProfile, onComplete, onCancel }) {
   const handleFinish = async () => {
     setSubmitting(true);
     triggerHaptic('medium');
-    try {
-      const payload = {
-        name: formData.name.trim() || tgUser.name || 'Атлет',
-        gender: formData.gender,
-        age: parseInt(formData.age) || 25,
-        height: parseFloat(formData.height) || 178,
-        weight: parseFloat(formData.weight) || 75,
-        experience_level: formData.experience_level,
-        fitness_goal: formData.fitness_goal,
-        injuries: formData.injuries,
-        equipment: 'gym',
-        onboarding_completed: 1
-      };
+    const payload = {
+      name: formData.name.trim() || tgUser.name || 'Атлет',
+      gender: formData.gender,
+      age: parseInt(formData.age) || 26,
+      height: parseFloat(formData.height) || 178,
+      weight: parseFloat(formData.weight) || 75,
+      experience_level: formData.experience_level,
+      fitness_goal: formData.fitness_goal,
+      injuries: formData.injuries,
+      equipment: 'gym',
+      onboarding_completed: 1
+    };
 
+    // Save to localStorage immediately so user NEVER has to repeat onboarding even if offline / sleeping
+    try {
+      localStorage.setItem('gym_tracker_user_profile_' + tgUser.id, JSON.stringify(payload));
+      localStorage.setItem('gym_tracker_onboarded_' + tgUser.id, '1');
+    } catch (e) {}
+
+    try {
       const res = await fetch('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -859,16 +865,17 @@ function OnboardingScreen({ initialProfile, onComplete, onCancel }) {
         const updated = await res.json();
         triggerHaptic('success');
         try {
+          localStorage.setItem('gym_tracker_user_profile_' + tgUser.id, JSON.stringify(updated));
           localStorage.setItem('gym_tracker_onboarded_' + tgUser.id, '1');
         } catch (e) {}
         if (onComplete) onComplete(updated);
       } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.detail || 'Не удалось сохранить настройки');
+        // Even if server returned error or cold start delay, local profile is saved
+        if (onComplete) onComplete(payload);
       }
     } catch (e) {
-      console.error(e);
-      alert('Ошибка подключения: ' + e.message);
+      console.warn("Server profile save error, proceeding with local profile:", e);
+      if (onComplete) onComplete(payload);
     } finally {
       setSubmitting(false);
     }
@@ -1265,46 +1272,125 @@ function App() {
   const [activeTab, setActiveTab] = useState('workout'); // 'workout' | 'analytics' | 'history' | 'exercises' | 'profile'
   const [exercises, setExercises] = useState([]);
   const [activeWorkout, setActiveWorkout] = useState(null);
-  const [historyWorkouts, setHistoryWorkouts] = useState([]);
+
+  const currentUserId = getTelegramUser().id;
+
+  const getCachedProfile = () => {
+    try {
+      const s = localStorage.getItem('gym_tracker_user_profile_' + currentUserId);
+      if (s) {
+        const p = JSON.parse(s);
+        if (p && p.name) return p;
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  const getCachedHistory = () => {
+    try {
+      const s = localStorage.getItem('gym_tracker_history_' + currentUserId);
+      if (s) return JSON.parse(s) || [];
+    } catch (e) {}
+    return [];
+  };
+
+  const initialCachedProfile = getCachedProfile();
+  const [userProfile, setUserProfile] = useState(initialCachedProfile);
+  const [historyWorkouts, setHistoryWorkouts] = useState(getCachedHistory);
   const [coachDays, setCoachDays] = useState([]);
   const [exerciseGuides, setExerciseGuides] = useState({});
-  const [userProfile, setUserProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialCachedProfile);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
-
   const [isMinimized, setIsMinimized] = useState(false);
 
+  const isLocalOnboarded = (initialCachedProfile && initialCachedProfile.onboarding_completed === 1) || 
+                           localStorage.getItem('gym_tracker_onboarded_' + currentUserId) === '1';
+
   useEffect(() => {
-    loadAppData(true);
+    loadAppData(!initialCachedProfile);
   }, []);
 
   const loadAppData = async (showSpinner = false) => {
     try {
-      if (showSpinner) setLoading(true);
+      if (showSpinner && !initialCachedProfile) setLoading(true);
       const [exRes, activeRes, histRes, daysRes, guidesRes, profRes] = await Promise.all([
         fetch('/api/exercises'),
         fetch('/api/workouts/active'),
-        fetch('/api/workouts?limit=30'),
+        fetch('/api/workouts?limit=50'),
         fetch('/api/coach/days'),
         fetch('/api/exercises/guides'),
         fetch('/api/profile')
       ]);
 
-      const exData = await exRes.json();
-      const activeData = await activeRes.json();
-      const histData = await histRes.json();
-      const daysData = await daysRes.json();
-      const guidesData = await guidesRes.json();
-      const profData = await profRes.json();
+      const exData = await exRes.json().catch(() => []);
+      const activeData = await activeRes.json().catch(() => null);
+      let histData = await histRes.json().catch(() => []);
+      let daysData = await daysRes.json().catch(() => []);
+      const guidesData = await guidesRes.json().catch(() => ({}));
+      let profData = await profRes.json().catch(() => null);
+
+      // 🔄 SELF-HEALING SYNC FOR COLD SERVER STARTS:
+      // If user finished onboarding on this device, but server woke up empty
+      // (or reset due to sleep), seamlessly restore the saved profile to the server!
+      const currentProfileToUse = (profData && profData.onboarding_completed === 1)
+        ? profData
+        : (initialCachedProfile || getCachedProfile());
+
+      if (isLocalOnboarded && currentProfileToUse && (!profData || profData.onboarding_completed !== 1)) {
+        console.log("⚡ [Self-Healing] Restoring profile from localStorage to server...");
+        try {
+          const syncRes = await fetch('/api/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...currentProfileToUse,
+              onboarding_completed: 1
+            })
+          });
+          if (syncRes.ok) {
+            profData = await syncRes.json();
+            // Re-fetch coach days calculated with restored profile
+            const dRes = await fetch('/api/coach/days');
+            daysData = await dRes.json().catch(() => daysData);
+          }
+        } catch (syncErr) {
+          console.warn("Profile sync warning:", syncErr);
+        }
+      }
+
+      // History caching and recovery
+      if (histData && histData.length > 0) {
+        try {
+          localStorage.setItem('gym_tracker_history_' + currentUserId, JSON.stringify(histData));
+        } catch (e) {}
+      } else {
+        const localHist = getCachedHistory();
+        if (localHist && localHist.length > 0) {
+          histData = localHist;
+        }
+      }
 
       setExercises(exData || []);
       setActiveWorkout(activeData || null);
       setHistoryWorkouts(histData || []);
       setCoachDays(daysData || []);
       setExerciseGuides(guidesData || {});
-      setUserProfile(profData || null);
+
+      const finalProfile = (profData && profData.onboarding_completed === 1) 
+        ? profData 
+        : currentProfileToUse;
+
+      setUserProfile(finalProfile);
+      if (finalProfile && finalProfile.onboarding_completed === 1) {
+        try {
+          localStorage.setItem('gym_tracker_user_profile_' + currentUserId, JSON.stringify(finalProfile));
+          localStorage.setItem('gym_tracker_onboarded_' + currentUserId, '1');
+        } catch (e) {}
+      }
     } catch (err) {
       console.error('Error loading data:', err);
+      const cached = getCachedProfile();
+      if (cached) setUserProfile(cached);
     } finally {
       setLoading(false);
     }
@@ -1312,11 +1398,10 @@ function App() {
 
   const isInWorkoutFocus = !!activeWorkout && !isMinimized && activeTab === 'workout';
   
-  const currentUserId = getTelegramUser().id;
-  const isLocalOnboarded = localStorage.getItem('gym_tracker_onboarded_' + currentUserId) === '1';
-  const needsOnboarding = showOnboardingModal || (userProfile ? (userProfile.onboarding_completed !== 1) : !isLocalOnboarded);
+  const hasOnboarded = isLocalOnboarded || (userProfile && userProfile.onboarding_completed === 1);
+  const needsOnboarding = showOnboardingModal || !hasOnboarded;
 
-  if (loading) {
+  if (loading && !hasOnboarded) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gym-950 text-slate-100 p-6 space-y-4">
         <div className="w-12 h-12 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
@@ -1411,11 +1496,15 @@ function App() {
               profile={userProfile} 
               onUpdateProfile={(updated) => {
                 setUserProfile(updated);
+                try {
+                  localStorage.setItem('gym_tracker_user_profile_' + getTelegramUser().id, JSON.stringify(updated));
+                } catch (e) {}
                 loadAppData();
               }} 
               onRestartOnboarding={() => {
                 try {
                   localStorage.removeItem('gym_tracker_onboarded_' + getTelegramUser().id);
+                  localStorage.removeItem('gym_tracker_user_profile_' + getTelegramUser().id);
                 } catch (e) {}
                 setShowOnboardingModal(true);
               }}

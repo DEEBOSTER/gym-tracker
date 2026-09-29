@@ -109,19 +109,13 @@ def init_database():
         except Exception:
             pass
 
-        # Migrations tracking
+        # Migrations tracking table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS _migrations (
                 name TEXT PRIMARY KEY,
                 applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
-
-        # One-time migration: reset onboarding for existing profiles so setup wizard appears
-        cursor.execute("SELECT COUNT(*) FROM _migrations WHERE name = 'reset_initial_onboarding_v2';")
-        if cursor.fetchone()[0] == 0:
-            cursor.execute("UPDATE user_profiles SET onboarding_completed = 0;")
-            cursor.execute("INSERT OR IGNORE INTO _migrations (name) VALUES ('reset_initial_onboarding_v2');")
 
         # Also ensure legacy user_profile table exists for backward-compatibility
         cursor.execute("""
