@@ -2,6 +2,10 @@
 Скрипт инициализации базы данных SQLite и предзаполнения списка упражнений.
 """
 import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 from datetime import datetime, timedelta
 from database import init_database, get_db
 

@@ -1,9 +1,17 @@
 import os
+import sys
 import copy
 import json
+import threading
 from contextlib import asynccontextmanager
 from typing import List, Optional
 from datetime import datetime
+
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 from fastapi import FastAPI, HTTPException, status, Header, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -39,26 +47,20 @@ from models import (
     UserProfileModel, UserProfileUpdate
 )
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Auto-initialize database and pre-seed on launch
-    init_database()
-    seed_exercises()
-    seed_sample_history_if_empty()
+def _background_sync_telegram():
+    """Syncs Telegram WebApp Menu Button in background without blocking server startup."""
+    try:
+        render_url = os.environ.get("RENDER_EXTERNAL_URL") or os.environ.get("WEBAPP_URL")
+        bot_token = os.environ.get("BOT_TOKEN")
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        if not bot_token and os.path.exists(os.path.join(base_dir, "bot_token.txt")):
+            try:
+                with open(os.path.join(base_dir, "bot_token.txt"), "r", encoding="utf-8") as f:
+                    bot_token = f.read().strip()
+            except Exception:
+                pass
 
-    # Auto-sync Telegram WebApp Menu Button if hosted on Render / Cloud
-    render_url = os.environ.get("RENDER_EXTERNAL_URL") or os.environ.get("WEBAPP_URL")
-    bot_token = os.environ.get("BOT_TOKEN")
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    if not bot_token and os.path.exists(os.path.join(base_dir, "bot_token.txt")):
-        try:
-            with open(os.path.join(base_dir, "bot_token.txt"), "r", encoding="utf-8") as f:
-                bot_token = f.read().strip()
-        except Exception:
-            pass
-
-    if render_url and bot_token:
-        try:
+        if render_url and bot_token:
             import urllib.request
             payload = json.dumps({
                 "menu_button": {
@@ -72,11 +74,24 @@ async def lifespan(app: FastAPI):
                 data=payload,
                 headers={"Content-Type": "application/json"}
             )
-            with urllib.request.urlopen(req, timeout=5) as r:
+            with urllib.request.urlopen(req, timeout=8) as r:
                 pass
-            print(f"🤖 [Telegram] WebApp кнопка в боте обновлена на: {render_url}")
-        except Exception as e:
-            print(f"⚠️ [Telegram] Ошибка обновления кнопки: {e}")
+            print(f"[Telegram] WebApp button updated to: {render_url}")
+    except Exception as e:
+        print(f"[Telegram] Menu button sync note: {e}")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Auto-initialize database and pre-seed on launch
+    try:
+        init_database()
+        seed_exercises()
+        seed_sample_history_if_empty()
+    except Exception as e:
+        print(f"[DB Init] Note: {e}")
+
+    # Start Telegram sync non-blockingly
+    threading.Thread(target=_background_sync_telegram, daemon=True).start()
 
     yield
 
@@ -1456,3 +1471,13 @@ def serve_manifest():
 @app.get("/sw.js")
 def serve_sw():
     return FileResponse(os.path.join(STATIC_DIR, "sw.js"), media_type="application/javascript")
+
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok"}
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
+
