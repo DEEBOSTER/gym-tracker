@@ -39,7 +39,7 @@ def get_current_user_name(
 
 from pydantic import BaseModel
 from database import init_database, get_db
-from init_db import seed_exercises, seed_sample_history_if_empty
+from init_db import seed_exercises, seed_sample_history_if_empty, seed_real_user_history
 from models import (
     ExerciseResponse, ExerciseCreate,
     WorkoutStart, WorkoutFinish,
@@ -89,6 +89,7 @@ async def lifespan(app: FastAPI):
         init_database()
         seed_exercises()
         seed_sample_history_if_empty()
+        seed_real_user_history()
     except Exception as e:
         print(f"[DB Init] Note: {e}")
 

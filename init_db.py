@@ -155,9 +155,81 @@ def seed_sample_history_if_empty():
 
         print("[OK] Демо-данные успешно добавлены.")
 
+def seed_real_user_history():
+    """Seeds the user's real workout from 2026-09-29 so it is permanently preserved across fresh server installs."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name FROM exercises;")
+        ex_map = {r['name'].lower(): r['id'] for r in cursor.fetchall()}
+
+        sets_data = [
+            ('Жим гантелей на горизонтальной скамье', 15.0, 12, 'warmup'),
+            ('Жим гантелей на горизонтальной скамье', 18.0, 10, 'normal'),
+            ('Жим гантелей на горизонтальной скамье', 20.0, 10, 'normal'),
+            ('Жим гантелей на горизонтальной скамье', 22.5, 8, 'normal'),
+
+            ('Жим гантелей на наклонной скамье (30°)', 16.0, 10, 'normal'),
+            ('Жим гантелей на наклонной скамье (30°)', 18.0, 9, 'normal'),
+            ('Жим гантелей на наклонной скамье (30°)', 20.0, 5, 'normal'),
+
+            ('Жим гантелей сидя на плечи', 10.0, 12, 'warmup'),
+            ('Жим гантелей сидя на плечи', 12.0, 10, 'normal'),
+            ('Жим гантелей сидя на плечи', 14.0, 10, 'normal'),
+            ('Жим гантелей сидя на плечи', 15.0, 7, 'normal'),
+
+            ('Тяга штанги к подбородку широким хватом', 25.0, 15, 'normal'),
+            ('Тяга штанги к подбородку широким хватом', 27.5, 12, 'normal'),
+            ('Тяга штанги к подбородку широким хватом', 30.0, 13, 'normal'),
+
+            ('Французский жим со штангой лежа', 15.0, 12, 'warmup'),
+            ('Французский жим со штангой лежа', 17.5, 12, 'normal'),
+            ('Французский жим со штангой лежа', 20.0, 10, 'normal'),
+
+            ('Французский жим с гантелью из-за головы', 16.0, 10, 'normal'),
+            ('Французский жим с гантелью из-за головы', 18.0, 11, 'normal'),
+            ('Французский жим с гантелью из-за головы', 20.0, 6, 'normal'),
+        ]
+
+        title = 'День 1: Push (Толкай) — Вариант А'
+        start_time = '2026-09-29 17:47:00'
+        end_time = '2026-09-29 19:09:00'
+        notes = 'day_type:push|variant:a|Грудь, плечи, трицепс'
+
+        user_ids = ['tg_591306946', 'default']
+        cursor.execute('''
+            INSERT OR REPLACE INTO user_profiles 
+            (user_id, name, gender, age, height, weight, experience_level, fitness_goal, injuries, equipment, onboarding_completed, telegram_chat_id, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ''', ('tg_591306946', 'DEBOOSTER', 'male', 26, 186.0, 80.0, 'intermediate', 'hypertrophy', 'Плечи', 'gym', 1, 591306946, '2026-09-29 17:47:00'))
+
+        for u_id in user_ids:
+            cursor.execute("SELECT id FROM workouts WHERE user_id = ? AND start_time = ?;", (u_id, start_time))
+            if cursor.fetchone():
+                continue
+            cursor.execute(
+                "INSERT INTO workouts (user_id, title, start_time, end_time, notes) VALUES (?, ?, ?, ?, ?);",
+                (u_id, title, start_time, end_time, notes)
+            )
+            w_id = cursor.lastrowid
+            set_num = 1
+            for ex_name, w, r, st in sets_data:
+                ex_id = ex_map.get(ex_name.lower())
+                if not ex_id:
+                    cursor.execute("INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);", (ex_name, "Базовые"))
+                    cursor.execute("SELECT id FROM exercises WHERE name = ?;", (ex_name,))
+                    ex_row = cursor.fetchone()
+                    ex_id = ex_row["id"] if ex_row else 1
+                    ex_map[ex_name.lower()] = ex_id
+                cursor.execute('''
+                    INSERT INTO workout_sets (workout_id, exercise_id, set_number, set_type, weight, reps, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?);
+                ''', (w_id, ex_id, set_num, st, w, r, start_time))
+                set_num += 1
+
 if __name__ == "__main__":
     seed_exercises()
     # Если запущен с аргументом --clean, удаляем старую БД
     if "--demo" in sys.argv or True:
         seed_sample_history_if_empty()
+    seed_real_user_history()
     print("[SUCCESS] База данных готова к работе!")
