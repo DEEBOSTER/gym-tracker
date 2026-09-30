@@ -8,6 +8,11 @@ function getTelegramUser() {
       const fullName = tgUser.first_name 
         ? `${tgUser.first_name}${tgUser.last_name ? ' ' + tgUser.last_name : ''}`.trim() 
         : 'Атлет';
+      try {
+        localStorage.setItem('gym_tracker_tg_id', tgId);
+        localStorage.setItem('gym_tracker_user_id', tgId);
+        localStorage.setItem('gym_tracker_user_name', fullName);
+      } catch (e) {}
       return { id: tgId, name: fullName };
     }
   } catch (e) {}
@@ -30,8 +35,16 @@ function getTelegramUser() {
     }
   } catch (e) {}
 
-  // 3. Persistent browser / device ID (unique per browser, phone, or friend testing via web link)
+  // 3. Persistent browser / device ID (checks if user previously logged in via Telegram on this device)
   try {
+    const savedTgId = localStorage.getItem('gym_tracker_tg_id');
+    if (savedTgId) {
+      return {
+        id: savedTgId,
+        name: localStorage.getItem('gym_tracker_user_name') || 'Атлет'
+      };
+    }
+
     let savedId = localStorage.getItem('gym_tracker_user_id');
     if (!savedId || savedId === 'default') {
       savedId = 'u_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
@@ -1572,17 +1585,53 @@ function App() {
         }
       }
 
-      // History caching and recovery
-      if (histData && histData.length > 0) {
+      // 🔄 TWO-WAY WORKOUT SYNC & OFFLINE PERSISTENCE:
+      let storedFullWorkouts = [];
+      try {
+        const rawLocal = localStorage.getItem('gym_tracker_full_workouts_' + currentUserId) || 
+                         localStorage.getItem('gym_tracker_full_workouts_backup') || 
+                         localStorage.getItem('gym_tracker_history_' + currentUserId) || '[]';
+        storedFullWorkouts = JSON.parse(rawLocal) || [];
+      } catch (e) {}
+
+      // Combine server workouts with stored local workouts by start_time
+      const mergedMap = new Map();
+      (histData || []).forEach(w => {
+        if (w.start_time) mergedMap.set(w.start_time, w);
+      });
+      storedFullWorkouts.forEach(w => {
+        if (w.start_time && !mergedMap.has(w.start_time)) {
+          mergedMap.set(w.start_time, w);
+        }
+      });
+      const combinedWorkouts = Array.from(mergedMap.values()).sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+
+      // If client has workouts that the server is missing (e.g. Render server was restarted/redeployed)
+      const missingOnServer = storedFullWorkouts.filter(localW => 
+        !(histData || []).some(srvW => srvW.start_time === localW.start_time)
+      );
+
+      if (missingOnServer.length > 0) {
+        console.log(`⚡ [Self-Healing] Restoring ${missingOnServer.length} workouts to server...`);
         try {
-          localStorage.setItem('gym_tracker_history_' + currentUserId, JSON.stringify(histData));
-        } catch (e) {}
-      } else {
-        const localHist = getCachedHistory();
-        if (localHist && localHist.length > 0) {
-          histData = localHist;
+          fetch('/api/workouts/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ workouts: missingOnServer })
+          }).catch(() => {});
+        } catch (syncErr) {
+          console.warn("Workout sync warning:", syncErr);
         }
       }
+
+      // Update local cache with combined list
+      try {
+        localStorage.setItem('gym_tracker_full_workouts_' + currentUserId, JSON.stringify(combinedWorkouts));
+        localStorage.setItem('gym_tracker_full_workouts_backup', JSON.stringify(combinedWorkouts));
+        localStorage.setItem('gym_tracker_history_' + currentUserId, JSON.stringify(combinedWorkouts));
+      } catch (e) {}
+
+      histData = combinedWorkouts;
 
       setExercises(exData || []);
       setActiveWorkout(activeData || null);
@@ -1699,7 +1748,7 @@ function App() {
           )}
 
           {activeTab === 'history' && (
-            <HistoryScreen workouts={historyWorkouts} />
+            <HistoryScreen workouts={historyWorkouts} exercises={exercises} onRefresh={loadAppData} />
           )}
 
           {activeTab === 'exercises' && (
@@ -2098,6 +2147,37 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
     if (!confirm('Завершить тренировку и сохранить результаты?')) return;
     cancelBotRestPush();
     try {
+      const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      const finishedSets = (activeWorkout.sets || []).map(s => ({
+        exercise_name: s.exercise_name,
+        weight: parseFloat(s.weight) || 0,
+        reps: parseInt(s.reps, 10) || 0,
+        set_type: s.set_type || 'normal',
+        set_number: s.set_number
+      }));
+      const totalVol = finishedSets.reduce((sum, s) => sum + (s.weight * s.reps), 0);
+      const finishedWorkoutObj = {
+        id: activeWorkout.id,
+        title: activeWorkout.title || 'Силовая тренировка',
+        start_time: activeWorkout.start_time || nowStr,
+        end_time: nowStr,
+        notes: activeWorkout.notes || '',
+        total_sets: finishedSets.length,
+        total_volume: totalVol,
+        sets: finishedSets
+      };
+
+      try {
+        const uId = getTelegramUser().id;
+        const uKey = 'gym_tracker_full_workouts_' + uId;
+        const prevStored = JSON.parse(localStorage.getItem(uKey) || '[]');
+        const updatedStored = [finishedWorkoutObj, ...prevStored.filter(w => w.start_time !== finishedWorkoutObj.start_time)];
+        localStorage.setItem(uKey, JSON.stringify(updatedStored));
+        localStorage.setItem('gym_tracker_full_workouts_backup', JSON.stringify(updatedStored));
+      } catch (storageErr) {
+        console.warn('Local workout backup error:', storageErr);
+      }
+
       const tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
       const res = await fetch(`/api/workouts/${activeWorkout.id}/finish`, {
         method: 'POST',
@@ -3288,14 +3368,233 @@ function AnalyticsScreen({ exercises }) {
 }
 
 // ==========================================
+// ➕ MODAL FOR ADDING PAST WORKOUTS
+// ==========================================
+function AddPastWorkoutModal({ isOpen, onClose, exercises = [], onSaved }) {
+  if (!isOpen) return null;
+
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const [date, setDate] = useState(yesterday);
+  const [title, setTitle] = useState('День 1: Push (Жим & Грудь)');
+  const [notes, setNotes] = useState('Внесено вручную');
+  const [rows, setRows] = useState([
+    { exercise_name: 'Жим штанги лежа', weight: 60, reps: 10, sets_count: 3 },
+    { exercise_name: 'Жим гантелей на наклонной скамье (30°)', weight: 20, reps: 10, sets_count: 3 }
+  ]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const addRow = () => {
+    setRows(prev => [...prev, { exercise_name: exercises[0]?.name || 'Жим штанги лежа', weight: 40, reps: 10, sets_count: 3 }]);
+  };
+
+  const updateRow = (idx, field, val) => {
+    setRows(prev => {
+      const copy = [...prev];
+      copy[idx] = { ...copy[idx], [field]: val };
+      return copy;
+    });
+  };
+
+  const removeRow = (idx) => {
+    setRows(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const startTimeStr = `${date} 19:00:00`;
+      const endTimeStr = `${date} 20:00:00`;
+      
+      const flatSets = [];
+      rows.forEach(r => {
+        const count = Math.max(1, parseInt(r.sets_count, 10) || 1);
+        for (let i = 1; i <= count; i++) {
+          flatSets.push({
+            exercise_name: r.exercise_name,
+            weight: parseFloat(r.weight) || 0,
+            reps: parseInt(r.reps, 10) || 10,
+            set_type: 'normal',
+            set_number: i
+          });
+        }
+      });
+
+      const totalVol = flatSets.reduce((sum, s) => sum + (s.weight * s.reps), 0);
+      const workoutObj = {
+        title: title || 'Силовая тренировка',
+        start_time: startTimeStr,
+        end_time: endTimeStr,
+        notes: notes || '',
+        total_sets: flatSets.length,
+        total_volume: totalVol,
+        sets: flatSets
+      };
+
+      const res = await fetch('/api/workouts/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workouts: [workoutObj] })
+      });
+
+      if (res.ok) {
+        // Also save to client localStorage so it never disappears on restart
+        try {
+          const uId = getTelegramUser().id;
+          const uKey = 'gym_tracker_full_workouts_' + uId;
+          const stored = JSON.parse(localStorage.getItem(uKey) || '[]');
+          const updated = [workoutObj, ...stored.filter(w => w.start_time !== workoutObj.start_time)];
+          localStorage.setItem(uKey, JSON.stringify(updated));
+          localStorage.setItem('gym_tracker_full_workouts_backup', JSON.stringify(updated));
+          localStorage.setItem('gym_tracker_history_' + uId, JSON.stringify(updated));
+        } catch (e) {}
+
+        if (typeof onSaved === 'function') onSaved();
+        triggerHaptic('success');
+        onClose();
+      } else {
+        alert('Ошибка при сохранении тренировки');
+      }
+    } catch (err) {
+      alert('Ошибка соединения с сервером');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 overflow-y-auto">
+      <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 max-w-sm w-full space-y-3.5 shadow-2xl animate-in zoom-in-95 my-auto max-h-[92vh] overflow-y-auto">
+        <div className="flex items-center justify-between pb-2 border-b border-gym-800">
+          <div>
+            <h3 className="text-sm font-black text-white">Внести прошедшую тренировку</h3>
+            <p className="text-[10px] text-slate-400">Сохранится в историю и аналитику навсегда</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-base">✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 block mb-1">Дата</label>
+              <input
+                type="date"
+                required
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                className="w-full bg-gym-950 border border-gym-800 text-white rounded-xl px-2.5 py-1.5 text-xs font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 block mb-1">Название / День</label>
+              <input
+                type="text"
+                required
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                className="w-full bg-gym-950 border border-gym-800 text-white rounded-xl px-2.5 py-1.5 text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Упражнения</span>
+              <button
+                type="button"
+                onClick={addRow}
+                className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-lg active:scale-95 transition"
+              >
+                + Добавить
+              </button>
+            </div>
+
+            {rows.map((r, i) => (
+              <div key={i} className="bg-gym-950 border border-gym-800/80 rounded-2xl p-2.5 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between gap-1">
+                  <select
+                    value={r.exercise_name}
+                    onChange={e => updateRow(i, 'exercise_name', e.target.value)}
+                    className="bg-transparent font-bold text-white text-xs max-w-[210px] truncate focus:outline-none"
+                  >
+                    {exercises.map(ex => (
+                      <option key={ex.id} value={ex.name} className="bg-gym-950 text-white">{ex.name}</option>
+                    ))}
+                  </select>
+                  {rows.length > 1 && (
+                    <button type="button" onClick={() => removeRow(i)} className="text-rose-400 text-xs px-1 hover:text-rose-300">✕</button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-1.5 text-center font-mono">
+                  <div className="bg-gym-900 rounded-xl p-1 border border-gym-800">
+                    <span className="text-[8px] text-slate-500 uppercase block">Подходов</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={r.sets_count}
+                      onChange={e => updateRow(i, 'sets_count', parseInt(e.target.value) || 1)}
+                      className="w-full bg-transparent text-center font-black text-white text-xs"
+                    />
+                  </div>
+                  <div className="bg-gym-900 rounded-xl p-1 border border-gym-800">
+                    <span className="text-[8px] text-slate-500 uppercase block">Вес (кг)</span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={r.weight}
+                      onChange={e => updateRow(i, 'weight', parseFloat(e.target.value) || 0)}
+                      className="w-full bg-transparent text-center font-black text-white text-xs"
+                    />
+                  </div>
+                  <div className="bg-gym-900 rounded-xl p-1 border border-gym-800">
+                    <span className="text-[8px] text-slate-500 uppercase block">Повторов</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={r.reps}
+                      onChange={e => updateRow(i, 'reps', parseInt(e.target.value) || 1)}
+                      className="w-full bg-transparent text-center font-black text-white text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex space-x-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 bg-gym-800 text-slate-300 font-bold text-xs rounded-xl"
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 py-2.5 bg-emerald-500 text-gym-950 font-black text-xs rounded-xl shadow-md active:scale-95 transition"
+            >
+              {isSubmitting ? 'Сохранение...' : 'Сохранить'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
 // 📜 HISTORY SCREEN
 // ==========================================
-function HistoryScreen({ workouts = [] }) {
+function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
   const [selectedDate, setSelectedDate] = useState(null); // 'YYYY-MM-DD'
   const [viewDate, setViewDate] = useState(new Date());
   const [expandedWorkoutId, setExpandedWorkoutId] = useState(null);
   const [workoutDetailsCache, setWorkoutDetailsCache] = useState({});
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [showAddPastModal, setShowAddPastModal] = useState(false);
 
   // Group workouts by 'YYYY-MM-DD'
   const workoutsByDate = useMemo(() => {
@@ -3583,18 +3882,37 @@ function HistoryScreen({ workouts = [] }) {
           <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
             {selectedDate ? `Сессии за ${formatDate(selectedDate)}` : `Все тренировки (${filteredWorkouts.length})`}
           </h3>
-          {selectedDate && (
-            <button onClick={() => setSelectedDate(null)} className="text-[11px] text-sky-400 font-medium">
-              Показать все
+          <div className="flex items-center space-x-2">
+            {selectedDate && (
+              <button onClick={() => setSelectedDate(null)} className="text-[11px] text-sky-400 font-medium">
+                Показать все
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowAddPastModal(true)}
+              className="text-[11px] font-bold text-emerald-400 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2.5 py-1 rounded-xl active:scale-95 transition flex items-center space-x-1"
+            >
+              <span>+</span>
+              <span>Внести вручную</span>
             </button>
-          )}
+          </div>
         </div>
 
         {filteredWorkouts.length === 0 ? (
-          <div className="bg-gym-900 border border-gym-800 rounded-3xl p-8 text-center text-slate-400 text-xs space-y-1">
-            <p className="text-base">🧘‍♂️</p>
-            <p className="font-bold text-slate-300">В этот день тренировок не было</p>
-            <p className="text-[11px] text-slate-500">Нажмите на другой день с зеленой точкой или сбросьте фильтр</p>
+          <div className="bg-gym-900 border border-gym-800 rounded-3xl p-6 text-center text-slate-400 text-xs space-y-2">
+            <p className="text-2xl">📋</p>
+            <p className="font-bold text-slate-200">Тренировок в истории пока нет</p>
+            <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+              Завершите тренировку в режиме тренировки или внесите вчерашнюю тренировку вручную.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowAddPastModal(true)}
+              className="mt-2 text-xs font-black bg-emerald-500 text-gym-950 px-3.5 py-2 rounded-xl shadow-md active:scale-95 transition"
+            >
+              + Внести вчерашнюю тренировку
+            </button>
           </div>
         ) : (
           filteredWorkouts.map((w) => {
@@ -3738,6 +4056,17 @@ function HistoryScreen({ workouts = [] }) {
           })
         )}
       </div>
+
+      {showAddPastModal && (
+        <AddPastWorkoutModal
+          isOpen={showAddPastModal}
+          onClose={() => setShowAddPastModal(false)}
+          exercises={exercises}
+          onSaved={() => {
+            if (typeof onRefresh === 'function') onRefresh();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1162,6 +1162,78 @@ def list_workouts(
             })
         return result
 
+class SyncSetItem(BaseModel):
+    exercise_name: str
+    weight: float
+    reps: int
+    set_type: Optional[str] = "normal"
+    set_number: Optional[int] = None
+
+class SyncWorkoutItem(BaseModel):
+    id: Optional[int] = None
+    title: str
+    start_time: str
+    end_time: Optional[str] = None
+    notes: Optional[str] = ""
+    total_sets: Optional[int] = 0
+    total_volume: Optional[float] = 0.0
+    sets: Optional[List[SyncSetItem]] = []
+
+class SyncWorkoutsRequest(BaseModel):
+    workouts: List[SyncWorkoutItem]
+
+@app.post("/api/workouts/sync")
+def sync_workouts(
+    payload: SyncWorkoutsRequest,
+    user_id: str = Depends(get_current_user_id)
+):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name FROM exercises;")
+        ex_map = {row["name"].lower(): row["id"] for row in cursor.fetchall()}
+
+        synced_count = 0
+        for w in payload.workouts:
+            if not w.start_time:
+                continue
+
+            # Check if workout already exists by user_id and start_time
+            cursor.execute(
+                "SELECT id FROM workouts WHERE user_id = ? AND start_time = ?;",
+                (user_id, w.start_time)
+            )
+            existing = cursor.fetchone()
+            if existing:
+                continue
+
+            cursor.execute(
+                "INSERT INTO workouts (user_id, title, start_time, end_time, notes) VALUES (?, ?, ?, ?, ?);",
+                (user_id, w.title or "Силовая тренировка", w.start_time, w.end_time or w.start_time, w.notes or "")
+            )
+            workout_id = cursor.lastrowid
+
+            set_num = 1
+            for s in (w.sets or []):
+                ex_name = (s.exercise_name or "Упражнение").strip()
+                ex_id = ex_map.get(ex_name.lower())
+                if not ex_id:
+                    cursor.execute("INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);", (ex_name, "Базовые"))
+                    cursor.execute("SELECT id FROM exercises WHERE name = ?;", (ex_name,))
+                    ex_row = cursor.fetchone()
+                    ex_id = ex_row["id"] if ex_row else 1
+                    ex_map[ex_name.lower()] = ex_id
+
+                cursor.execute("""
+                    INSERT INTO workout_sets (workout_id, exercise_id, set_number, set_type, weight, reps, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?);
+                """, (workout_id, ex_id, s.set_number or set_num, s.set_type or "normal", s.weight, s.reps, w.start_time))
+                set_num += 1
+
+            synced_count += 1
+
+        print(f"🔄 [Sync] Synced {synced_count} workouts from client for user={user_id}")
+        return {"status": "ok", "synced_count": synced_count}
+
 @app.get("/api/workouts/{workout_id}", response_model=WorkoutDetailResponse)
 def get_workout_detail(workout_id: int):
     with get_db() as conn:
