@@ -3,8 +3,10 @@ import sys
 import copy
 import json
 import threading
+import asyncio
+import html
 from contextlib import asynccontextmanager
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 if hasattr(sys.stdout, 'reconfigure'):
@@ -1246,6 +1248,193 @@ def delete_workout_set(set_id: int):
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="Подход не найден")
         return {"status": "ok", "deleted_id": set_id}
+
+# ==========================================
+# ⏱️ TELEGRAM BOT REST TIMER PUSH SCHEDULER
+# ==========================================
+
+_active_rest_timers: Dict[str, Any] = {}
+
+class ScheduleTimerRequest(BaseModel):
+    duration_seconds: int
+    exercise_name: Optional[str] = "Следующий подход"
+    next_set_num: Optional[int] = 1
+    target_sets: Optional[int] = 3
+    rec_weight: Optional[float] = None
+    rec_reps: Optional[int] = None
+    telegram_chat_id: Optional[int] = None
+
+class CancelTimerRequest(BaseModel):
+    telegram_chat_id: Optional[int] = None
+
+def _send_telegram_rest_push_sync(chat_id: int, duration_seconds: int, exercise_name: str, next_set_num: int, target_sets: int, rec_weight: Optional[float], rec_reps: Optional[int]):
+    """Sends a high-priority push message to Telegram user chat with audible sound and vibration."""
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        bot_token = os.environ.get("BOT_TOKEN")
+        if not bot_token and os.path.exists(os.path.join(base_dir, "bot_token.txt")):
+            try:
+                with open(os.path.join(base_dir, "bot_token.txt"), "r", encoding="utf-8") as f:
+                    bot_token = f.read().strip()
+            except Exception:
+                pass
+        
+        if not bot_token or not chat_id:
+            return
+
+        mins = duration_seconds // 60
+        secs = duration_seconds % 60
+        time_str = f"{mins} мин" if secs == 0 else (f"{secs} сек" if mins == 0 else f"{mins}м {secs}с")
+
+        weight_str = f" — <b>{rec_weight} кг</b>" if (rec_weight is not None and rec_weight > 0) else ""
+        reps_str = f" × <b>{rec_reps} повт.</b>" if (rec_reps is not None and rec_reps > 0) else ""
+        safe_ex_name = html.escape(str(exercise_name or "Следующее упражнение"))
+
+        msg_html = (
+            f"⏱️ <b>Время отдыха вышло! ({time_str})</b>\n\n"
+            f"💪 Пора на подход <b>{next_set_num}</b> из <b>{target_sets}</b>:\n"
+            f"🏋️ <b>{safe_ex_name}</b>{weight_str}{reps_str}\n\n"
+            f"<i>Заходи в приложение и запиши результат! 🔥</i>"
+        )
+
+        webapp_url = os.environ.get("RENDER_EXTERNAL_URL") or os.environ.get("WEBAPP_URL")
+        url_file = os.path.join(base_dir, "current_tunnel_url.txt")
+        if not webapp_url and os.path.exists(url_file):
+            try:
+                with open(url_file, "r", encoding="utf-8") as f:
+                    u = f.read().strip()
+                    if u.startswith("http"):
+                        webapp_url = u
+            except Exception:
+                pass
+
+        payload = {
+            "chat_id": chat_id,
+            "text": msg_html,
+            "parse_mode": "HTML",
+            "disable_notification": False  # Triggers native loud ringtone & vibration on phone!
+        }
+
+        if webapp_url:
+            payload["reply_markup"] = {
+                "inline_keyboard": [
+                    [
+                        {"text": "⚡ Открыть GymTracker", "web_app": {"url": webapp_url}}
+                    ]
+                ]
+            }
+
+        req = urllib.request.Request(
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=8) as r:
+            pass
+        print(f"🔔 [RestTimer] Push notification successfully sent to chat {chat_id}!")
+    except Exception as e:
+        print(f"⚠️ [RestTimer] Push notification note: {e}")
+
+async def _rest_timer_worker(user_key: str, chat_id: int, duration_seconds: int, exercise_name: str, next_set_num: int, target_sets: int, rec_weight: Optional[float], rec_reps: Optional[int]):
+    try:
+        await asyncio.sleep(duration_seconds)
+        # Verify this task wasn't cancelled or superseded
+        current_info = _active_rest_timers.get(user_key)
+        if current_info and current_info.get("task") == asyncio.current_task():
+            _active_rest_timers.pop(user_key, None)
+            await asyncio.to_thread(
+                _send_telegram_rest_push_sync,
+                chat_id, duration_seconds, exercise_name, next_set_num, target_sets, rec_weight, rec_reps
+            )
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        print(f"⚠️ [RestTimer Worker] Error: {e}")
+
+@app.post("/api/timer/schedule")
+async def schedule_rest_timer(
+    payload: ScheduleTimerRequest,
+    user_id: str = Depends(get_current_user_id)
+):
+    target_chat_id = payload.telegram_chat_id
+    if not target_chat_id:
+        if user_id.startswith("tg_") and user_id[3:].isdigit():
+            target_chat_id = int(user_id[3:])
+        elif user_id.isdigit():
+            target_chat_id = int(user_id)
+
+    if not target_chat_id:
+        try:
+            with get_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT telegram_chat_id FROM user_profiles WHERE user_id = ?;", (user_id,))
+                p = cursor.fetchone()
+                if p and p["telegram_chat_id"]:
+                    target_chat_id = p["telegram_chat_id"]
+        except Exception:
+            pass
+
+    user_key = f"{user_id}_{target_chat_id}"
+    
+    # Cancel previous timer if still running
+    if user_key in _active_rest_timers:
+        old_task = _active_rest_timers[user_key].get("task")
+        if old_task and not old_task.done():
+            old_task.cancel()
+        _active_rest_timers.pop(user_key, None)
+
+    if not target_chat_id or payload.duration_seconds <= 0:
+        return {"status": "skipped", "reason": "no_chat_id_or_duration_zero"}
+
+    task = asyncio.create_task(_rest_timer_worker(
+        user_key=user_key,
+        chat_id=target_chat_id,
+        duration_seconds=payload.duration_seconds,
+        exercise_name=payload.exercise_name or "Следующее упражнение",
+        next_set_num=payload.next_set_num or 1,
+        target_sets=payload.target_sets or 3,
+        rec_weight=payload.rec_weight,
+        rec_reps=payload.rec_reps
+    ))
+
+    _active_rest_timers[user_key] = {
+        "task": task,
+        "chat_id": target_chat_id,
+        "duration": payload.duration_seconds
+    }
+
+    return {"status": "scheduled", "duration_seconds": payload.duration_seconds, "chat_id": target_chat_id}
+
+@app.post("/api/timer/cancel")
+async def cancel_rest_timer(
+    payload: Optional[CancelTimerRequest] = None,
+    user_id: str = Depends(get_current_user_id)
+):
+    target_chat_id = payload.telegram_chat_id if payload else None
+    if not target_chat_id:
+        if user_id.startswith("tg_") and user_id[3:].isdigit():
+            target_chat_id = int(user_id[3:])
+        elif user_id.isdigit():
+            target_chat_id = int(user_id)
+
+    user_key = f"{user_id}_{target_chat_id}"
+    cancelled = False
+    if user_key in _active_rest_timers:
+        old_task = _active_rest_timers[user_key].get("task")
+        if old_task and not old_task.done():
+            old_task.cancel()
+        _active_rest_timers.pop(user_key, None)
+        cancelled = True
+
+    for k in list(_active_rest_timers.keys()):
+        if k.startswith(f"{user_id}_"):
+            t = _active_rest_timers[k].get("task")
+            if t and not t.done():
+                t.cancel()
+            _active_rest_timers.pop(k, None)
+            cancelled = True
+
+    return {"status": "cancelled" if cancelled else "not_found"}
 
 # --- ANALYTICS ENDPOINT ---
 

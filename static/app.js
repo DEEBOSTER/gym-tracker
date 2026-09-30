@@ -1823,6 +1823,14 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   const [restReason, setRestReason] = useState('');
   const [restBadge, setRestBadge] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [botPushEnabled, setBotPushEnabled] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gym_tracker_bot_push_enabled');
+      return saved !== null ? saved === 'true' : true;
+    } catch (e) {
+      return true;
+    }
+  });
   const [showWarmupModal, setShowWarmupModal] = useState(false);
 
   // List of planned exercises for today's session
@@ -1963,6 +1971,38 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
     };
   }, [restActive, soundEnabled]);
 
+  // Server-side Telegram Bot Audible Push Notification
+  const scheduleBotRestPush = (seconds, exName, nextSet, targetSets, recW, recR) => {
+    if (!botPushEnabled || seconds <= 0) return;
+    try {
+      const tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+      fetch('/api/timer/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          duration_seconds: seconds,
+          exercise_name: exName || currentPlanEx?.name || 'Следующий подход',
+          next_set_num: nextSet || (currentWorkingCount + 1),
+          target_sets: targetSets || currentPlanEx?.target_sets || 3,
+          rec_weight: recW !== undefined ? parseFloat(recW) : parseFloat(weight),
+          rec_reps: recR !== undefined ? parseInt(recR, 10) : parseInt(reps, 10),
+          telegram_chat_id: tgUserId || null
+        })
+      }).catch(() => {});
+    } catch (e) {}
+  };
+
+  const cancelBotRestPush = () => {
+    try {
+      const tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+      fetch('/api/timer/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegram_chat_id: tgUserId || null })
+      }).catch(() => {});
+    } catch (e) {}
+  };
+
   const adjustRestTime = (secondsDelta) => {
     triggerHaptic('light');
     const targetStr = localStorage.getItem('gym_tracker_rest_end');
@@ -1979,6 +2019,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
       setRestPreset(newRemaining);
       try { localStorage.setItem('gym_tracker_rest_total', String(newRemaining)); } catch (e) {}
     }
+
+    if (newRemaining > 0) {
+      scheduleBotRestPush(newRemaining, currentPlanEx?.name, currentWorkingCount + 1, currentPlanEx?.target_sets, weight, reps);
+    } else {
+      cancelBotRestPush();
+    }
   };
 
   const setFixedRestTime = (seconds) => {
@@ -1991,12 +2037,14 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
     setRestPreset(seconds);
     setRestSecondsLeft(seconds);
     setRestActive(true);
+    scheduleBotRestPush(seconds, currentPlanEx?.name, currentWorkingCount + 1, currentPlanEx?.target_sets, weight, reps);
   };
 
   const cancelRestTimer = () => {
     triggerHaptic('light');
     setRestActive(false);
     setRestSecondsLeft(0);
+    cancelBotRestPush();
     try {
       localStorage.removeItem('gym_tracker_rest_end');
       localStorage.removeItem('gym_tracker_rest_total');
@@ -2048,6 +2096,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   // Finish workout
   const handleFinishWorkout = async () => {
     if (!confirm('Завершить тренировку и сохранить результаты?')) return;
+    cancelBotRestPush();
     try {
       const tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
       const res = await fetch(`/api/workouts/${activeWorkout.id}/finish`, {
@@ -2130,10 +2179,14 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
         } catch (e) {}
 
         // 2. Dynamic Next Set Weight Recommendation
+        let nextWeightToRec = loggedWeight;
+        let nextRepsToRec = loggedReps;
+
         if (isWarmup) {
           setSetType('normal');
           if (currentPlanEx.recommended_weight) {
             setWeight(currentPlanEx.recommended_weight);
+            nextWeightToRec = currentPlanEx.recommended_weight;
           }
         } else if (newWorkingCount < currentPlanEx.target_sets) {
           // Compute dynamic next set advice based on the set just finished!
@@ -2141,8 +2194,20 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           if (nextAdvice && nextAdvice.recWeight) {
             setWeight(nextAdvice.recWeight);
             setReps(nextAdvice.recReps);
+            nextWeightToRec = nextAdvice.recWeight;
+            nextRepsToRec = nextAdvice.recReps;
           }
         }
+
+        // Schedule Telegram Bot Audible Push Notification
+        scheduleBotRestPush(
+          duration,
+          currentPlanEx.name,
+          Math.min(currentPlanEx.target_sets, newWorkingCount + 1),
+          currentPlanEx.target_sets,
+          nextWeightToRec,
+          nextRepsToRec
+        );
 
         if (newWorkingCount >= currentPlanEx.target_sets) {
           // This exercise is complete! Automatically move to next exercise if available
@@ -2413,11 +2478,34 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
               <button
                 type="button"
                 onClick={() => {
+                  const next = !botPushEnabled;
+                  setBotPushEnabled(next);
+                  try { localStorage.setItem('gym_tracker_bot_push_enabled', String(next)); } catch (e) {}
+                  triggerHaptic('light');
+                  if (next) {
+                    scheduleBotRestPush(restSecondsLeft, currentPlanEx?.name, currentWorkingCount + 1, currentPlanEx?.target_sets, weight, reps);
+                  } else {
+                    cancelBotRestPush();
+                  }
+                }}
+                title={botPushEnabled ? 'Звуковой пуш Telegram включен (звонит даже при выключенном экране)' : 'Звуковой пуш Telegram выключен'}
+                className={`px-2 py-1 rounded-xl flex items-center space-x-1 text-[10px] font-bold transition border ${
+                  botPushEnabled 
+                    ? 'bg-sky-500/20 border-sky-400/50 text-sky-200 shadow-sm' 
+                    : 'bg-gym-900 border-gym-700 text-slate-500'
+                }`}
+              >
+                <span>{botPushEnabled ? '📲 Звук в TG' : '🔕 Без TG'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
                   const next = !soundEnabled;
                   setSoundEnabled(next);
                   if (next) playChimeSound();
                 }}
-                title={soundEnabled ? 'Звук включен' : 'Звук выключен'}
+                title={soundEnabled ? 'Звук в приложении включен' : 'Звук выключен'}
                 className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs transition border ${
                   soundEnabled 
                     ? 'bg-sky-500/20 border-sky-500/40 text-sky-300' 
