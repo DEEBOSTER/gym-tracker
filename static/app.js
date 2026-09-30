@@ -291,6 +291,220 @@ function calculateWarmupLadder(targetWeight, exerciseName = '') {
   return ladder;
 }
 
+// ==========================================
+// ⏱️ ADAPTIVE REST TIME CALCULATOR
+// ==========================================
+function getAdaptiveRestInfo(exerciseName = '', setType = 'normal', reps = 10, userGoal = 'hypertrophy') {
+  const name = (exerciseName || '').toLowerCase();
+  
+  if (setType === 'warmup') {
+    return {
+      duration: 45,
+      reason: 'Разминка суставов (быстрый отдых перед базой)',
+      badge: 'РАЗМИНКА 45с',
+      type: 'warmup'
+    };
+  }
+
+  if (setType === 'drop') {
+    return {
+      duration: 75,
+      reason: 'Дропсет завершен (восстановление закисленных волокон)',
+      badge: 'ДРОПСЕТ 75с',
+      type: 'drop'
+    };
+  }
+
+  // 1. Heavy Compound Barbell & Legs Movements
+  const isHeavyCompound = [
+    'приседан', 'станов', 'жим штанги', 'жим ногами', 
+    'гакк', 'румынск', 'армейский', 'брусья с весом'
+  ].some(k => name.includes(k));
+
+  if (isHeavyCompound) {
+    if (userGoal === 'strength' || reps <= 6 || setType === 'failure') {
+      return {
+        duration: 180,
+        reason: 'Тяжелая база (3 мин для полного восстановления ЦНС и креатинфосфата)',
+        badge: 'СИЛОВАЯ БАЗА 3 мин',
+        type: 'heavy'
+      };
+    }
+    return {
+      duration: 150,
+      reason: 'Базовое многосуставное (2.5 мин для восстановления пульса и дыхания)',
+      badge: 'БАЗА 2.5 мин',
+      type: 'heavy'
+    };
+  }
+
+  // 2. Moderate Compound (Dumbbells, Pulls, Rows, Presses)
+  const isModerateCompound = [
+    'гантел', 'тяга', 'подтягиван', 'брусья', 'кроссовер', 'жим'
+  ].some(k => name.includes(k));
+
+  if (isModerateCompound) {
+    if (userGoal === 'strength' || setType === 'failure') {
+      return {
+        duration: 120,
+        reason: 'Умеренная база (2 мин для качественного следующего подхода)',
+        badge: 'ТЯГА / ЖИМ 2 мин',
+        type: 'moderate'
+      };
+    }
+    return {
+      duration: 90,
+      reason: 'Рабочий сплит (1.5 мин: баланс гипертрофии и плотности)',
+      badge: 'РАБОЧИЙ 90с',
+      type: 'moderate'
+    };
+  }
+
+  // 3. Isolation & Small Muscles (Arms, Shoulders, Calves, Abs)
+  if (userGoal === 'fat_loss') {
+    return {
+      duration: 60,
+      reason: 'Изоляция / сушка (высокая метаболическая плотность)',
+      badge: 'СУШКА / ПАМП 60с',
+      type: 'isolation'
+    };
+  }
+
+  return {
+    duration: 75,
+    reason: 'Изоляция и суставы (1 мин 15 сек на восстановление памп-эффекта)',
+    badge: 'ИЗОЛЯЦИЯ 75с',
+    type: 'isolation'
+  };
+}
+
+// ==========================================
+// 💡 DYNAMIC NEXT SET WEIGHT ADVISOR
+// ==========================================
+function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = null) {
+  if (!currentPlanEx) return null;
+
+  const exName = currentPlanEx.name || '';
+  const targetSets = currentPlanEx.target_sets || 3;
+  const targetRepsStr = String(currentPlanEx.target_reps || '8–10');
+  
+  // Parse min and max target reps
+  const cleanReps = targetRepsStr.replace(/\s+/g, '').replace('–', '-');
+  const parts = cleanReps.split('-');
+  const minReps = parseInt(parts[0], 10) || 8;
+  const maxReps = parts.length > 1 ? (parseInt(parts[1], 10) || minReps) : minReps;
+
+  const baseRecWeight = parseFloat(currentPlanEx.recommended_weight) || 20;
+
+  // Filter working sets
+  const workingSets = currentSets.filter(s => (s.set_type || 'normal') !== 'warmup');
+  const completedCount = workingSets.length;
+  const nextSetNum = completedCount + 1;
+  const isFinalSet = nextSetNum === targetSets;
+
+  // Step increment: smaller for dumbbells / small muscle isolation, standard for barbells
+  const nameLow = exName.toLowerCase();
+  const isDumbbellOrSmall = nameLow.includes('гантел') || 
+                            nameLow.includes('махи') || 
+                            nameLow.includes('бицепс') || 
+                            nameLow.includes('трицепс') || 
+                            nameLow.includes('пресс');
+  const isBarbellOrLegs = nameLow.includes('присед') || 
+                          nameLow.includes('ногами') || 
+                          nameLow.includes('гакк') || 
+                          nameLow.includes('станов') || 
+                          nameLow.includes('румынск');
+
+  const weightStep = isDumbbellOrSmall ? 1.0 : (isBarbellOrLegs ? 2.5 : 2.5);
+
+  // If no working sets done yet (about to do Set 1)
+  if (workingSets.length === 0) {
+    return {
+      status: 'START',
+      badge: 'СТАРТОВЫЙ ВЕС 🎯',
+      badgeColor: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+      recWeight: baseRecWeight,
+      recReps: maxReps,
+      message: `Подход 1 из ${targetSets}: начните с расчетного веса ${baseRecWeight} кг на ${targetRepsStr} повторений. Оцените запас сил по RPE перед повышением.`,
+      canApply: false
+    };
+  }
+
+  // Get the last working set
+  const lastSet = workingSets[workingSets.length - 1];
+  const lastWeight = parseFloat(lastSet.weight) || baseRecWeight;
+  const lastReps = parseInt(lastSet.reps, 10) || minReps;
+  const lastType = lastSet.set_type || 'normal';
+
+  let recWeight = lastWeight;
+  let recReps = maxReps;
+  let badge = 'ДЕРЖАТЬ ВЕС 💪';
+  let badgeColor = 'bg-sky-500/20 text-sky-400 border-sky-500/30';
+  let message = '';
+  let status = 'MAINTAIN';
+
+  // 1. OVERSHOT REPS (e.g. Target 8-10, did 11 or 12+)
+  if (lastReps > maxReps) {
+    const repsOver = lastReps - maxReps;
+    const addStep = repsOver >= 3 ? weightStep * 2 : weightStep;
+    recWeight = Math.round((lastWeight + addStep) * 10) / 10;
+    recReps = maxReps;
+    status = 'INCREASE';
+    badge = `ПОВЫСИТЬ ВЕС (+${addStep} кг) 🚀`;
+    badgeColor = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 ring-1 ring-emerald-400';
+    message = `Отличный запас сил! В прошлом подходе выжато ${lastReps} повт. (цель ${targetRepsStr}). На подход ${nextSetNum} поставьте ${recWeight} кг, чтобы оставаться в зоне мышечного роста.`;
+  }
+  // 2. SEVERE UNDERSHOT OR FAILURE (e.g. Target 8-10, failed at 5 or 6 reps)
+  else if (lastReps < minReps || (lastType === 'failure' && lastReps <= minReps)) {
+    const repsShort = minReps - lastReps;
+    const dropStep = repsShort >= 3 ? weightStep * 2 : weightStep;
+    recWeight = Math.max(isDumbbellOrSmall ? 2 : 10, Math.round((lastWeight - dropStep) * 10) / 10);
+    recReps = minReps;
+    status = 'DECREASE';
+    badge = `СНИЗИТЬ ВЕС (-${dropStep} кг) ⚖️`;
+    badgeColor = 'bg-amber-500/20 text-amber-400 border-amber-500/30 ring-1 ring-amber-400';
+    message = `Раннее закисление: ${lastReps} повт. (ниже целевых ${targetRepsStr}). Сбросьте до ${recWeight} кг на подход ${nextSetNum}, чтобы сохранить чистую технику и набрать объем.`;
+  }
+  // 3. HIT TOP OF RANGE (e.g. Target 8-10, did 10 clean reps)
+  else if (lastReps === maxReps) {
+    status = 'TOP_HIT';
+    badge = 'ТОЧНОЕ ПОПАДАНИЕ 🎯';
+    badgeColor = 'bg-teal-500/20 text-teal-300 border-teal-500/30';
+    if (isFinalSet) {
+      recWeight = lastWeight;
+      recReps = maxReps;
+      message = `Идеальные ${lastReps} повт.! Заключительный ${nextSetNum}-й подход: выжмите максимум на ${recWeight} кг с фиксацией в пиковой точке.`;
+    } else {
+      recWeight = lastWeight;
+      recReps = maxReps;
+      message = `Точно в цель (${lastWeight} кг × ${lastReps})! Оставьте ${lastWeight} кг на подход ${nextSetNum}. Если чувствуете кураж — накиньте +${weightStep} кг на персональный рекорд.`;
+    }
+  }
+  // 4. SOLID WORK ZONE (e.g. Target 8-10, did 8 or 9 reps)
+  else {
+    status = 'IN_ZONE';
+    badge = 'РАБОЧИЙ ТЕМП 💪';
+    badgeColor = 'bg-sky-500/20 text-sky-400 border-sky-500/30';
+    recWeight = lastWeight;
+    recReps = lastReps;
+    message = `Хороший рабочий сет (${lastWeight} кг × ${lastReps} повт.). Оставляем ${recWeight} кг на подход ${nextSetNum}. Фокус на контроле негативной фазы (2–3 сек).`;
+  }
+
+  if (isFinalSet) {
+    message += ' 🔥 Заключительный подход упражнения!';
+  }
+
+  return {
+    status,
+    badge,
+    badgeColor,
+    recWeight,
+    recReps,
+    message,
+    canApply: recWeight !== lastWeight
+  };
+}
+
 
 // ==========================================
 // 🎨 STYLISH EXERCISE PICKER MODAL (FOR ANALYTICS & EXTRA)
@@ -1474,6 +1688,7 @@ function App() {
               exercises={exercises} 
               coachDays={coachDays}
               exerciseGuides={exerciseGuides}
+              userProfile={userProfile}
               onRefresh={loadAppData}
               onMinimize={() => setIsMinimized(true)}
             />
@@ -1579,7 +1794,7 @@ function NavButton({ active, onClick, icon, label, badge }) {
 // ==========================================
 // 🚀 FULLY GUIDED WORKOUT SCREEN (STEP-BY-STEP FLOW)
 // ==========================================
-function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuides = {}, onRefresh, onMinimize }) {
+function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuides = {}, userProfile, onRefresh, onMinimize }) {
   // Navigation inside the plan
   const [currentPlanIndex, setCurrentPlanIndex] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState('a');
@@ -1601,10 +1816,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
     }
   }, [coachDays]);
 
-  // Rest Timer & Warmup Modal State
+  // Rest Timer State (Timestamp-backed for 100% background accuracy)
   const [restSecondsLeft, setRestSecondsLeft] = useState(0);
   const [restActive, setRestActive] = useState(false);
   const [restPreset, setRestPreset] = useState(90);
+  const [restReason, setRestReason] = useState('');
+  const [restBadge, setRestBadge] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showWarmupModal, setShowWarmupModal] = useState(false);
 
@@ -1623,19 +1840,38 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
   // Current active exercise in the plan
   const currentPlanEx = plannedList[currentPlanIndex] || plannedList[0];
+  const currentSets = setsByExercise[currentPlanEx?.name] || [];
+  const currentWorkingSets = currentSets.filter(s => (s.set_type || 'normal') !== 'warmup');
+  const currentWorkingCount = currentWorkingSets.length;
 
-  // Auto-fill weight when currentPlanIndex changes
+  // Dynamic advice for the upcoming set based on performance in previous sets
+  const nextSetAdvice = useMemo(() => {
+    return calculateNextSetAdvice(currentPlanEx, currentSets, userProfile);
+  }, [currentPlanEx, currentSets, userProfile]);
+
+  // Auto-fill weight when currentPlanIndex changes or exercise is switched
   useEffect(() => {
     if (currentPlanEx) {
+      const curSets = setsByExercise[currentPlanEx.name] || [];
+      const wSets = curSets.filter(s => (s.set_type || 'normal') !== 'warmup');
+      
       setSetType('normal');
-      setWeight(currentPlanEx.recommended_weight || 20);
-      // parse target reps (e.g. "8–10" -> 10, "12–15" -> 12)
-      const targetRepsNum = parseInt(currentPlanEx.target_reps?.split('–')[1] || currentPlanEx.target_reps?.split('-')[0] || 10);
-      setReps(targetRepsNum || 10);
+
+      if (wSets.length > 0) {
+        const adv = calculateNextSetAdvice(currentPlanEx, curSets, userProfile);
+        if (adv && adv.recWeight) {
+          setWeight(adv.recWeight);
+          setReps(adv.recReps);
+        }
+      } else {
+        setWeight(currentPlanEx.recommended_weight || 20);
+        const targetRepsNum = parseInt(currentPlanEx.target_reps?.split('–')[1] || currentPlanEx.target_reps?.split('-')[0] || 10);
+        setReps(targetRepsNum || 10);
+      }
     }
   }, [currentPlanIndex, activeWorkout?.id]);
 
-  // Timer
+  // Workout Session Duration Timer
   useEffect(() => {
     if (!activeWorkout) return;
     const startTime = new Date(activeWorkout.start_time).getTime();
@@ -1646,24 +1882,128 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
     return () => clearInterval(interval);
   }, [activeWorkout]);
 
-  // Rest Timer Countdown
+  // Restore running rest timer from localStorage on mount (e.g. if WebApp was minimized)
   useEffect(() => {
-    let timer;
-    if (restActive && restSecondsLeft > 0) {
-      timer = setInterval(() => {
-        setRestSecondsLeft((prev) => {
-          if (prev <= 1) {
-            setRestActive(false);
-            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-            if (soundEnabled) playChimeSound();
-            return 0;
+    try {
+      const targetStr = localStorage.getItem('gym_tracker_rest_end');
+      if (targetStr) {
+        const target = parseInt(targetStr, 10);
+        const rem = Math.max(0, Math.ceil((target - Date.now()) / 1000));
+        if (rem > 0) {
+          setRestSecondsLeft(rem);
+          setRestActive(true);
+          const rReason = localStorage.getItem('gym_tracker_rest_reason') || '';
+          const rBadge = localStorage.getItem('gym_tracker_rest_badge') || '';
+          const rTotal = parseInt(localStorage.getItem('gym_tracker_rest_total') || '90', 10);
+          setRestReason(rReason);
+          setRestBadge(rBadge);
+          setRestPreset(rTotal);
+        } else {
+          localStorage.removeItem('gym_tracker_rest_end');
+        }
+      }
+    } catch (e) {}
+  }, []);
+
+  // Rest Timer Countdown (Timestamp-based: works 100% in background / screen off)
+  useEffect(() => {
+    if (!restActive) return;
+
+    const checkRest = () => {
+      const targetStr = localStorage.getItem('gym_tracker_rest_end');
+      if (!targetStr) {
+        setRestActive(false);
+        setRestSecondsLeft(0);
+        return;
+      }
+      const target = parseInt(targetStr, 10);
+      const remaining = Math.max(0, Math.ceil((target - Date.now()) / 1000));
+      setRestSecondsLeft(remaining);
+
+      if (remaining <= 0) {
+        setRestActive(false);
+        try {
+          localStorage.removeItem('gym_tracker_rest_end');
+          localStorage.removeItem('gym_tracker_rest_total');
+          localStorage.removeItem('gym_tracker_rest_reason');
+          localStorage.removeItem('gym_tracker_rest_badge');
+        } catch (e) {}
+
+        // Haptic & Sound
+        triggerHaptic('success');
+        if (navigator.vibrate) navigator.vibrate([250, 100, 250, 100, 400]);
+        if (soundEnabled) playChimeSound();
+
+        // Browser Web Notification if permitted
+        try {
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('GymTracker ⏱️', {
+              body: 'Отдых окончен! Пора на следующий подход 💪',
+              icon: '/static/icons/icon-192.png'
+            });
           }
-          return prev - 1;
-        });
-      }, 1000);
+        } catch (e) {}
+      }
+    };
+
+    checkRest();
+    const interval = setInterval(checkRest, 500);
+
+    const onVisibilityOrFocus = () => {
+      checkRest();
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityOrFocus);
+    window.addEventListener('focus', onVisibilityOrFocus);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibilityOrFocus);
+      window.removeEventListener('focus', onVisibilityOrFocus);
+    };
+  }, [restActive, soundEnabled]);
+
+  const adjustRestTime = (secondsDelta) => {
+    triggerHaptic('light');
+    const targetStr = localStorage.getItem('gym_tracker_rest_end');
+    const currentTarget = targetStr ? parseInt(targetStr, 10) : (Date.now() + restSecondsLeft * 1000);
+    const newTarget = Math.max(Date.now(), currentTarget + secondsDelta * 1000);
+    const newRemaining = Math.max(0, Math.ceil((newTarget - Date.now()) / 1000));
+    
+    try {
+      localStorage.setItem('gym_tracker_rest_end', String(newTarget));
+    } catch (e) {}
+
+    setRestSecondsLeft(newRemaining);
+    if (newRemaining > restPreset) {
+      setRestPreset(newRemaining);
+      try { localStorage.setItem('gym_tracker_rest_total', String(newRemaining)); } catch (e) {}
     }
-    return () => clearInterval(timer);
-  }, [restActive, restSecondsLeft, soundEnabled]);
+  };
+
+  const setFixedRestTime = (seconds) => {
+    triggerHaptic('light');
+    const newTarget = Date.now() + seconds * 1000;
+    try {
+      localStorage.setItem('gym_tracker_rest_end', String(newTarget));
+      localStorage.setItem('gym_tracker_rest_total', String(seconds));
+    } catch (e) {}
+    setRestPreset(seconds);
+    setRestSecondsLeft(seconds);
+    setRestActive(true);
+  };
+
+  const cancelRestTimer = () => {
+    triggerHaptic('light');
+    setRestActive(false);
+    setRestSecondsLeft(0);
+    try {
+      localStorage.removeItem('gym_tracker_rest_end');
+      localStorage.removeItem('gym_tracker_rest_total');
+      localStorage.removeItem('gym_tracker_rest_reason');
+      localStorage.removeItem('gym_tracker_rest_badge');
+    } catch (e) {}
+  };
 
   // Start selected day with variant
   const handleStartDay = async (dayType, variant = 'a') => {
@@ -1726,7 +2066,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
     }
   };
 
-  // Add Set with automatic step progression & set types
+  // Add Set with automatic step progression & dynamic set advice
   const handleAddSet = async () => {
     if (!activeWorkout || !currentPlanEx) return;
     setIsSubmitting(true);
@@ -1735,33 +2075,72 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
     const match = exercises.find(e => e.name.toLowerCase() === currentPlanEx.name.toLowerCase());
     const exId = match ? match.id : exercises[0]?.id;
 
+    const loggedWeight = parseFloat(weight);
+    const loggedReps = parseInt(reps, 10);
+    const loggedType = setType;
+
     try {
       const res = await fetch(`/api/workouts/${activeWorkout.id}/sets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           exercise_id: exId,
-          weight: parseFloat(weight),
-          reps: parseInt(reps),
-          set_type: setType
+          weight: loggedWeight,
+          reps: loggedReps,
+          set_type: loggedType
         })
       });
 
       if (res.ok) {
-        // Start rest timer
-        setRestSecondsLeft(restPreset);
+        const isWarmup = loggedType === 'warmup';
+        const currentSets = setsByExercise[currentPlanEx.name] || [];
+        const updatedSetsForEx = [...currentSets, {
+          weight: loggedWeight,
+          reps: loggedReps,
+          set_type: loggedType,
+          set_number: currentSets.length + 1
+        }];
+
+        const prevWorkingCount = currentSets.filter(s => (s.set_type || 'normal') !== 'warmup').length;
+        const newWorkingCount = prevWorkingCount + (!isWarmup ? 1 : 0);
+
+        // 1. Calculate Adaptive Rest & Start Background-Resistant Timer
+        const restInfo = getAdaptiveRestInfo(currentPlanEx.name, loggedType, loggedReps, userProfile?.fitness_goal);
+        const duration = restInfo.duration;
+        const targetEndTime = Date.now() + duration * 1000;
+        
+        try {
+          localStorage.setItem('gym_tracker_rest_end', String(targetEndTime));
+          localStorage.setItem('gym_tracker_rest_total', String(duration));
+          localStorage.setItem('gym_tracker_rest_reason', restInfo.reason);
+          localStorage.setItem('gym_tracker_rest_badge', restInfo.badge);
+        } catch (e) {}
+
+        setRestPreset(duration);
+        setRestSecondsLeft(duration);
+        setRestReason(restInfo.reason);
+        setRestBadge(restInfo.badge);
         setRestActive(true);
 
-        // Only working sets count towards exercise completion (warmup does not count towards working sets!)
-        const currentSets = setsByExercise[currentPlanEx.name] || [];
-        const prevWorkingCount = currentSets.filter(s => (s.set_type || 'normal') !== 'warmup').length;
-        const newWorkingCount = prevWorkingCount + (setType !== 'warmup' ? 1 : 0);
-        
-        // After logging warmup, automatically switch back to 'normal' for real working sets
-        if (setType === 'warmup') {
+        // Request notification permission if first time
+        try {
+          if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission().catch(() => {});
+          }
+        } catch (e) {}
+
+        // 2. Dynamic Next Set Weight Recommendation
+        if (isWarmup) {
           setSetType('normal');
           if (currentPlanEx.recommended_weight) {
             setWeight(currentPlanEx.recommended_weight);
+          }
+        } else if (newWorkingCount < currentPlanEx.target_sets) {
+          // Compute dynamic next set advice based on the set just finished!
+          const nextAdvice = calculateNextSetAdvice(currentPlanEx, updatedSetsForEx, userProfile);
+          if (nextAdvice && nextAdvice.recWeight) {
+            setWeight(nextAdvice.recWeight);
+            setReps(nextAdvice.recReps);
           }
         }
 
@@ -2006,20 +2385,27 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
         </div>
       </div>
 
-      {/* 3. Rest Timer (Enhanced with Sound, Presets & +30s) */}
+      {/* 3. Rest Timer (Background-accurate, Adaptive badges, Presets & Extensions) */}
       {restActive && (
-        <div className="bg-sky-950/90 border border-sky-500/40 rounded-2xl p-3 shadow-lg animate-in fade-in space-y-2.5">
+        <div className="bg-gym-950/95 border border-sky-500/40 rounded-3xl p-3.5 shadow-xl animate-in fade-in space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-2xl bg-sky-500 text-gym-950 flex items-center justify-center font-mono font-black text-base shadow animate-pulse">
-                {restSecondsLeft}
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-gym-950 flex flex-col items-center justify-center font-mono font-black shadow-lg shadow-sky-500/20">
+                <span className="text-sm leading-none">{formatTime(restSecondsLeft)}</span>
+                <span className="text-[8px] opacity-75 font-sans uppercase font-bold mt-0.5">отдых</span>
               </div>
-              <div>
-                <div className="flex items-center space-x-1.5">
-                  <p className="text-xs font-black text-sky-200">Отдых между подходами</p>
-                  <span className="text-[10px] text-sky-400 font-mono">({restSecondsLeft}с)</span>
+              <div className="space-y-0.5">
+                <div className="flex items-center space-x-1.5 flex-wrap">
+                  <span className="text-xs font-black text-white">Таймер отдыха</span>
+                  {restBadge && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                      {restBadge}
+                    </span>
+                  )}
                 </div>
-                <p className="text-[10px] text-slate-400">Глубоко дышите и восстанавливайтесь</p>
+                <p className="text-[11px] text-slate-300 font-medium leading-tight">
+                  {restReason || 'Дышите глубоко и восстанавливайте силы'}
+                </p>
               </div>
             </div>
 
@@ -2042,48 +2428,59 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
               </button>
 
               <button
-                onClick={() => setRestActive(false)}
-                className="text-[11px] font-bold bg-gym-800 hover:bg-gym-700 text-slate-300 px-2.5 py-1.5 rounded-xl border border-gym-700 active:scale-95 transition"
+                onClick={cancelRestTimer}
+                className="text-[11px] font-bold bg-gym-900 hover:bg-gym-800 text-slate-300 px-2.5 py-1.5 rounded-xl border border-gym-700 active:scale-95 transition"
               >
                 Пропустить
               </button>
             </div>
           </div>
 
-          {/* Quick presets & +30s extension */}
-          <div className="flex items-center justify-between pt-1 border-t border-sky-900/60 text-[11px]">
-            <div className="flex items-center space-x-1.5">
-              <span className="text-[10px] text-slate-400 font-mono">Таймер:</span>
-              {[60, 90, 120, 180].map((s) => (
+          {/* Visual Progress Bar */}
+          <div className="w-full bg-gym-900 h-1.5 rounded-full overflow-hidden border border-gym-800">
+            <div 
+              className="bg-gradient-to-r from-sky-400 to-emerald-400 h-full transition-all duration-500 ease-linear rounded-full"
+              style={{
+                width: `${Math.min(100, Math.max(0, restPreset > 0 ? (restSecondsLeft / restPreset) * 100 : 0))}%`
+              }}
+            />
+          </div>
+
+          {/* Quick presets & Time adjustments */}
+          <div className="flex items-center justify-between pt-1 border-t border-gym-800/80 text-[11px]">
+            <div className="flex items-center space-x-1">
+              {[45, 60, 90, 120, 150, 180].map((s) => (
                 <button
                   key={s}
                   type="button"
-                  onClick={() => {
-                    setRestPreset(s);
-                    setRestSecondsLeft(s);
-                    triggerHaptic('light');
-                  }}
-                  className={`px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold border transition ${
-                    restSecondsLeft === s || restPreset === s
-                      ? 'bg-sky-500 text-gym-950 border-sky-400'
+                  onClick={() => setFixedRestTime(s)}
+                  className={`px-1.5 py-0.5 rounded-lg font-mono text-[10px] font-bold border transition ${
+                    Math.abs(restSecondsLeft - s) < 3
+                      ? 'bg-sky-500 text-gym-950 border-sky-400 font-black'
                       : 'bg-gym-900 text-slate-400 border-gym-800 hover:text-white'
                   }`}
                 >
-                  {s}с
+                  {s >= 60 ? `${s / 60}м` : `${s}с`}
                 </button>
               ))}
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setRestSecondsLeft(prev => prev + 30);
-                triggerHaptic('light');
-              }}
-              className="bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-lg font-mono text-[10px] font-black active:scale-95 transition"
-            >
-              +30с ⏳
-            </button>
+            <div className="flex items-center space-x-1">
+              <button
+                type="button"
+                onClick={() => adjustRestTime(-15)}
+                className="bg-gym-900 hover:bg-gym-800 text-slate-300 border border-gym-800 px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold active:scale-95 transition"
+              >
+                -15с
+              </button>
+              <button
+                type="button"
+                onClick={() => adjustRestTime(30)}
+                className="bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-lg font-mono text-[10px] font-black active:scale-95 transition"
+              >
+                +30с
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -2260,6 +2657,39 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                   <span>Отказ</span>
                 </button>
               </div>
+
+              {/* Dynamic Next Set Advice Card (AI Coach recommendations based on previous set) */}
+              {nextSetAdvice && setType !== 'warmup' && (
+                <div className="bg-gym-950/80 border border-gym-800 rounded-2xl p-3 shadow-md space-y-1.5 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1.5">
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border uppercase tracking-wider ${nextSetAdvice.badgeColor}`}>
+                        {nextSetAdvice.badge}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        Подход {Math.min(currentPlanEx.target_sets, currentWorkingCount + 1)} из {currentPlanEx.target_sets}
+                      </span>
+                    </div>
+                    {nextSetAdvice.canApply && weight !== nextSetAdvice.recWeight && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWeight(nextSetAdvice.recWeight);
+                          setReps(nextSetAdvice.recReps);
+                          triggerHaptic('medium');
+                        }}
+                        className="text-[10px] font-black bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-2.5 py-1 rounded-xl transition active:scale-95 flex items-center space-x-1 shadow-sm"
+                      >
+                        <span>Применить {nextSetAdvice.recWeight} кг</span>
+                        <span>✓</span>
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                    {nextSetAdvice.message}
+                  </p>
+                </div>
+              )}
 
               {/* Steppers for Weight & Reps */}
               <div className="grid grid-cols-2 gap-2.5">
