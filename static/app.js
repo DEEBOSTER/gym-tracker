@@ -112,6 +112,34 @@ const triggerHaptic = (type = 'light') => {
   } catch (e) {}
 };
 
+// --- NUMERIC INPUT SANITIZATION HELPER ---
+// Solves mobile keypad leading zero quirks (e.g. '060' -> '60', '06' -> '6') 
+// and allows empty fields while typing without snapping back to 0.
+const cleanNumericInput = (val, isFloat = false) => {
+  if (val === null || val === undefined) return '';
+  let str = String(val).trim().replace(',', '.');
+  if (str === '') return '';
+
+  if (isFloat) {
+    str = str.replace(/[^0-9.]/g, '');
+    const parts = str.split('.');
+    if (parts.length > 2) {
+      str = parts[0] + '.' + parts.slice(1).join('');
+    }
+  } else {
+    str = str.replace(/[^0-9]/g, '');
+  }
+
+  if (str.length > 1 && str.startsWith('0') && str[1] !== '.') {
+    str = str.replace(/^0+/, '');
+    if (str === '' || str.startsWith('.')) {
+      str = '0' + str;
+    }
+  }
+
+  return str;
+};
+
 // --- ICONS (SVG) ---
 const Icons = {
   Dumbbell: () => (
@@ -1021,9 +1049,9 @@ function OnboardingScreen({ initialProfile, onComplete, onCancel }) {
   const [formData, setFormData] = useState({
     name: initialProfile?.name && initialProfile.name !== 'Атлет' ? initialProfile.name : (tgUser.name !== 'Атлет' ? tgUser.name : ''),
     gender: initialProfile?.gender || 'male',
-    age: initialProfile?.age || 26,
-    height: initialProfile?.height || 178,
-    weight: initialProfile?.weight || 75,
+    age: initialProfile?.age ? String(initialProfile.age) : '26',
+    height: initialProfile?.height ? String(initialProfile.height) : '178',
+    weight: initialProfile?.weight ? String(initialProfile.weight) : '75',
     experience_level: initialProfile?.experience_level || 'beginner',
     fitness_goal: initialProfile?.fitness_goal || 'hypertrophy',
     injuries: initialProfile?.injuries || '',
@@ -1209,11 +1237,13 @@ function OnboardingScreen({ initialProfile, onComplete, onCancel }) {
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Вес</span>
                 <div className="flex items-baseline space-x-1 my-1">
                   <input
-                    type="number"
-                    step="0.5"
+                    type="text"
+                    inputMode="decimal"
                     value={formData.weight}
-                    onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || 0 })}
-                    className="w-16 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
+                    onFocus={(e) => e.target.select()}
+                    onClick={(e) => e.target.select()}
+                    onChange={(e) => setFormData({ ...formData, weight: cleanNumericInput(e.target.value, true) })}
+                    className="w-20 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
                   />
                   <span className="text-xs text-slate-400 font-bold">кг</span>
                 </div>
@@ -1225,10 +1255,13 @@ function OnboardingScreen({ initialProfile, onComplete, onCancel }) {
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Рост</span>
                 <div className="flex items-baseline space-x-1 my-1">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={formData.height}
-                    onChange={(e) => setFormData({ ...formData, height: parseFloat(e.target.value) || 0 })}
-                    className="w-16 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
+                    onFocus={(e) => e.target.select()}
+                    onClick={(e) => e.target.select()}
+                    onChange={(e) => setFormData({ ...formData, height: cleanNumericInput(e.target.value, false) })}
+                    className="w-20 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
                   />
                   <span className="text-xs text-slate-400 font-bold">см</span>
                 </div>
@@ -1240,10 +1273,13 @@ function OnboardingScreen({ initialProfile, onComplete, onCancel }) {
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Возраст</span>
                 <div className="flex items-baseline space-x-1 my-1">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={formData.age}
-                    onChange={(e) => setFormData({ ...formData, age: parseInt(e.target.value) || 0 })}
-                    className="w-14 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
+                    onFocus={(e) => e.target.select()}
+                    onClick={(e) => e.target.select()}
+                    onChange={(e) => setFormData({ ...formData, age: cleanNumericInput(e.target.value, false) })}
+                    className="w-16 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
                   />
                   <span className="text-xs text-slate-400 font-bold">лет</span>
                 </div>
@@ -2305,8 +2341,8 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
     }
   };
 
-  const adjustWeight = (delta) => setWeight((prev) => Math.max(0, Math.round((prev + delta) * 10) / 10));
-  const adjustReps = (delta) => setReps((prev) => Math.max(1, prev + delta));
+  const adjustWeight = (delta) => setWeight((prev) => Math.max(0, Math.round(((parseFloat(prev) || 0) + delta) * 10) / 10));
+  const adjustReps = (delta) => setReps((prev) => Math.max(1, (parseInt(prev, 10) || 1) + delta));
 
   // ==========================================
   // 1. ВЫБОР ДНЯ (ЕСЛИ ТРЕНИРОВКА ЕЩЕ НЕ НАЧАТА)
@@ -2876,10 +2912,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                     </button>
 
                     <input
-                      type="number"
-                      step="0.5"
+                      type="text"
+                      inputMode="decimal"
                       value={weight}
-                      onChange={(e) => setWeight(parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                      onClick={(e) => e.target.select()}
+                      onChange={(e) => setWeight(cleanNumericInput(e.target.value, true))}
                       className="w-16 text-center bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
                     />
 
@@ -2912,9 +2950,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                     </button>
 
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       value={reps}
-                      onChange={(e) => setReps(parseInt(e.target.value) || 1)}
+                      onFocus={(e) => e.target.select()}
+                      onClick={(e) => e.target.select()}
+                      onChange={(e) => setReps(cleanNumericInput(e.target.value, false))}
                       className="w-16 text-center bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
                     />
 
@@ -3530,31 +3571,36 @@ function AddPastWorkoutModal({ isOpen, onClose, exercises = [], onSaved }) {
                   <div className="bg-gym-900 rounded-xl p-1 border border-gym-800">
                     <span className="text-[8px] text-slate-500 uppercase block">Подходов</span>
                     <input
-                      type="number"
-                      min="1"
-                      max="10"
+                      type="text"
+                      inputMode="numeric"
                       value={r.sets_count}
-                      onChange={e => updateRow(i, 'sets_count', parseInt(e.target.value) || 1)}
+                      onFocus={(e) => e.target.select()}
+                      onClick={(e) => e.target.select()}
+                      onChange={e => updateRow(i, 'sets_count', cleanNumericInput(e.target.value, false))}
                       className="w-full bg-transparent text-center font-black text-white text-xs"
                     />
                   </div>
                   <div className="bg-gym-900 rounded-xl p-1 border border-gym-800">
                     <span className="text-[8px] text-slate-500 uppercase block">Вес (кг)</span>
                     <input
-                      type="number"
-                      step="0.5"
+                      type="text"
+                      inputMode="decimal"
                       value={r.weight}
-                      onChange={e => updateRow(i, 'weight', parseFloat(e.target.value) || 0)}
+                      onFocus={(e) => e.target.select()}
+                      onClick={(e) => e.target.select()}
+                      onChange={e => updateRow(i, 'weight', cleanNumericInput(e.target.value, true))}
                       className="w-full bg-transparent text-center font-black text-white text-xs"
                     />
                   </div>
                   <div className="bg-gym-900 rounded-xl p-1 border border-gym-800">
                     <span className="text-[8px] text-slate-500 uppercase block">Повторов</span>
                     <input
-                      type="number"
-                      min="1"
+                      type="text"
+                      inputMode="numeric"
                       value={r.reps}
-                      onChange={e => updateRow(i, 'reps', parseInt(e.target.value) || 1)}
+                      onFocus={(e) => e.target.select()}
+                      onClick={(e) => e.target.select()}
+                      onChange={e => updateRow(i, 'reps', cleanNumericInput(e.target.value, false))}
                       className="w-full bg-transparent text-center font-black text-white text-xs"
                     />
                   </div>
@@ -4287,11 +4333,17 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding }) {
     e.preventDefault();
     setSaving(true);
     setSaveSuccess(false);
+    const payload = {
+      ...formData,
+      age: parseInt(formData.age, 10) || 28,
+      height: parseFloat(formData.height) || 180,
+      weight: parseFloat(formData.weight) || 80
+    };
     try {
       const res = await fetch('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         const updated = await res.json();
@@ -4335,11 +4387,13 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding }) {
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Вес тела</span>
               <div className="flex items-baseline space-x-1 my-1">
                 <input
-                  type="number"
-                  step="0.5"
+                  type="text"
+                  inputMode="decimal"
                   required
                   value={formData.weight}
-                  onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || 0 })}
+                  onFocus={(e) => e.target.select()}
+                  onClick={(e) => e.target.select()}
+                  onChange={(e) => setFormData({ ...formData, weight: cleanNumericInput(e.target.value, true) })}
                   className="w-20 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
                 />
                 <span className="text-xs text-slate-400 font-bold">кг</span>
@@ -4352,10 +4406,13 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding }) {
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Рост</span>
               <div className="flex items-baseline space-x-1 my-1">
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
                   value={formData.height}
-                  onChange={(e) => setFormData({ ...formData, height: parseFloat(e.target.value) || 0 })}
+                  onFocus={(e) => e.target.select()}
+                  onClick={(e) => e.target.select()}
+                  onChange={(e) => setFormData({ ...formData, height: cleanNumericInput(e.target.value, false) })}
                   className="w-20 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
                 />
                 <span className="text-xs text-slate-400 font-bold">см</span>
@@ -4370,9 +4427,12 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding }) {
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Возраст</span>
               <div className="flex items-baseline space-x-1">
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={formData.age}
-                  onChange={(e) => setFormData({ ...formData, age: parseInt(e.target.value) || 0 })}
+                  onFocus={(e) => e.target.select()}
+                  onClick={(e) => e.target.select()}
+                  onChange={(e) => setFormData({ ...formData, age: cleanNumericInput(e.target.value, false) })}
                   className="w-16 bg-transparent text-xl font-black text-white focus:outline-none font-mono"
                 />
                 <span className="text-xs text-slate-400 font-bold">лет</span>
