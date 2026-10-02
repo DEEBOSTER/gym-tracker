@@ -19,6 +19,12 @@ class WorkoutSetCreate(BaseModel):
     set_number: Optional[int] = None
     set_type: Optional[str] = "normal"  # 'normal', 'warmup', 'drop', 'failure'
 
+class WorkoutSetUpdate(BaseModel):
+    weight: Optional[float] = Field(default=None, ge=0, description="Вес в кг")
+    reps: Optional[int] = Field(default=None, ge=1, description="Количество повторений")
+    set_type: Optional[str] = None  # 'normal', 'warmup', 'drop', 'failure'
+    set_number: Optional[int] = None
+
 class WorkoutSetResponse(BaseModel):
     id: int
     workout_id: int

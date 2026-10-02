@@ -44,7 +44,7 @@ from models import (
     ExerciseResponse, ExerciseCreate,
     WorkoutStart, WorkoutFinish,
     WorkoutDetailResponse, WorkoutSummaryResponse,
-    WorkoutSetCreate, WorkoutSetResponse,
+    WorkoutSetCreate, WorkoutSetUpdate, WorkoutSetResponse,
     AnalyticsResponse, AnalyticsDataPoint,
     UserProfileModel, UserProfileUpdate
 )
@@ -1311,6 +1311,44 @@ def add_workout_set(workout_id: int, payload: WorkoutSetCreate):
             "weight": payload.weight,
             "reps": payload.reps,
             "created_at": now_str
+        }
+
+@app.put("/api/sets/{set_id}", response_model=WorkoutSetResponse)
+def update_workout_set(set_id: int, payload: WorkoutSetUpdate):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT s.id, s.workout_id, s.exercise_id, s.set_number, COALESCE(s.set_type, 'normal') as set_type,
+                   s.weight, s.reps, s.created_at, e.name as exercise_name
+            FROM workout_sets s
+            JOIN exercises e ON e.id = s.exercise_id
+            WHERE s.id = ?;
+        """, (set_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Подход не найден")
+
+        new_weight = payload.weight if payload.weight is not None else row["weight"]
+        new_reps = payload.reps if payload.reps is not None else row["reps"]
+        new_type = payload.set_type if payload.set_type is not None else row["set_type"]
+        new_set_num = payload.set_number if payload.set_number is not None else row["set_number"]
+
+        cursor.execute("""
+            UPDATE workout_sets
+            SET weight = ?, reps = ?, set_type = ?, set_number = ?
+            WHERE id = ?;
+        """, (new_weight, new_reps, new_type, new_set_num, set_id))
+
+        return {
+            "id": row["id"],
+            "workout_id": row["workout_id"],
+            "exercise_id": row["exercise_id"],
+            "exercise_name": row["exercise_name"],
+            "set_number": new_set_num,
+            "set_type": new_type,
+            "weight": new_weight,
+            "reps": new_reps,
+            "created_at": row["created_at"]
         }
 
 @app.delete("/api/sets/{set_id}")

@@ -1892,6 +1892,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   const [setType, setSetType] = useState('normal'); // 'normal' | 'warmup' | 'drop' | 'failure'
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [workoutDuration, setWorkoutDuration] = useState(0);
+  const [editingSet, setEditingSet] = useState(null);
 
   // Auto-switch variant tab if coach recommends variant B
   useEffect(() => {
@@ -2343,6 +2344,44 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
   const adjustWeight = (delta) => setWeight((prev) => Math.max(0, Math.round(((parseFloat(prev) || 0) + delta) * 10) / 10));
   const adjustReps = (delta) => setReps((prev) => Math.max(1, (parseInt(prev, 10) || 1) + delta));
+
+  const handleSaveEditedSet = async (updatedFields) => {
+    if (!editingSet) return;
+    try {
+      const res = await fetch(`/api/sets/${editingSet.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFields)
+      });
+      if (res.ok) {
+        triggerHaptic('success');
+        setEditingSet(null);
+        if (typeof onRefresh === 'function') onRefresh();
+      } else {
+        alert('Ошибка при сохранении изменений');
+      }
+    } catch (e) {
+      alert('Ошибка соединения с сервером');
+    }
+  };
+
+  const handleDeleteEditedSet = async (setId) => {
+    if (!confirm('Удалить этот подход?')) return;
+    try {
+      const res = await fetch(`/api/sets/${setId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        triggerHaptic('warning');
+        setEditingSet(null);
+        if (typeof onRefresh === 'function') onRefresh();
+      } else {
+        alert('Ошибка при удалении подхода');
+      }
+    } catch (e) {
+      alert('Ошибка соединения с сервером');
+    }
+  };
 
   // ==========================================
   // 1. ВЫБОР ДНЯ (ЕСЛИ ТРЕНИРОВКА ЕЩЕ НЕ НАЧАТА)
@@ -3024,38 +3063,69 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           {/* Completed Sets Summary for CURRENT Exercise */}
           {(setsByExercise[currentPlanEx.name] || []).length > 0 && (
             <div className="pt-2 border-t border-gym-800/80">
-              <div className="flex items-center space-x-2 text-[11px] text-slate-400 flex-wrap gap-y-1">
+              <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
                 <span className="font-bold text-slate-300">Выполнено:</span>
+                <span className="text-[10px] text-slate-500 font-mono">нажмите для ред. ✏️</span>
+              </div>
+              <div className="flex items-center space-x-1.5 text-[11px] text-slate-400 flex-wrap gap-y-1">
                 {(setsByExercise[currentPlanEx.name] || []).map((s, idx) => {
                   const st = s.set_type || 'normal';
                   if (st === 'warmup') {
                     return (
-                      <span key={s.id || idx} className="bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1">
+                      <button
+                        key={s.id || idx}
+                        type="button"
+                        onClick={() => { triggerHaptic('light'); setEditingSet(s); }}
+                        className="bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                        title="Нажмите, чтобы изменить или удалить"
+                      >
                         <span className="text-[9px] bg-amber-500 text-gym-950 font-black px-1 rounded">W</span>
                         <span>{s.weight} кг × {s.reps}</span>
-                      </span>
+                        <span className="text-[8px] text-amber-400/80">✏️</span>
+                      </button>
                     );
                   }
                   if (st === 'drop') {
                     return (
-                      <span key={s.id || idx} className="bg-purple-500/15 border border-purple-500/40 text-purple-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1">
+                      <button
+                        key={s.id || idx}
+                        type="button"
+                        onClick={() => { triggerHaptic('light'); setEditingSet(s); }}
+                        className="bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                        title="Нажмите, чтобы изменить или удалить"
+                      >
                         <span className="text-[9px] bg-purple-500 text-white font-black px-1 rounded">D</span>
                         <span>{s.weight} кг × {s.reps}</span>
-                      </span>
+                        <span className="text-[8px] text-purple-400/80">✏️</span>
+                      </button>
                     );
                   }
                   if (st === 'failure') {
                     return (
-                      <span key={s.id || idx} className="bg-rose-500/15 border border-rose-500/40 text-rose-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1">
+                      <button
+                        key={s.id || idx}
+                        type="button"
+                        onClick={() => { triggerHaptic('light'); setEditingSet(s); }}
+                        className="bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                        title="Нажмите, чтобы изменить или удалить"
+                      >
                         <span className="text-[9px] bg-rose-500 text-white font-black px-1 rounded">F</span>
                         <span>{s.weight} кг × {s.reps}</span>
-                      </span>
+                        <span className="text-[8px] text-rose-400/80">✏️</span>
+                      </button>
                     );
                   }
                   return (
-                    <span key={s.id || idx} className="bg-gym-950 border border-gym-800 px-2 py-0.5 rounded-lg text-emerald-400 font-mono font-bold text-[10px]">
-                      #{s.set_number || idx + 1}: {s.weight} кг × {s.reps}
-                    </span>
+                    <button
+                      key={s.id || idx}
+                      type="button"
+                      onClick={() => { triggerHaptic('light'); setEditingSet(s); }}
+                      className="bg-gym-950 hover:bg-gym-800 border border-gym-800 hover:border-emerald-500/50 px-2 py-0.5 rounded-lg text-emerald-400 font-mono font-bold text-[10px] flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                      title="Нажмите, чтобы изменить или удалить"
+                    >
+                      <span>#{s.set_number || idx + 1}: {s.weight} кг × {s.reps}</span>
+                      <span className="text-[8px] text-slate-500">✏️</span>
+                    </button>
                   );
                 })}
               </div>
@@ -3101,7 +3171,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                     {setsByExercise[exName].map((s) => {
                       const st = s.set_type || 'normal';
                       return (
-                        <div key={s.id} className="flex items-center justify-between text-xs font-mono py-1 px-2 rounded-lg bg-gym-950/60">
+                        <div
+                          key={s.id}
+                          onClick={() => { triggerHaptic('light'); setEditingSet(s); }}
+                          className="flex items-center justify-between text-xs font-mono py-1.5 px-2.5 rounded-xl bg-gym-950/70 hover:bg-gym-800/80 border border-transparent hover:border-gym-700 cursor-pointer active:scale-98 transition group"
+                          title="Нажмите, чтобы изменить или удалить подход"
+                        >
                           <div className="flex items-center space-x-1.5">
                             {st === 'warmup' && (
                               <span className="text-[9px] font-black bg-amber-500 text-gym-950 px-1 py-0.2 rounded">W</span>
@@ -3115,9 +3190,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                             <span className="text-slate-400">Сет {s.set_number}</span>
                           </div>
                           <span className="text-white font-bold">{s.weight} кг × {s.reps}</span>
-                          <span className="text-[10px] text-emerald-400">
-                            {st !== 'warmup' ? `1ПМ: ${Math.round(s.weight * (1 + s.reps / 30) * 10) / 10} кг` : 'разминка'}
-                          </span>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-[10px] text-emerald-400">
+                              {st !== 'warmup' ? `1ПМ: ${Math.round(s.weight * (1 + s.reps / 30) * 10) / 10} кг` : 'разминка'}
+                            </span>
+                            <span className="text-[11px] text-slate-500 group-hover:text-emerald-400 transition">✏️</span>
+                          </div>
                         </div>
                       );
                     })}
@@ -3158,6 +3236,16 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           setSetType(stepType);
         }}
       />
+
+      {/* Edit Set Modal */}
+      {editingSet && (
+        <EditSetModal
+          set={editingSet}
+          onClose={() => setEditingSet(null)}
+          onSave={handleSaveEditedSet}
+          onDelete={handleDeleteEditedSet}
+        />
+      )}
     </div>
   );
 }
@@ -3409,6 +3497,222 @@ function AnalyticsScreen({ exercises }) {
 }
 
 // ==========================================
+// ✏️ MODAL FOR EDITING / DELETING A LOGGED SET
+// ==========================================
+function EditSetModal({ set, onClose, onSave, onDelete }) {
+  if (!set) return null;
+
+  const [weight, setWeight] = useState(set.weight !== undefined ? String(set.weight) : '20');
+  const [reps, setReps] = useState(set.reps !== undefined ? String(set.reps) : '10');
+  const [setType, setSetType] = useState(set.set_type || 'normal');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const adjustWeight = (delta) => {
+    triggerHaptic('light');
+    setWeight(prev => String(Math.max(0, Math.round(((parseFloat(prev) || 0) + delta) * 10) / 10)));
+  };
+
+  const adjustReps = (delta) => {
+    triggerHaptic('light');
+    setReps(prev => String(Math.max(1, (parseInt(prev, 10) || 1) + delta)));
+  };
+
+  const handleSave = async (e) => {
+    if (e) e.preventDefault();
+    setIsSaving(true);
+    try {
+      await onSave({
+        weight: parseFloat(weight) || 0,
+        reps: parseInt(reps, 10) || 1,
+        set_type: setType,
+        set_number: set.set_number
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await onDelete(set.id);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3.5 overflow-y-auto animate-in fade-in duration-150">
+      <div className="bg-gym-900 border border-gym-800 rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl animate-in zoom-in-95 my-auto">
+        {/* Header */}
+        <div className="flex items-start justify-between pb-2 border-b border-gym-800/80">
+          <div>
+            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest block">
+              Редактирование подхода
+            </span>
+            <h3 className="text-base font-black text-white leading-tight mt-0.5">
+              {set.exercise_name || 'Упражнение'}
+            </h3>
+            <span className="text-xs text-slate-400 font-mono mt-0.5 block">
+              Подход #{set.set_number || 1}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gym-800 hover:bg-gym-700 text-slate-400 hover:text-white flex items-center justify-center text-sm active:scale-95 transition"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Set Type Pills */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+            Тип подхода
+          </label>
+          <div className="grid grid-cols-4 gap-1.5">
+            {[
+              { id: 'normal', label: 'Обычный', badge: '⚪' },
+              { id: 'warmup', label: 'Разминка', badge: '🟡' },
+              { id: 'drop', label: 'Дроп-сет', badge: '🟣' },
+              { id: 'failure', label: 'Отказ', badge: '🔴' }
+            ].map(t => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => { triggerHaptic('light'); setSetType(t.id); }}
+                className={`py-2 px-1 rounded-xl border text-[11px] font-bold flex flex-col items-center justify-center space-y-0.5 transition active:scale-95 ${
+                  setType === t.id
+                    ? t.id === 'warmup'
+                      ? 'bg-amber-500/20 border-amber-400 text-amber-300 ring-1 ring-amber-400'
+                      : t.id === 'drop'
+                      ? 'bg-purple-500/20 border-purple-400 text-purple-300 ring-1 ring-purple-400'
+                      : t.id === 'failure'
+                      ? 'bg-rose-500/20 border-rose-400 text-rose-300 ring-1 ring-rose-400'
+                      : 'bg-emerald-500/20 border-emerald-400 text-emerald-300 ring-1 ring-emerald-400'
+                    : 'bg-gym-950/80 border-gym-800 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>{t.badge}</span>
+                <span className="text-[10px] leading-tight text-center">{t.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Steppers for Weight & Reps */}
+        <div className="grid grid-cols-2 gap-2.5">
+          {/* Weight */}
+          <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3 flex flex-col items-center justify-between">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              Вес (кг)
+            </span>
+            <div className="flex items-center justify-between w-full my-2 px-0.5">
+              <button
+                type="button"
+                onClick={() => adjustWeight(-2.5)}
+                className="w-8 h-8 rounded-xl bg-gym-800 active:bg-gym-700 text-slate-200 font-bold text-xs flex items-center justify-center active:scale-90 transition"
+              >
+                -2.5
+              </button>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={weight}
+                onFocus={(e) => e.target.select()}
+                onClick={(e) => e.target.select()}
+                onChange={(e) => setWeight(cleanNumericInput(e.target.value, true))}
+                className="w-16 text-center bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
+              />
+              <button
+                type="button"
+                onClick={() => adjustWeight(+2.5)}
+                className="w-8 h-8 rounded-xl bg-emerald-500/20 active:bg-emerald-500/40 text-emerald-400 border border-emerald-500/40 font-bold text-xs flex items-center justify-center active:scale-90 transition"
+              >
+                +2.5
+              </button>
+            </div>
+            <div className="flex space-x-1.5 w-full justify-center">
+              <button type="button" onClick={() => adjustWeight(-5)} className="text-[10px] font-mono text-slate-400 bg-gym-900 px-2 py-0.5 rounded-lg border border-gym-800 active:bg-gym-800">-5</button>
+              <button type="button" onClick={() => adjustWeight(+5)} className="text-[10px] font-mono text-emerald-400/90 bg-gym-900 px-2 py-0.5 rounded-lg border border-gym-800 active:bg-gym-800">+5</button>
+            </div>
+          </div>
+
+          {/* Reps */}
+          <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3 flex flex-col items-center justify-between">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              Повторения
+            </span>
+            <div className="flex items-center justify-between w-full my-2 px-0.5">
+              <button
+                type="button"
+                onClick={() => adjustReps(-1)}
+                className="w-8 h-8 rounded-xl bg-gym-800 active:bg-gym-700 text-slate-200 font-bold text-sm flex items-center justify-center active:scale-90 transition"
+              >
+                -1
+              </button>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={reps}
+                onFocus={(e) => e.target.select()}
+                onClick={(e) => e.target.select()}
+                onChange={(e) => setReps(cleanNumericInput(e.target.value, false))}
+                className="w-16 text-center bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
+              />
+              <button
+                type="button"
+                onClick={() => adjustReps(+1)}
+                className="w-8 h-8 rounded-xl bg-sky-500/20 active:bg-sky-500/40 text-sky-400 border border-sky-500/40 font-bold text-sm flex items-center justify-center active:scale-90 transition"
+              >
+                +1
+              </button>
+            </div>
+            <div className="flex space-x-1 w-full justify-center">
+              {[8, 10, 12].map(r => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => { triggerHaptic('light'); setReps(String(r)); }}
+                  className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border ${parseInt(reps, 10) === r ? 'bg-sky-500 text-gym-950 font-bold border-sky-400' : 'bg-gym-900 text-slate-400 border-gym-800 active:bg-gym-800'}`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex space-x-2 pt-2 border-t border-gym-800/80">
+          <button
+            type="button"
+            disabled={isDeleting || isSaving}
+            onClick={handleDelete}
+            className="px-3.5 py-3 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs flex items-center justify-center space-x-1.5 active:scale-95 transition"
+          >
+            <span>🗑️</span>
+            <span>{isDeleting ? 'Удаление...' : 'Удалить'}</span>
+          </button>
+          
+          <button
+            type="button"
+            disabled={isSaving || isDeleting}
+            onClick={handleSave}
+            className="flex-1 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gym-950 font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition"
+          >
+            <span>✓</span>
+            <span>{isSaving ? 'Сохранение...' : 'Сохранить изменения'}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
 // ➕ MODAL FOR ADDING PAST WORKOUTS
 // ==========================================
 function AddPastWorkoutModal({ isOpen, onClose, exercises = [], onSaved }) {
@@ -3641,6 +3945,7 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
   const [workoutDetailsCache, setWorkoutDetailsCache] = useState({});
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [showAddPastModal, setShowAddPastModal] = useState(false);
+  const [editingSet, setEditingSet] = useState(null);
 
   // Group workouts by 'YYYY-MM-DD'
   const workoutsByDate = useMemo(() => {
@@ -3767,6 +4072,99 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
       } finally {
         setLoadingDetail(false);
       }
+    }
+  };
+
+  const handleSaveHistorySet = async (updatedFields) => {
+    if (!editingSet) return;
+    try {
+      const res = await fetch(`/api/sets/${editingSet.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFields)
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        const workoutId = editingSet.workout_id;
+        
+        // Update local cache for details
+        if (workoutId && workoutDetailsCache[workoutId]) {
+          setWorkoutDetailsCache(prev => {
+            const cur = prev[workoutId];
+            if (!cur || !cur.sets) return prev;
+            const updatedSets = cur.sets.map(s => s.id === updated.id ? { ...s, ...updated } : s);
+            return { ...prev, [workoutId]: { ...cur, sets: updatedSets } };
+          });
+        }
+
+        // Update localStorage backup so offline sync keeps edited values
+        try {
+          const uId = getTelegramUser().id;
+          const uKey = 'gym_tracker_full_workouts_' + uId;
+          const stored = JSON.parse(localStorage.getItem(uKey) || '[]');
+          const wIdx = stored.findIndex(w => w.id === workoutId || (w.sets && w.sets.some(s => s.id === updated.id)));
+          if (wIdx !== -1) {
+            const w = stored[wIdx];
+            const updatedSets = (w.sets || []).map(s => s.id === updated.id ? { ...s, ...updated } : s);
+            const newVol = updatedSets.reduce((sum, s) => sum + (s.weight * s.reps), 0);
+            stored[wIdx] = { ...w, sets: updatedSets, total_volume: newVol, total_sets: updatedSets.length };
+            localStorage.setItem(uKey, JSON.stringify(stored));
+            localStorage.setItem('gym_tracker_full_workouts_backup', JSON.stringify(stored));
+          }
+        } catch (e) {}
+
+        triggerHaptic('success');
+        setEditingSet(null);
+        if (typeof onRefresh === 'function') onRefresh();
+      } else {
+        alert('Ошибка при сохранении изменений');
+      }
+    } catch (e) {
+      alert('Ошибка соединения с сервером');
+    }
+  };
+
+  const handleDeleteHistorySet = async (setId) => {
+    if (!confirm('Удалить этот подход из истории?')) return;
+    try {
+      const res = await fetch(`/api/sets/${setId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        const workoutId = editingSet?.workout_id;
+        
+        if (workoutId && workoutDetailsCache[workoutId]) {
+          setWorkoutDetailsCache(prev => {
+            const cur = prev[workoutId];
+            if (!cur || !cur.sets) return prev;
+            const updatedSets = cur.sets.filter(s => s.id !== setId);
+            return { ...prev, [workoutId]: { ...cur, sets: updatedSets } };
+          });
+        }
+
+        try {
+          const uId = getTelegramUser().id;
+          const uKey = 'gym_tracker_full_workouts_' + uId;
+          const stored = JSON.parse(localStorage.getItem(uKey) || '[]');
+          const wIdx = stored.findIndex(w => (workoutId && w.id === workoutId) || (w.sets && w.sets.some(s => s.id === setId)));
+          if (wIdx !== -1) {
+            const w = stored[wIdx];
+            const updatedSets = (w.sets || []).filter(s => s.id !== setId);
+            const newVol = updatedSets.reduce((sum, s) => sum + (s.weight * s.reps), 0);
+            stored[wIdx] = { ...w, sets: updatedSets, total_volume: newVol, total_sets: updatedSets.length };
+            localStorage.setItem(uKey, JSON.stringify(stored));
+            localStorage.setItem('gym_tracker_full_workouts_backup', JSON.stringify(stored));
+          }
+        } catch (e) {}
+
+        triggerHaptic('warning');
+        setEditingSet(null);
+        if (typeof onRefresh === 'function') onRefresh();
+      } else {
+        alert('Ошибка при удалении подхода');
+      }
+    } catch (e) {
+      alert('Ошибка соединения с сервером');
     }
   };
 
@@ -4043,46 +4441,66 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                               <div className="flex flex-wrap gap-1.5">
                                 {sList.map((s, idx) => {
                                   const st = s.set_type || 'normal';
+                                  const openEditModal = () => {
+                                    triggerHaptic('light');
+                                    setEditingSet({ ...s, workout_id: w.id });
+                                  };
                                   if (st === 'warmup') {
                                     return (
-                                      <span
+                                      <button
                                         key={s.id || idx}
-                                        className="bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1"
+                                        type="button"
+                                        onClick={openEditModal}
+                                        className="bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                                        title="Нажмите, чтобы изменить или удалить"
                                       >
                                         <span className="text-[9px] bg-amber-500 text-gym-950 font-black px-1 rounded">W</span>
                                         <span>{s.weight} кг × {s.reps}</span>
-                                      </span>
+                                        <span className="text-[8px] text-amber-400/80">✏️</span>
+                                      </button>
                                     );
                                   }
                                   if (st === 'drop') {
                                     return (
-                                      <span
+                                      <button
                                         key={s.id || idx}
-                                        className="bg-purple-500/15 border border-purple-500/40 text-purple-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1"
+                                        type="button"
+                                        onClick={openEditModal}
+                                        className="bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                                        title="Нажмите, чтобы изменить или удалить"
                                       >
                                         <span className="text-[9px] bg-purple-500 text-white font-black px-1 rounded">D</span>
                                         <span>{s.weight} кг × {s.reps}</span>
-                                      </span>
+                                        <span className="text-[8px] text-purple-400/80">✏️</span>
+                                      </button>
                                     );
                                   }
                                   if (st === 'failure') {
                                     return (
-                                      <span
+                                      <button
                                         key={s.id || idx}
-                                        className="bg-rose-500/15 border border-rose-500/40 text-rose-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1"
+                                        type="button"
+                                        onClick={openEditModal}
+                                        className="bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                                        title="Нажмите, чтобы изменить или удалить"
                                       >
                                         <span className="text-[9px] bg-rose-500 text-white font-black px-1 rounded">F</span>
                                         <span>{s.weight} кг × {s.reps}</span>
-                                      </span>
+                                        <span className="text-[8px] text-rose-400/80">✏️</span>
+                                      </button>
                                     );
                                   }
                                   return (
-                                    <span
+                                    <button
                                       key={s.id || idx}
-                                      className="bg-gym-900 border border-gym-700/80 px-2 py-0.5 rounded-lg text-emerald-400 font-mono font-bold text-[10px]"
+                                      type="button"
+                                      onClick={openEditModal}
+                                      className="bg-gym-900 hover:bg-gym-800 border border-gym-700/80 hover:border-emerald-500/50 px-2 py-0.5 rounded-lg text-emerald-400 font-mono font-bold text-[10px] flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                                      title="Нажмите, чтобы изменить или удалить"
                                     >
-                                      #{s.set_number || idx + 1}: {s.weight} кг × {s.reps}
-                                    </span>
+                                      <span>#{s.set_number || idx + 1}: {s.weight} кг × {s.reps}</span>
+                                      <span className="text-[8px] text-slate-500">✏️</span>
+                                    </button>
                                   );
                                 })}
                               </div>
@@ -4111,6 +4529,16 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
           onSaved={() => {
             if (typeof onRefresh === 'function') onRefresh();
           }}
+        />
+      )}
+
+      {/* Edit Set Modal */}
+      {editingSet && (
+        <EditSetModal
+          set={editingSet}
+          onClose={() => setEditingSet(null)}
+          onSave={handleSaveHistorySet}
+          onDelete={handleDeleteHistorySet}
         />
       )}
     </div>
