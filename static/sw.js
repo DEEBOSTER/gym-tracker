@@ -1,8 +1,7 @@
-const CACHE_NAME = 'gymtracker-v14';
+const CACHE_NAME = 'gymtracker-v15';
 const ASSETS_TO_CACHE = [
   '/',
-  '/static/index.html',
-  '/static/app.js',
+  '/manifest.json',
   '/static/manifest.json',
   '/static/icon.svg',
   '/static/icon-192.png',
@@ -13,7 +12,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[Service Worker] Caching app shell');
-      return cache.addAll(ASSETS_TO_CACHE);
+      return cache.addAll(ASSETS_TO_CACHE).catch(err => console.warn('Cache addAll note:', err));
     })
   );
   self.skipWaiting();
@@ -38,7 +37,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Network-first for API requests
+  // 1. Network-only for API requests
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
@@ -46,10 +45,32 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first, network fallback for static files
+  // 2. Network-first for HTML, JS and dynamic files so fresh code is always loaded
+  if (url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname.endsWith('.js')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // 3. Cache-first for images, fonts, icons, manifest
   event.respondWith(
     caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+      return response || fetch(event.request).then((netRes) => {
+        if (netRes.status === 200) {
+          const clone = netRes.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return netRes;
+      });
     })
   );
 });

@@ -24,6 +24,9 @@ function getTelegramUser() {
     if (paramId) {
       const cleanId = paramId.startsWith('tg_') || paramId.startsWith('u_') ? paramId : 'tg_' + paramId;
       localStorage.setItem('gym_tracker_user_id', cleanId);
+      if (cleanId.startsWith('tg_')) {
+        localStorage.setItem('gym_tracker_tg_id', cleanId);
+      }
       const paramName = urlParams.get('user_name') || urlParams.get('tg_name');
       if (paramName) {
         localStorage.setItem('gym_tracker_user_name', paramName);
@@ -111,6 +114,32 @@ const triggerHaptic = (type = 'light') => {
     }
   } catch (e) {}
 };
+
+// --- PWA ENVIRONMENT & STANDALONE HELPERS ---
+const isStandalonePWA = () => {
+  try {
+    return window.matchMedia('(display-mode: standalone)').matches || 
+           window.navigator.standalone === true || 
+           document.referrer.includes('android-app://');
+  } catch (e) {
+    return false;
+  }
+};
+
+const isInsideTelegram = () => {
+  try {
+    return Boolean(window.Telegram?.WebApp?.initDataUnsafe?.user?.id || window.TelegramWebviewProxy);
+  } catch (e) {
+    return false;
+  }
+};
+
+let deferredPwaInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPwaInstallPrompt = e;
+  window.dispatchEvent(new CustomEvent('gym-pwa-install-ready'));
+});
 
 // --- NUMERIC INPUT SANITIZATION HELPER ---
 // Solves mobile keypad leading zero quirks (e.g. '060' -> '60', '06' -> '6') 
@@ -1564,6 +1593,7 @@ function App() {
   const [exerciseGuides, setExerciseGuides] = useState({});
   const [loading, setLoading] = useState(!initialCachedProfile);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
 
   const isLocalOnboarded = (initialCachedProfile && initialCachedProfile.onboarding_completed === 1) || 
@@ -1753,13 +1783,32 @@ function App() {
               <span className="text-xs font-bold text-emerald-400">Тренировка активна ▶</span>
             </button>
           ) : (
-            <button
-              onClick={() => setActiveTab('profile')}
-              className="text-xs text-slate-300 hover:text-white bg-gym-800/90 px-2.5 py-1 rounded-full border border-gym-700 flex items-center space-x-1 font-mono"
-            >
-              <span>{userProfile?.weight || 80} кг</span>
-              <span className="text-emerald-400">⚙️</span>
-            </button>
+            <div className="flex items-center space-x-1.5">
+              <button
+                type="button"
+                onClick={() => setShowAccountModal(true)}
+                className={`text-xs px-2.5 py-1 rounded-full border flex items-center space-x-1 font-mono transition active:scale-95 ${
+                  currentUserId.startsWith('tg_')
+                    ? 'bg-gym-800/90 text-slate-300 hover:text-white border-gym-700'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
+                }`}
+                title="PWA и синхронизация аккаунта"
+              >
+                <span>{isStandalonePWA() ? '🚀' : currentUserId.startsWith('tg_') ? '📱' : '⚠️'}</span>
+                <span className="text-[11px] font-bold">
+                  {currentUserId.startsWith('tg_') ? 'PWA' : 'Войти'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('profile')}
+                className="text-xs text-slate-300 hover:text-white bg-gym-800/90 px-2.5 py-1 rounded-full border border-gym-700 flex items-center space-x-1 font-mono"
+              >
+                <span>{userProfile?.weight || 80} кг</span>
+                <span className="text-emerald-400">⚙️</span>
+              </button>
+            </div>
           )}
         </header>
       )}
@@ -1794,6 +1843,7 @@ function App() {
           {activeTab === 'profile' && (
             <ProfileScreen 
               profile={userProfile} 
+              onOpenAccountModal={() => setShowAccountModal(true)}
               onUpdateProfile={(updated) => {
                 setUserProfile(updated);
                 try {
@@ -1851,6 +1901,14 @@ function App() {
           </div>
         </nav>
       )}
+
+      {/* Account & PWA Modal */}
+      <AccountModal 
+        isOpen={showAccountModal} 
+        onClose={() => setShowAccountModal(false)} 
+        userProfile={userProfile} 
+        onUserChanged={() => loadAppData(true)} 
+      />
     </div>
   );
 }
@@ -2061,7 +2119,15 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   const scheduleBotRestPush = (seconds, exName, nextSet, targetSets, recW, recR) => {
     if (!botPushEnabled || seconds <= 0) return;
     try {
-      const tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+      const u = getTelegramUser();
+      let tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+      if (!tgUserId && u?.id) {
+        if (u.id.startsWith('tg_') && /^\d+$/.test(u.id.substring(3))) {
+          tgUserId = parseInt(u.id.substring(3), 10);
+        } else if (/^\d+$/.test(u.id)) {
+          tgUserId = parseInt(u.id, 10);
+        }
+      }
       fetch('/api/timer/schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2080,7 +2146,15 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
   const cancelBotRestPush = () => {
     try {
-      const tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+      const u = getTelegramUser();
+      let tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+      if (!tgUserId && u?.id) {
+        if (u.id.startsWith('tg_') && /^\d+$/.test(u.id.substring(3))) {
+          tgUserId = parseInt(u.id.substring(3), 10);
+        } else if (/^\d+$/.test(u.id)) {
+          tgUserId = parseInt(u.id, 10);
+        }
+      }
       fetch('/api/timer/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2215,7 +2289,15 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
         console.warn('Local workout backup error:', storageErr);
       }
 
-      const tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+      const u = getTelegramUser();
+      let tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+      if (!tgUserId && u?.id) {
+        if (u.id.startsWith('tg_') && /^\d+$/.test(u.id.substring(3))) {
+          tgUserId = parseInt(u.id.substring(3), 10);
+        } else if (/^\d+$/.test(u.id)) {
+          tgUserId = parseInt(u.id, 10);
+        }
+      }
       const res = await fetch(`/api/workouts/${activeWorkout.id}/finish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3713,6 +3795,322 @@ function EditSetModal({ set, onClose, onSave, onDelete }) {
 }
 
 // ==========================================
+// 📱 MODAL FOR PWA INSTALL & TELEGRAM ACCOUNT SWITCH
+// ==========================================
+function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
+  if (!isOpen) return null;
+
+  const currentUser = getTelegramUser();
+  const [tgInput, setTgInput] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [activeGuideTab, setActiveGuideTab] = useState('ios'); // 'ios' | 'android'
+  const [canInstallPwa, setCanInstallPwa] = useState(Boolean(deferredPwaInstallPrompt));
+  const [installing, setInstalling] = useState(false);
+
+  useEffect(() => {
+    const handlePwaReady = () => setCanInstallPwa(Boolean(deferredPwaInstallPrompt));
+    window.addEventListener('gym-pwa-install-ready', handlePwaReady);
+    return () => window.removeEventListener('gym-pwa-install-ready', handlePwaReady);
+  }, []);
+
+  const cleanTgId = currentUser.id.startsWith('tg_') 
+    ? currentUser.id.replace('tg_', '') 
+    : (currentUser.id.startsWith('u_') ? '' : currentUser.id);
+
+  const personalUrl = window.location.origin + (cleanTgId ? ('/?tg_id=' + cleanTgId) : '/?tg_id=591306946');
+
+  const handleCopyLink = () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(personalUrl);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = personalUrl;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopied(true);
+      triggerHaptic('success');
+      setTimeout(() => setCopied(false), 3000);
+    } catch (e) {
+      prompt('Скопируйте вашу персональную ссылку:', personalUrl);
+    }
+  };
+
+  const handleLogin = (idToUse) => {
+    const val = (idToUse || tgInput).trim();
+    if (!val) {
+      alert('Пожалуйста, введите ваш Telegram ID (цифры)');
+      return;
+    }
+    const clean = val.replace(/\D/g, '');
+    if (!clean) {
+      alert('Telegram ID должен содержать цифры');
+      return;
+    }
+    triggerHaptic('success');
+    const fullId = 'tg_' + clean;
+    try {
+      localStorage.setItem('gym_tracker_tg_id', fullId);
+      localStorage.setItem('gym_tracker_user_id', fullId);
+    } catch (e) {}
+    window.location.href = window.location.origin + window.location.pathname + '?tg_id=' + clean;
+  };
+
+  const handleInstallClick = async () => {
+    if (!deferredPwaInstallPrompt) {
+      alert('Для установки на iPhone используйте меню «Поделиться» ⎋ -> «На экран «Домой»» в Safari.');
+      return;
+    }
+    setInstalling(true);
+    try {
+      deferredPwaInstallPrompt.prompt();
+      const choiceResult = await deferredPwaInstallPrompt.userChoice;
+      if (choiceResult && choiceResult.outcome === 'accepted') {
+        triggerHaptic('success');
+      }
+      deferredPwaInstallPrompt = null;
+      setCanInstallPwa(false);
+    } catch (e) {
+      console.warn('PWA prompt error:', e);
+    } finally {
+      setInstalling(false);
+    }
+  };
+
+  const isStandalone = isStandalonePWA();
+  const isTg = isInsideTelegram();
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-gym-900 border border-gym-800 w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-gym-800 pb-3">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-sky-500 to-emerald-500 flex items-center justify-center text-gym-950 font-black shadow-lg">
+              📱
+            </div>
+            <div>
+              <h3 className="text-base font-black text-white leading-tight">
+                Веб-приложение (PWA) и Аккаунт
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Запуск в Safari, Chrome и на экране телефона
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gym-800 hover:bg-gym-700 text-slate-400 hover:text-white flex items-center justify-center text-sm active:scale-95 transition"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Current status pill */}
+        <div className="bg-gym-950 border border-gym-800 rounded-2xl p-3 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="text-lg">
+              {isStandalone ? '🚀' : isTg ? '✈️' : '🌐'}
+            </span>
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Текущий режим</span>
+              <span className="text-xs font-black text-white">
+                {isStandalone ? 'Автономное PWA (Экран Домой)' : isTg ? 'Telegram Mini App' : 'Веб-браузер'}
+              </span>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Аккаунт</span>
+            <span className="text-xs font-mono font-bold text-emerald-400">
+              {currentUser.id}
+            </span>
+          </div>
+        </div>
+
+        {/* 1. Personal Direct Link */}
+        <div className="bg-gym-950/80 border border-gym-800 rounded-2xl p-3.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black text-sky-400 uppercase tracking-wider">
+              🔗 Ваша персональная ссылка
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono">1 клик для входа</span>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Откройте эту ссылку в <strong>Safari</strong> или <strong>Chrome</strong> на телефоне, чтобы сразу подгрузились все ваши тренировки и история:
+          </p>
+          <div className="bg-gym-900 border border-gym-800 rounded-xl p-2.5 flex items-center justify-between gap-2">
+            <span className="text-xs font-mono text-slate-300 truncate select-all">
+              {personalUrl}
+            </span>
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shrink-0 active:scale-95 ${
+                copied 
+                  ? 'bg-emerald-500 text-gym-950 font-black' 
+                  : 'bg-sky-500/20 text-sky-300 border border-sky-500/40 hover:bg-sky-500/30'
+              }`}
+            >
+              {copied ? '✓ Скопировано' : '📋 Скопировать'}
+            </button>
+          </div>
+        </div>
+
+        {/* 2. One-click install button if Chrome prompt is available */}
+        {canInstallPwa && (
+          <button
+            type="button"
+            disabled={installing}
+            onClick={handleInstallClick}
+            className="w-full py-3.5 bg-gradient-to-r from-sky-500 to-emerald-500 text-gym-950 font-black text-sm rounded-2xl shadow-lg active:scale-95 transition flex items-center justify-center space-x-2"
+          >
+            <span>⚡</span>
+            <span>{installing ? 'Установка...' : 'УСТАНОВИТЬ НА ЭКРАН ТЕЛЕФОНА (1 КЛИК)'}</span>
+          </button>
+        )}
+
+        {/* 3. Visual Step-by-Step Install Guide */}
+        <div className="bg-gym-950/80 border border-gym-800 rounded-2xl p-3.5 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black text-emerald-400 uppercase tracking-wider">
+              📲 Как добавить на экран телефона
+            </span>
+            <div className="flex bg-gym-900 rounded-xl p-0.5 border border-gym-800">
+              <button
+                type="button"
+                onClick={() => setActiveGuideTab('ios')}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition ${
+                  activeGuideTab === 'ios' ? 'bg-gym-800 text-white shadow-sm' : 'text-slate-400'
+                }`}
+              >
+                🍏 iPhone
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveGuideTab('android')}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition ${
+                  activeGuideTab === 'android' ? 'bg-gym-800 text-white shadow-sm' : 'text-slate-400'
+                }`}
+              >
+                🤖 Android
+              </button>
+            </div>
+          </div>
+
+          {activeGuideTab === 'ios' ? (
+            <div className="space-y-2 text-xs text-slate-300">
+              <div className="flex items-start space-x-2.5 bg-gym-900/60 p-2.5 rounded-xl border border-gym-800/60">
+                <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-[11px] shrink-0">1</span>
+                <div>
+                  <p className="font-bold text-white">Откройте персональную ссылку в Safari</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">В штатном браузере Safari на iPhone (не внутри Telegram).</p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-2.5 bg-gym-900/60 p-2.5 rounded-xl border border-gym-800/60">
+                <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-[11px] shrink-0">2</span>
+                <div>
+                  <p className="font-bold text-white">Нажмите кнопку «Поделиться» ⎋</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Квадратная иконка со стрелочкой вверх по центру нижней панели Safari.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-2.5 bg-gym-900/60 p-2.5 rounded-xl border border-gym-800/60">
+                <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-[11px] shrink-0">3</span>
+                <div>
+                  <p className="font-bold text-white">Выберите пункт «На экран «Домой»» ➕</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Прокрутите список действий вниз и нажмите «На экран «Домой»», затем вверху справа нажмите «Добавить».</p>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-300">
+                ✨ <strong>Готово!</strong> Приложение появится на рабочем столе с фирменной иконкой. Оно открывается на весь экран без адресной строки и кэширует тренировки автономно.
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2 text-xs text-slate-300">
+              <div className="flex items-start space-x-2.5 bg-gym-900/60 p-2.5 rounded-xl border border-gym-800/60">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-[11px] shrink-0">1</span>
+                <div>
+                  <p className="font-bold text-white">Откройте персональную ссылку в Google Chrome</p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-2.5 bg-gym-900/60 p-2.5 rounded-xl border border-gym-800/60">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-[11px] shrink-0">2</span>
+                <div>
+                  <p className="font-bold text-white">Нажмите на три точки ⋮ в правом верхнем углу</p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-2.5 bg-gym-900/60 p-2.5 rounded-xl border border-gym-800/60">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-[11px] shrink-0">3</span>
+                <div>
+                  <p className="font-bold text-white">Выберите «Установить приложение» или «Добавить на главный экран»</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 4. Switch / Connect Telegram ID */}
+        <div className="bg-gym-950/80 border border-gym-800 rounded-2xl p-3.5 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black text-amber-400 uppercase tracking-wider">
+              🔑 Вход по Telegram ID
+            </span>
+            <span className="text-[10px] text-slate-500">Синхронизация истории</span>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Если вы открыли приложение на новом устройстве или в гостевом режиме, введите свой Telegram ID, чтобы мгновенно загрузить все сохраненные тренировки:
+          </p>
+
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Например: 591306946"
+              value={tgInput}
+              onChange={(e) => setTgInput(cleanNumericInput(e.target.value, false))}
+              className="flex-1 bg-gym-900 border border-gym-800 rounded-xl px-3 py-2 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+            />
+            <button
+              type="button"
+              onClick={() => handleLogin()}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-gym-950 font-black text-xs rounded-xl shadow-md active:scale-95 transition shrink-0"
+            >
+              Войти
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <button
+              type="button"
+              onClick={() => handleLogin('591306946')}
+              className="text-[11px] text-slate-400 hover:text-amber-300 font-mono underline decoration-dotted transition"
+            >
+              ⚡ В 1 клик восстановить профиль Дмитрия (591306946)
+            </button>
+          </div>
+        </div>
+
+        {/* Notifications info */}
+        <div className="bg-gym-950/40 border border-gym-800/40 rounded-xl p-3 text-[11px] text-slate-400 leading-relaxed space-y-1">
+          <p className="font-bold text-slate-300">🔔 Звуковые оповещения таймера в PWA:</p>
+          <p>
+            Когда вы тренируетесь в автономном приложении на телефоне, таймер отдыха издает звуковой сигнал прямо на устройстве, а бот дублирует пуш-уведомление в ваш Telegram.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
 // ➕ MODAL FOR ADDING PAST WORKOUTS
 // ==========================================
 function AddPastWorkoutModal({ isOpen, onClose, exercises = [], onSaved }) {
@@ -4715,7 +5113,7 @@ function ExercisesScreen({ exercises, exerciseGuides = {}, onRefresh }) {
 // ==========================================
 // 👤 USER PROFILE SCREEN ("О СЕБЕ")
 // ==========================================
-function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding }) {
+function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAccountModal }) {
   const [formData, setFormData] = useState({
     name: 'Атлет',
     gender: 'male',
@@ -4731,6 +5129,7 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding }) {
 
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -4988,6 +5387,78 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding }) {
               onChange={(e) => setFormData({ ...formData, injuries: e.target.value })}
               className="w-full bg-gym-950 border border-gym-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition"
             />
+          </div>
+        </div>
+
+        {/* Section 4: Standalone PWA & Account Management */}
+        <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 space-y-3 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black text-sky-400 uppercase tracking-wider block">
+              📱 Автономное веб-приложение (PWA) и Аккаунт
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono">
+              {isStandalonePWA() ? '🚀 PWA Активно' : isInsideTelegram() ? '✈️ Telegram' : '🌐 Веб'}
+            </span>
+          </div>
+
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Вы можете запускать GymTracker прямо в <strong>Safari</strong> или <strong>Chrome</strong> и добавить на экран iPhone / Android как отдельное приложение.
+          </p>
+
+          {/* Personal URL Copy Card */}
+          <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Персональная ссылка с вашим аккаунтом</span>
+              <span className="text-[10px] font-mono text-emerald-400 font-bold">{getTelegramUser().id}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                readOnly
+                value={window.location.origin + '/?tg_id=' + (getTelegramUser().id.startsWith('tg_') ? getTelegramUser().id.replace('tg_', '') : getTelegramUser().id)}
+                className="flex-1 bg-gym-900 border border-gym-800 rounded-xl px-2.5 py-1.5 text-xs font-mono text-slate-300 select-all focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const url = window.location.origin + '/?tg_id=' + (getTelegramUser().id.startsWith('tg_') ? getTelegramUser().id.replace('tg_', '') : getTelegramUser().id);
+                  try {
+                    navigator.clipboard.writeText(url);
+                    setLinkCopied(true);
+                    triggerHaptic('success');
+                    setTimeout(() => setLinkCopied(false), 2500);
+                  } catch (e) {
+                    prompt('Скопируйте ссылку:', url);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 active:scale-95 ${
+                  linkCopied 
+                    ? 'bg-emerald-500 text-gym-950 font-black' 
+                    : 'bg-sky-500/20 text-sky-300 border border-sky-500/40 hover:bg-sky-500/30'
+                }`}
+              >
+                {linkCopied ? '✓ Скопировано' : '📋 Копировать'}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-0.5">
+            <button
+              type="button"
+              onClick={onOpenAccountModal}
+              className="py-2.5 px-3 bg-gym-950 border border-gym-800 hover:border-sky-500/50 rounded-2xl text-xs font-bold text-slate-300 hover:text-white flex items-center justify-center space-x-1.5 transition active:scale-95 shadow-sm"
+            >
+              <span>📲</span>
+              <span>Как установить PWA</span>
+            </button>
+            <button
+              type="button"
+              onClick={onOpenAccountModal}
+              className="py-2.5 px-3 bg-gym-950 border border-gym-800 hover:border-amber-500/50 rounded-2xl text-xs font-bold text-slate-300 hover:text-white flex items-center justify-center space-x-1.5 transition active:scale-95 shadow-sm"
+            >
+              <span>🔑</span>
+              <span>Сменить TG ID</span>
+            </button>
           </div>
         </div>
 

@@ -872,6 +872,8 @@ def send_telegram_workout_summary(cursor, workout_id: int, chat_id: Optional[int
         if not target_chat_id:
             if w_user_id.isdigit():
                 target_chat_id = int(w_user_id)
+            elif w_user_id.startswith("tg_") and w_user_id[3:].isdigit():
+                target_chat_id = int(w_user_id[3:])
             else:
                 cursor.execute("SELECT telegram_chat_id FROM user_profiles WHERE user_id = ?;", (w_user_id,))
                 p_row = cursor.fetchone()
@@ -1031,6 +1033,7 @@ def send_telegram_workout_summary(cursor, workout_id: int, chat_id: Optional[int
                     webapp_url = u
 
         import urllib.request
+        pwa_url = f"{webapp_url.rstrip('/')}/?tg_id={target_chat_id}"
         send_payload = json.dumps({
             "chat_id": target_chat_id,
             "text": msg_text,
@@ -1038,7 +1041,8 @@ def send_telegram_workout_summary(cursor, workout_id: int, chat_id: Optional[int
             "reply_markup": {
                 "inline_keyboard": [
                     [
-                        {"text": "📊 Открыть статистику в GymTracker", "web_app": {"url": webapp_url}}
+                        {"text": "📊 В Telegram Mini App", "web_app": {"url": webapp_url}},
+                        {"text": "🌐 В браузере (PWA)", "url": pwa_url}
                     ]
                 ]
             }
@@ -1427,10 +1431,13 @@ def _send_telegram_rest_push_sync(chat_id: int, duration_seconds: int, exercise_
         }
 
         if webapp_url:
+            clean_url = webapp_url.rstrip("/")
+            pwa_url = f"{clean_url}/?tg_id={chat_id}"
             payload["reply_markup"] = {
                 "inline_keyboard": [
                     [
-                        {"text": "⚡ Открыть GymTracker", "web_app": {"url": webapp_url}}
+                        {"text": "⚡ В Telegram Mini App", "web_app": {"url": webapp_url}},
+                        {"text": "🌐 В браузере (PWA)", "url": pwa_url}
                     ]
                 ]
             }
