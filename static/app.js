@@ -1171,14 +1171,16 @@ function OnboardingScreen({ initialProfile, onComplete, onCancel }) {
   const recReps = formData.fitness_goal === 'strength' ? '5–7 повт.' : formData.fitness_goal === 'fat_loss' ? '10–15 повт.' : '8–12 повт.';
 
   return (
-    <div className="min-h-screen bg-gym-950 text-slate-100 flex flex-col justify-between max-w-lg mx-auto p-4 sm:p-6 font-sans">
+    <div className="min-h-screen bg-gym-950 text-slate-100 flex flex-col justify-between max-w-lg mx-auto p-4 sm:p-6 font-sans safe-top safe-bottom">
       {/* Top Header & Step Indicator */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-sky-500 flex items-center justify-center font-black text-gym-950 text-sm shadow-lg shadow-emerald-500/20">
-              ⚡
-            </div>
+            <img 
+              src="/static/app-icon.png" 
+              alt="GymTracker" 
+              className="w-9 h-9 rounded-xl shadow-lg border border-gym-700/80 object-cover shrink-0" 
+            />
             <div>
               <span className="text-xs font-black text-white uppercase tracking-wider block">GymTracker</span>
               <span className="text-[10px] text-emerald-400 font-bold">Персональная настройка</span>
@@ -1732,8 +1734,11 @@ function App() {
 
   if (loading && !hasOnboarded) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gym-950 text-slate-100 p-6 space-y-4">
-        <div className="w-12 h-12 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gym-950 text-slate-100 p-6 space-y-4 safe-top safe-bottom">
+        <div className="relative flex items-center justify-center">
+          <div className="w-20 h-20 border-4 border-sky-500/20 border-t-sky-400 rounded-3xl animate-spin absolute -inset-1"></div>
+          <img src="/static/app-icon.png" alt="GymTracker" className="w-16 h-16 rounded-2xl shadow-2xl relative z-10 border border-gym-700/80 object-cover" />
+        </div>
         <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Загрузка GymTracker...</p>
       </div>
     );
@@ -1754,16 +1759,16 @@ function App() {
   }
 
   return (
-    <div className={`flex flex-col min-h-screen bg-gym-950 text-slate-100 font-sans select-none ${isInWorkoutFocus ? 'pb-2' : 'pb-24'}`}>
+    <div className={`flex flex-col min-h-screen bg-gym-950 text-slate-100 font-sans select-none ${isInWorkoutFocus ? 'pb-safe-bottom pb-4' : 'safe-pb-nav'}`}>
       {/* Top Header: Hidden in workout focus mode to maximize vertical space */}
       {!isInWorkoutFocus && (
-        <header className="sticky top-0 z-40 bg-gym-900/95 backdrop-blur border-b border-gym-800 px-4 py-2.5 flex items-center justify-between">
+        <header className="sticky top-0 z-40 bg-gym-900/95 backdrop-blur border-b border-gym-800 px-4 pb-2.5 flex items-center justify-between safe-header">
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-sky-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <svg className="w-4 h-4 text-gym-950 font-black" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M4 7v10M8 5v14M16 5v14M20 7v10M8 12h8" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-              </svg>
-            </div>
+            <img 
+              src="/static/app-icon.png" 
+              alt="GymTracker" 
+              className="w-9 h-9 rounded-xl shadow-lg shadow-sky-500/10 border border-gym-700/80 object-cover shrink-0" 
+            />
             <div>
               <h1 className="text-sm font-extrabold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
                 GymTracker
@@ -1814,7 +1819,7 @@ function App() {
       )}
 
       {/* Main Content Area */}
-      <main className={`flex-1 max-w-lg mx-auto w-full px-3.5 ${isInWorkoutFocus ? 'pt-1' : 'pt-3'}`}>
+      <main className={`flex-1 max-w-lg mx-auto w-full px-3.5 ${isInWorkoutFocus ? 'pt-safe-top pt-2' : 'pt-2'}`}>
         <>
           {activeTab === 'workout' && (
             <GuidedWorkoutScreen 
@@ -1865,7 +1870,7 @@ function App() {
 
       {/* Bottom Fixed Navigation Bar (Hidden during active workout focus) */}
       {!isInWorkoutFocus && (
-        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-gym-900/95 backdrop-blur-md border-t border-gym-800 px-1 py-2 max-w-lg mx-auto">
+        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-gym-900/95 backdrop-blur-md border-t border-gym-800 px-1 pt-2 max-w-lg mx-auto safe-bottom">
           <div className="grid grid-cols-5 gap-0.5">
             <NavButton 
               active={activeTab === 'workout'} 
@@ -2091,7 +2096,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('GymTracker ⏱️', {
               body: 'Отдых окончен! Пора на следующий подход 💪',
-              icon: '/static/icons/icon-192.png'
+              icon: '/static/icon-192.png'
             });
           }
         } catch (e) {}
@@ -3884,14 +3889,16 @@ function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
   const isTg = isInsideTelegram();
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-gym-900 border border-gym-800 w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 safe-top safe-bottom">
+      <div className="bg-gym-900 border border-gym-800 w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl safe-bottom">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gym-800 pb-3">
           <div className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-sky-500 to-emerald-500 flex items-center justify-center text-gym-950 font-black shadow-lg">
-              📱
-            </div>
+            <img 
+              src="/static/app-icon.png" 
+              alt="GymTracker" 
+              className="w-10 h-10 rounded-2xl shadow-lg border border-gym-700/80 object-cover shrink-0" 
+            />
             <div>
               <h3 className="text-base font-black text-white leading-tight">
                 Веб-приложение (PWA) и Аккаунт
@@ -5393,9 +5400,12 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
         {/* Section 4: Standalone PWA & Account Management */}
         <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 space-y-3 shadow-lg">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black text-sky-400 uppercase tracking-wider block">
-              📱 Автономное веб-приложение (PWA) и Аккаунт
-            </span>
+            <div className="flex items-center space-x-2">
+              <img src="/static/app-icon.png" alt="GymTracker" className="w-6 h-6 rounded-lg object-cover" />
+              <span className="text-[11px] font-black text-sky-400 uppercase tracking-wider block">
+                Автономное веб-приложение (PWA)
+              </span>
+            </div>
             <span className="text-[10px] text-slate-500 font-mono">
               {isStandalonePWA() ? '🚀 PWA Активно' : isInsideTelegram() ? '✈️ Telegram' : '🌐 Веб'}
             </span>

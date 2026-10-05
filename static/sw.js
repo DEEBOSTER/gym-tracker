@@ -1,9 +1,12 @@
-const CACHE_NAME = 'gymtracker-v15';
+const CACHE_NAME = 'gymtracker-v18';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',
   '/static/manifest.json',
   '/static/icon.svg',
+  '/static/app-icon.png',
+  '/static/app-icon-192.png',
+  '/static/apple-touch-icon.png',
   '/static/icon-192.png',
   '/static/icon-512.png'
 ];
