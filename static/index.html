@@ -9,7 +9,7 @@
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0c121d">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="GymTracker">
   <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
@@ -76,19 +76,19 @@
     }
 
     .safe-header {
-      padding-top: max(0.625rem, calc(env(safe-area-inset-top, 0px) + 0.375rem));
+      padding-top: max(0.5rem, calc(env(safe-area-inset-top, 0px) + 0.35rem));
     }
     .safe-top {
       padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
     }
     .safe-bottom {
-      padding-bottom: max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.375rem));
+      padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
     }
     .safe-pb-nav {
-      padding-bottom: max(6rem, calc(env(safe-area-inset-bottom, 0px) + 5.5rem));
+      padding-bottom: max(4.25rem, calc(env(safe-area-inset-bottom, 0px) + 4rem));
     }
     .pt-safe-top {
-      padding-top: max(0.75rem, calc(env(safe-area-inset-top, 0px) + 0.5rem));
+      padding-top: max(0.5rem, calc(env(safe-area-inset-top, 0px) + 0.35rem));
     }
 
     /* Mobile-first gym app polish */
@@ -142,6 +142,6 @@
   </script>
 
   <!-- React App -->
-  <script type="text/babel" src="/static/app.js?v=18"></script>
+  <script type="text/babel" src="/static/app.js?v=20"></script>
 </body>
 </html>

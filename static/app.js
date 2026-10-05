@@ -1762,7 +1762,7 @@ function App() {
     <div className={`flex flex-col min-h-screen bg-gym-950 text-slate-100 font-sans select-none ${isInWorkoutFocus ? 'pb-safe-bottom pb-4' : 'safe-pb-nav'}`}>
       {/* Top Header: Hidden in workout focus mode to maximize vertical space */}
       {!isInWorkoutFocus && (
-        <header className="sticky top-0 z-40 bg-gym-900/95 backdrop-blur border-b border-gym-800 px-4 pb-2.5 flex items-center justify-between safe-header">
+        <header className="sticky top-0 z-40 bg-gym-900 border-b border-gym-800 px-4 pb-2.5 flex items-center justify-between safe-header">
           <div className="flex items-center space-x-2.5">
             <img 
               src="/static/app-icon.png" 
@@ -1870,7 +1870,7 @@ function App() {
 
       {/* Bottom Fixed Navigation Bar (Hidden during active workout focus) */}
       {!isInWorkoutFocus && (
-        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-gym-900/95 backdrop-blur-md border-t border-gym-800 px-1 pt-2 max-w-lg mx-auto safe-bottom">
+        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-gym-900 border-t border-gym-800 px-1 pt-1 max-w-lg mx-auto safe-bottom">
           <div className="grid grid-cols-5 gap-0.5">
             <NavButton 
               active={activeTab === 'workout'} 
@@ -1922,7 +1922,7 @@ function NavButton({ active, onClick, icon, label, badge }) {
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-col items-center justify-center py-2 px-1 rounded-2xl transition-all duration-150 active:scale-95 ${
+      className={`relative flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all duration-150 active:scale-95 ${
         active ? 'bg-gym-800 text-emerald-400 font-bold shadow-inner' : 'text-slate-400 hover:text-slate-200'
       }`}
     >
@@ -1934,7 +1934,7 @@ function NavButton({ active, onClick, icon, label, badge }) {
           </span>
         )}
       </div>
-      <span className="text-[11px] mt-1 tracking-tight">{label}</span>
+      <span className="text-[10px] mt-0.5 tracking-tight font-medium">{label}</span>
     </button>
   );
 }
