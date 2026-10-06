@@ -156,44 +156,84 @@ def seed_sample_history_if_empty():
         print("[OK] Демо-данные успешно добавлены.")
 
 def seed_real_user_history():
-    """Seeds the user's real workout from 2026-09-29 so it is permanently preserved across fresh server installs."""
+    """Seeds the user's real workouts from 2026-09-29 and 2026-10-01 so they are permanently preserved across fresh server installs."""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id, name FROM exercises;")
         ex_map = {r['name'].lower(): r['id'] for r in cursor.fetchall()}
 
-        sets_data = [
-            ('Жим гантелей на горизонтальной скамье', 15.0, 12, 'warmup'),
-            ('Жим гантелей на горизонтальной скамье', 18.0, 10, 'normal'),
-            ('Жим гантелей на горизонтальной скамье', 20.0, 10, 'normal'),
-            ('Жим гантелей на горизонтальной скамье', 22.5, 8, 'normal'),
+        workouts_data = [
+            {
+                'title': 'День 1: Push (Толкай) — Вариант А',
+                'start_time': '2026-09-29 17:47:00',
+                'end_time': '2026-09-29 19:09:00',
+                'notes': 'day_type:push|variant:a|Грудь, плечи, трицепс',
+                'sets': [
+                    ('Жим гантелей на горизонтальной скамье', 15.0, 12, 'warmup'),
+                    ('Жим гантелей на горизонтальной скамье', 18.0, 10, 'normal'),
+                    ('Жим гантелей на горизонтальной скамье', 20.0, 10, 'normal'),
+                    ('Жим гантелей на горизонтальной скамье', 22.5, 8, 'normal'),
 
-            ('Жим гантелей на наклонной скамье (30°)', 16.0, 10, 'normal'),
-            ('Жим гантелей на наклонной скамье (30°)', 18.0, 9, 'normal'),
-            ('Жим гантелей на наклонной скамье (30°)', 20.0, 5, 'normal'),
+                    ('Жим гантелей на наклонной скамье (30°)', 16.0, 10, 'normal'),
+                    ('Жим гантелей на наклонной скамье (30°)', 18.0, 9, 'normal'),
+                    ('Жим гантелей на наклонной скамье (30°)', 20.0, 5, 'normal'),
 
-            ('Жим гантелей сидя на плечи', 10.0, 12, 'warmup'),
-            ('Жим гантелей сидя на плечи', 12.0, 10, 'normal'),
-            ('Жим гантелей сидя на плечи', 14.0, 10, 'normal'),
-            ('Жим гантелей сидя на плечи', 15.0, 7, 'normal'),
+                    ('Жим гантелей сидя на плечи', 10.0, 12, 'warmup'),
+                    ('Жим гантелей сидя на плечи', 12.0, 10, 'normal'),
+                    ('Жим гантелей сидя на плечи', 14.0, 10, 'normal'),
+                    ('Жим гантелей сидя на плечи', 15.0, 7, 'normal'),
 
-            ('Тяга штанги к подбородку широким хватом', 25.0, 15, 'normal'),
-            ('Тяга штанги к подбородку широким хватом', 27.5, 12, 'normal'),
-            ('Тяга штанги к подбородку широким хватом', 30.0, 13, 'normal'),
+                    ('Тяга штанги к подбородку широким хватом', 25.0, 15, 'normal'),
+                    ('Тяга штанги к подбородку широким хватом', 27.5, 12, 'normal'),
+                    ('Тяга штанги к подбородку широким хватом', 30.0, 13, 'normal'),
 
-            ('Французский жим со штангой лежа', 15.0, 12, 'warmup'),
-            ('Французский жим со штангой лежа', 17.5, 12, 'normal'),
-            ('Французский жим со штангой лежа', 20.0, 10, 'normal'),
+                    ('Французский жим со штангой лежа', 15.0, 12, 'warmup'),
+                    ('Французский жим со штангой лежа', 17.5, 12, 'normal'),
+                    ('Французский жим со штангой лежа', 20.0, 10, 'normal'),
 
-            ('Французский жим с гантелью из-за головы', 16.0, 10, 'normal'),
-            ('Французский жим с гантелью из-за головы', 18.0, 11, 'normal'),
-            ('Французский жим с гантелью из-за головы', 20.0, 6, 'normal'),
+                    ('Французский жим с гантелью из-за головы', 16.0, 10, 'normal'),
+                    ('Французский жим с гантелью из-за головы', 18.0, 11, 'normal'),
+                    ('Французский жим с гантелью из-за головы', 20.0, 6, 'normal'),
+                ]
+            },
+            {
+                'title': 'День 2: Pull (Тяни) — Вариант А',
+                'start_time': '2026-10-01 16:24:07',
+                'end_time': '2026-10-01 17:30:45',
+                'notes': 'day_type:pull|variant:a|Подтягивания, тяга штанги в наклоне, руки, поясница|swap:Горизонтальная тяга блока (V-хват)->Тяга гантели в наклоне одной рукой',
+                'sets': [
+                    ('Подтягивания (турник / резина)', 0.0, 8, 'warmup'),
+                    ('Подтягивания (турник / резина)', 0.0, 8, 'normal'),
+                    ('Подтягивания (турник / резина)', 20.0, 7, 'normal'),
+
+                    ('Тяга штанги в наклоне', 20.0, 10, 'warmup'),
+                    ('Тяга штанги в наклоне', 25.0, 10, 'normal'),
+                    ('Тяга штанги в наклоне', 30.0, 10, 'normal'),
+                    ('Тяга штанги в наклоне', 40.0, 10, 'normal'),
+
+                    ('Тяга гантели в наклоне одной рукой', 10.0, 12, 'normal'),
+                    ('Тяга гантели в наклоне одной рукой', 15.0, 12, 'normal'),
+                    ('Тяга гантели в наклоне одной рукой', 15.0, 12, 'normal'),
+
+                    ('Peck-Deck на заднюю дельту', 15.0, 10, 'normal'),
+                    ('Peck-Deck на заднюю дельту', 20.0, 10, 'normal'),
+                    ('Peck-Deck на заднюю дельту', 25.0, 10, 'normal'),
+
+                    ('Сгибания рук с EZ-грифом на бицепс стоя', 17.5, 10, 'normal'),
+                    ('Сгибания рук с EZ-грифом на бицепс стоя', 20.0, 10, 'normal'),
+                    ('Сгибания рук с EZ-грифом на бицепс стоя', 22.5, 10, 'normal'),
+                    ('Сгибания рук с EZ-грифом на бицепс стоя', 25.0, 9, 'normal'),
+
+                    ('Молотки с гантелями', 8.0, 10, 'normal'),
+                    ('Молотки с гантелями', 9.0, 10, 'normal'),
+                    ('Молотки с гантелями', 10.0, 10, 'normal'),
+
+                    ('Гиперэкстензия', 5.0, 15, 'normal'),
+                    ('Гиперэкстензия', 15.0, 15, 'normal'),
+                    ('Гиперэкстензия', 20.0, 15, 'normal'),
+                ]
+            }
         ]
-
-        title = 'День 1: Push (Толкай) — Вариант А'
-        start_time = '2026-09-29 17:47:00'
-        end_time = '2026-09-29 19:09:00'
-        notes = 'day_type:push|variant:a|Грудь, плечи, трицепс'
 
         user_ids = ['tg_591306946', 'default']
         cursor.execute('''
@@ -203,28 +243,36 @@ def seed_real_user_history():
         ''', ('tg_591306946', 'DEBOOSTER', 'male', 26, 186.0, 80.0, 'intermediate', 'hypertrophy', 'Плечи', 'gym', 1, 591306946, '2026-09-29 17:47:00'))
 
         for u_id in user_ids:
-            cursor.execute("SELECT id FROM workouts WHERE user_id = ? AND start_time = ?;", (u_id, start_time))
-            if cursor.fetchone():
-                continue
-            cursor.execute(
-                "INSERT INTO workouts (user_id, title, start_time, end_time, notes) VALUES (?, ?, ?, ?, ?);",
-                (u_id, title, start_time, end_time, notes)
-            )
-            w_id = cursor.lastrowid
-            set_num = 1
-            for ex_name, w, r, st in sets_data:
-                ex_id = ex_map.get(ex_name.lower())
-                if not ex_id:
-                    cursor.execute("INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);", (ex_name, "Базовые"))
-                    cursor.execute("SELECT id FROM exercises WHERE name = ?;", (ex_name,))
-                    ex_row = cursor.fetchone()
-                    ex_id = ex_row["id"] if ex_row else 1
-                    ex_map[ex_name.lower()] = ex_id
-                cursor.execute('''
-                    INSERT INTO workout_sets (workout_id, exercise_id, set_number, set_type, weight, reps, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?);
-                ''', (w_id, ex_id, set_num, st, w, r, start_time))
-                set_num += 1
+            for w in workouts_data:
+                cursor.execute("SELECT id FROM workouts WHERE user_id = ? AND start_time = ?;", (u_id, w['start_time']))
+                existing = cursor.fetchone()
+                if existing:
+                    w_id = existing["id"]
+                    cursor.execute("SELECT COUNT(*) FROM workout_sets WHERE workout_id = ?;", (w_id,))
+                    count = cursor.fetchone()[0]
+                    if count > 0:
+                        continue
+                else:
+                    cursor.execute(
+                        "INSERT INTO workouts (user_id, title, start_time, end_time, notes) VALUES (?, ?, ?, ?, ?);",
+                        (u_id, w['title'], w['start_time'], w['end_time'], w['notes'])
+                    )
+                    w_id = cursor.lastrowid
+
+                set_num = 1
+                for ex_name, w_val, r_val, st in w['sets']:
+                    ex_id = ex_map.get(ex_name.lower())
+                    if not ex_id:
+                        cursor.execute("INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);", (ex_name, "Базовые"))
+                        cursor.execute("SELECT id FROM exercises WHERE name = ?;", (ex_name,))
+                        ex_row = cursor.fetchone()
+                        ex_id = ex_row["id"] if ex_row else 1
+                        ex_map[ex_name.lower()] = ex_id
+                    cursor.execute('''
+                        INSERT INTO workout_sets (workout_id, exercise_id, set_number, set_type, weight, reps, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?);
+                    ''', (w_id, ex_id, set_num, st, w_val, r_val, w['start_time']))
+                    set_num += 1
 
 if __name__ == "__main__":
     seed_exercises()
