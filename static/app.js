@@ -4427,6 +4427,290 @@ function AddPastWorkoutModal({ isOpen, onClose, exercises = [], onSaved }) {
 }
 
 // ==========================================
+// ➕ MODAL TO RESTORE / ADD SETS TO EXISTING WORKOUT
+// ==========================================
+function AddSetsToWorkoutModal({ workout, isOpen, onClose, exercises = [], onSaved }) {
+  if (!isOpen || !workout) return null;
+
+  // Determine initial template exercises based on workout title / notes
+  const initialRows = useMemo(() => {
+    const titleLower = (workout.title || '').toLowerCase();
+    const notesLower = (workout.notes || '').toLowerCase();
+
+    if (titleLower.includes('pull') || notesLower.includes('day_type:pull') || titleLower.includes('тяни')) {
+      return [
+        { exercise_name: 'Подтягивания (турник / резина)', weight: 0, reps: 8, sets_count: 3 },
+        { exercise_name: 'Тяга штанги в наклоне', weight: 50, reps: 10, sets_count: 3 },
+        { exercise_name: 'Тяга гантели в наклоне одной рукой', weight: 20, reps: 10, sets_count: 3 },
+        { exercise_name: 'Peck-Deck на заднюю дельту', weight: 35, reps: 12, sets_count: 3 },
+        { exercise_name: 'Сгибания рук с EZ-грифом на бицепс стоя', weight: 25, reps: 10, sets_count: 3 },
+        { exercise_name: 'Молотки с гантелями', weight: 14, reps: 10, sets_count: 3 },
+        { exercise_name: 'Гиперэкстензия', weight: 0, reps: 15, sets_count: 3 }
+      ];
+    }
+    if (titleLower.includes('legs') || notesLower.includes('day_type:legs') || titleLower.includes('ноги')) {
+      return [
+        { exercise_name: 'Приседания со штангой', weight: 70, reps: 10, sets_count: 4 },
+        { exercise_name: 'Жим ногами в тренажере', weight: 120, reps: 12, sets_count: 3 },
+        { exercise_name: 'Румынская тяга с гантелями', weight: 22, reps: 10, sets_count: 3 },
+        { exercise_name: 'Сгибания ног лежа', weight: 40, reps: 12, sets_count: 3 },
+        { exercise_name: 'Подъем на носки стоя', weight: 60, reps: 15, sets_count: 4 },
+        { exercise_name: 'Скручивания на пресс', weight: 0, reps: 20, sets_count: 3 }
+      ];
+    }
+    // Default push
+    return [
+      { exercise_name: 'Жим гантелей на горизонтальной скамье', weight: 20, reps: 8, sets_count: 4 },
+      { exercise_name: 'Жим гантелей на наклонной скамье (30°)', weight: 18, reps: 8, sets_count: 3 },
+      { exercise_name: 'Жим гантелей сидя на плечи', weight: 14, reps: 8, sets_count: 4 },
+      { exercise_name: 'Тяга штанги к подбородку широким хватом', weight: 30, reps: 12, sets_count: 3 },
+      { exercise_name: 'Французский жим со штангой лежа', weight: 20, reps: 10, sets_count: 3 }
+    ];
+  }, [workout]);
+
+  const [rows, setRows] = useState(initialRows);
+  const [pasteText, setPasteText] = useState('');
+  const [showPasteBox, setShowPasteBox] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fast parser for Telegram report text
+  const handleParseTelegramReport = () => {
+    if (!pasteText.trim()) return;
+    const lines = pasteText.split('\n');
+    const parsed = [];
+    lines.forEach(line => {
+      const m = line.match(/[•\*\-]?\s*([^:–\n]+)[:–]\s*(\d+)\s*(?:подход|сет|set)[^\d]*?(?:\(макс\.\s*(\d+(?:[.,]\d+)?)\s*кг\s*[×xх]\s*(\d+)\))?/i);
+      if (m) {
+        const exName = m[1].replace(/[*_]/g, '').trim();
+        const setsCount = parseInt(m[2], 10) || 3;
+        const weight = m[3] ? parseFloat(m[3].replace(',', '.')) : 0;
+        const reps = m[4] ? parseInt(m[4], 10) : 10;
+        parsed.push({
+          exercise_name: exName,
+          weight: isNaN(weight) ? 0 : weight,
+          reps: isNaN(reps) ? 10 : reps,
+          sets_count: setsCount
+        });
+      }
+    });
+
+    if (parsed.length > 0) {
+      setRows(parsed);
+      setShowPasteBox(false);
+      triggerHaptic('success');
+    } else {
+      alert('Не удалось распознать упражнения из текста. Проверьте формат или заполните таблицу вручную.');
+    }
+  };
+
+  const addRow = () => {
+    setRows(prev => [...prev, { exercise_name: exercises[0]?.name || 'Упражнение', weight: 20, reps: 10, sets_count: 3 }]);
+  };
+
+  const updateRow = (idx, field, val) => {
+    setRows(prev => {
+      const copy = [...prev];
+      copy[idx] = { ...copy[idx], [field]: val };
+      return copy;
+    });
+  };
+
+  const removeRow = (idx) => {
+    setRows(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const flatSets = [];
+      rows.forEach(r => {
+        const count = Math.max(1, parseInt(r.sets_count, 10) || 1);
+        for (let i = 1; i <= count; i++) {
+          flatSets.push({
+            exercise_name: r.exercise_name,
+            weight: parseFloat(r.weight) || 0,
+            reps: parseInt(r.reps, 10) || 10,
+            set_type: 'normal',
+            set_number: i
+          });
+        }
+      });
+
+      const totalVol = flatSets.reduce((sum, s) => sum + (s.weight * s.reps), 0);
+      const updatedWorkout = {
+        ...workout,
+        total_sets: flatSets.length,
+        total_volume: totalVol,
+        sets: flatSets
+      };
+
+      // 1. Send sync to server
+      await fetch('/api/workouts/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workouts: [updatedWorkout] })
+      });
+
+      // 2. Persist in local storage
+      try {
+        const uId = getTelegramUser().id;
+        const uKey = 'gym_tracker_full_workouts_' + uId;
+        const stored = JSON.parse(localStorage.getItem(uKey) || '[]');
+        const updated = [updatedWorkout, ...stored.filter(w => w.start_time !== workout.start_time)];
+        localStorage.setItem(uKey, JSON.stringify(updated));
+        localStorage.setItem('gym_tracker_full_workouts_backup', JSON.stringify(updated));
+        localStorage.setItem('gym_tracker_history_' + uId, JSON.stringify(updated));
+      } catch (e) {}
+
+      triggerHaptic('success');
+      if (typeof onSaved === 'function') onSaved(updatedWorkout);
+      onClose();
+    } catch (err) {
+      alert('Ошибка при сохранении подходов');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 overflow-y-auto">
+      <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 max-w-sm w-full space-y-3.5 shadow-2xl animate-in zoom-in-95 my-auto max-h-[92vh] overflow-y-auto">
+        <div className="flex items-center justify-between pb-2 border-b border-gym-800">
+          <div>
+            <h3 className="text-sm font-black text-white">Восстановить подходы</h3>
+            <p className="text-[10px] text-slate-400 font-mono">{workout.title} ({formatDate(workout.start_time)})</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-base">✕</button>
+        </div>
+
+        {/* Option to toggle paste box */}
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setShowPasteBox(!showPasteBox)}
+            className="text-[11px] font-bold text-sky-400 hover:text-sky-300 flex items-center space-x-1"
+          >
+            <span>📋</span>
+            <span>{showPasteBox ? 'Скрыть поле' : 'Вставить отчет из Telegram в 1 клик'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={addRow}
+            className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-lg active:scale-95 transition"
+          >
+            + Упражнение
+          </button>
+        </div>
+
+        {showPasteBox && (
+          <div className="bg-gym-950 p-3 rounded-2xl border border-gym-800 space-y-2">
+            <label className="text-[10px] text-slate-400 block font-medium">Вставьте текст сообщения отчета из бота:</label>
+            <textarea
+              rows={4}
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder="📋 Выполненные упражнения:&#10;• Подтягивания: 3 подход. (макс. 0 кг × 8)&#10;• Тяга штанги в наклоне: 3 подход. (макс. 50 кг × 10)"
+              className="w-full bg-gym-900 border border-gym-800 rounded-xl p-2 text-[11px] text-white font-mono placeholder-slate-600 focus:outline-none focus:border-sky-400"
+            />
+            <button
+              type="button"
+              onClick={handleParseTelegramReport}
+              className="w-full py-2 bg-sky-500 hover:bg-sky-400 text-gym-950 font-black text-xs rounded-xl shadow active:scale-95 transition"
+            >
+              ⚡ Распознать и заполнить таблицу
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-2 max-h-[46vh] overflow-y-auto pr-1">
+            {rows.map((r, i) => (
+              <div key={i} className="bg-gym-950 border border-gym-800/80 rounded-2xl p-2.5 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between gap-1">
+                  <input
+                    type="text"
+                    required
+                    value={r.exercise_name}
+                    onChange={e => updateRow(i, 'exercise_name', e.target.value)}
+                    className="flex-1 bg-gym-900 border border-gym-800 text-white rounded-lg px-2 py-1 text-xs font-bold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeRow(i)}
+                    className="text-slate-500 hover:text-rose-400 text-xs px-1.5 py-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+                  <div className="bg-gym-900 rounded-xl p-1 border border-gym-800">
+                    <span className="text-[8px] text-slate-500 uppercase block">Подходов</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={r.sets_count}
+                      onFocus={(e) => e.target.select()}
+                      onClick={(e) => e.target.select()}
+                      onChange={e => updateRow(i, 'sets_count', cleanNumericInput(e.target.value, false))}
+                      className="w-full bg-transparent text-center font-black text-white text-xs"
+                    />
+                  </div>
+
+                  <div className="bg-gym-900 rounded-xl p-1 border border-gym-800">
+                    <span className="text-[8px] text-slate-500 uppercase block">Вес (кг)</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={r.weight}
+                      onFocus={(e) => e.target.select()}
+                      onClick={(e) => e.target.select()}
+                      onChange={e => updateRow(i, 'weight', cleanNumericInput(e.target.value, true))}
+                      className="w-full bg-transparent text-center font-black text-emerald-400 text-xs"
+                    />
+                  </div>
+
+                  <div className="bg-gym-900 rounded-xl p-1 border border-gym-800">
+                    <span className="text-[8px] text-slate-500 uppercase block">Повторов</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={r.reps}
+                      onFocus={(e) => e.target.select()}
+                      onClick={(e) => e.target.select()}
+                      onChange={e => updateRow(i, 'reps', cleanNumericInput(e.target.value, false))}
+                      className="w-full bg-transparent text-center font-black text-white text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex space-x-2 pt-2 border-t border-gym-800">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 bg-gym-800 text-slate-300 font-bold text-xs rounded-xl"
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 py-2.5 bg-emerald-500 text-gym-950 font-black text-xs rounded-xl shadow-md active:scale-95 transition"
+            >
+              {isSubmitting ? 'Сохранение...' : 'Сохранить подходы'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
 // 📜 HISTORY SCREEN
 // ==========================================
 function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
@@ -4436,6 +4720,7 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
   const [workoutDetailsCache, setWorkoutDetailsCache] = useState({});
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [showAddPastModal, setShowAddPastModal] = useState(false);
+  const [editingWorkoutForSets, setEditingWorkoutForSets] = useState(null);
   const [editingSet, setEditingSet] = useState(null);
 
   // Group workouts by 'YYYY-MM-DD'
@@ -4904,12 +5189,19 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
             const isExpanded = expandedWorkoutId === w.id;
             const details = workoutDetailsCache[w.id];
 
+            const effectiveSets = (details?.sets && details.sets.length > 0)
+              ? details.sets
+              : (Array.isArray(w.sets) && w.sets.length > 0)
+                ? w.sets
+                : [];
+
             // Group detailed sets by exercise name if available
-            const groupedSets = details?.sets?.reduce((acc, s) => {
-              acc[s.exercise_name] = acc[s.exercise_name] || [];
-              acc[s.exercise_name].push(s);
+            const groupedSets = effectiveSets.reduce((acc, s) => {
+              const name = s.exercise_name || 'Упражнение';
+              acc[name] = acc[name] || [];
+              acc[name].push(s);
               return acc;
-            }, {}) || {};
+            }, {});
 
             return (
               <div
@@ -4976,11 +5268,11 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                 {/* Expanded sets & exercises breakdown */}
                 {isExpanded && (
                   <div className="pt-3 border-t border-gym-800 space-y-3 animate-in fade-in duration-200">
-                    {loadingDetail && !details ? (
+                    {loadingDetail && !details && effectiveSets.length === 0 ? (
                       <div className="py-4 text-center text-xs text-slate-400 font-mono animate-pulse">
                         Загрузка подходов...
                       </div>
-                    ) : details ? (
+                    ) : (
                       <div className="space-y-3">
                         {w.notes && (
                           <div className="bg-gym-950 p-2.5 rounded-xl border border-gym-800 text-[11px] text-slate-400">
@@ -4988,7 +5280,27 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                           </div>
                         )}
 
-                        <div className="space-y-2.5">
+                        {effectiveSets.length === 0 ? (
+                          <div className="bg-gym-950/70 border border-gym-800/80 rounded-2xl p-4 text-center space-y-2.5">
+                            <p className="text-xs text-slate-300 font-semibold">
+                              Данные о подходах не были записаны или были сброшены сервером.
+                            </p>
+                            <p className="text-[11px] text-slate-400">
+                              Вы можете восстановить подходы в 1 клик через вставку отчета из Telegram или заполнив веса.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingWorkoutForSets(w);
+                              }}
+                              className="text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-gym-950 px-4 py-2 rounded-xl shadow-lg active:scale-95 transition"
+                            >
+                              + Восстановить / внести подходы
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2.5">
                           {Object.entries(groupedSets).map(([exName, sList]) => (
                             <div key={exName} className="bg-gym-950/80 border border-gym-800/70 rounded-2xl p-3 space-y-2">
                               <div className="flex items-center justify-between text-xs">
@@ -5065,12 +5377,8 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                             </div>
                           ))}
                         </div>
-                      </div>
-                    ) : (
-                      <div className="text-center text-xs text-slate-500 py-2">
-                        Нет данных о подходах
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -5085,6 +5393,20 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
           onClose={() => setShowAddPastModal(false)}
           exercises={exercises}
           onSaved={() => {
+            if (typeof onRefresh === 'function') onRefresh();
+          }}
+        />
+      )}
+
+      {/* Restore / Add Sets to Existing Workout Modal */}
+      {editingWorkoutForSets && (
+        <AddSetsToWorkoutModal
+          isOpen={!!editingWorkoutForSets}
+          workout={editingWorkoutForSets}
+          onClose={() => setEditingWorkoutForSets(null)}
+          exercises={exercises}
+          onSaved={(updatedW) => {
+            setWorkoutDetailsCache(prev => ({ ...prev, [updatedW.id]: updatedW }));
             if (typeof onRefresh === 'function') onRefresh();
           }}
         />
