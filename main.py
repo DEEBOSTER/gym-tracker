@@ -1209,13 +1209,18 @@ def sync_workouts(
             )
             existing = cursor.fetchone()
             if existing:
-                continue
-
-            cursor.execute(
-                "INSERT INTO workouts (user_id, title, start_time, end_time, notes) VALUES (?, ?, ?, ?, ?);",
-                (user_id, w.title or "Силовая тренировка", w.start_time, w.end_time or w.start_time, w.notes or "")
-            )
-            workout_id = cursor.lastrowid
+                # Check if existing has 0 sets in DB but incoming payload has sets
+                cursor.execute("SELECT COUNT(*) as c FROM workout_sets WHERE workout_id = ?;", (existing["id"],))
+                cnt = cursor.fetchone()["c"]
+                if cnt > 0 or not w.sets:
+                    continue
+                workout_id = existing["id"]
+            else:
+                cursor.execute(
+                    "INSERT INTO workouts (user_id, title, start_time, end_time, notes) VALUES (?, ?, ?, ?, ?);",
+                    (user_id, w.title or "Силовая тренировка", w.start_time, w.end_time or w.start_time, w.notes or "")
+                )
+                workout_id = cursor.lastrowid
 
             set_num = 1
             for s in (w.sets or []):

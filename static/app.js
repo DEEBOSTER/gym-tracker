@@ -264,10 +264,68 @@ const categoryColors = {
   'Базовые': 'bg-slate-500/10 text-slate-300 border-slate-500/20'
 };
 
+const parseSafeDate = (val) => {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  if (typeof val === 'number') {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof val === 'string') {
+    const clean = val.trim();
+    const match = clean.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10) - 1;
+      const day = parseInt(match[3], 10);
+      const hours = match[4] ? parseInt(match[4], 10) : 0;
+      const minutes = match[5] ? parseInt(match[5], 10) : 0;
+      const seconds = match[6] ? parseInt(match[6], 10) : 0;
+      return new Date(year, month, day, hours, minutes, seconds);
+    }
+    const d = new Date(clean.replace(' ', 'T'));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+};
+
 const formatDate = (dateStr) => {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
+  const d = parseSafeDate(dateStr);
+  if (!d) return '';
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+};
+
+const getPluralWorkouts = (n) => {
+  const abs = Math.abs(n) % 100;
+  const rem = abs % 10;
+  if (abs > 10 && abs < 20) return 'тренировок';
+  if (rem > 1 && rem < 5) return 'тренировки';
+  if (rem === 1) return 'тренировка';
+  return 'тренировок';
+};
+
+const getPluralWeeks = (n) => {
+  const abs = Math.abs(n) % 100;
+  const rem = abs % 10;
+  if (abs > 10 && abs < 20) return 'недель';
+  if (rem > 1 && rem < 5) return 'недели';
+  if (rem === 1) return 'неделя';
+  return 'недель';
+};
+
+const getISOWeekKey = (dateVal) => {
+  const d = parseSafeDate(dateVal);
+  if (!d) return null;
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dayNr = (target.getDay() + 6) % 7;
+  target.setDate(target.getDate() - dayNr + 3);
+  const isoYear = target.getFullYear();
+  const firstThursday = new Date(isoYear, 0, 4);
+  const ftDayNr = (firstThursday.getDay() + 6) % 7;
+  firstThursday.setDate(firstThursday.getDate() - ftDayNr + 3);
+  const weekDiff = target.getTime() - firstThursday.getTime();
+  const weekNr = 1 + Math.round(weekDiff / (7 * 24 * 60 * 60 * 1000));
+  return `${isoYear}-W${String(weekNr).padStart(2, '0')}`;
 };
 
 const formatTime = (seconds) => {
@@ -1665,27 +1723,54 @@ function App() {
       // Combine server workouts with stored local workouts by start_time
       const mergedMap = new Map();
       (histData || []).forEach(w => {
-        if (w.start_time) mergedMap.set(w.start_time, w);
+        if (w.start_time) mergedMap.set(w.start_time, { ...w });
       });
       storedFullWorkouts.forEach(w => {
-        if (w.start_time && !mergedMap.has(w.start_time)) {
-          mergedMap.set(w.start_time, w);
+        if (!w.start_time) return;
+        if (!mergedMap.has(w.start_time)) {
+          mergedMap.set(w.start_time, { ...w });
+        } else {
+          // If server workout has 0 sets or volume, but local has sets or volume, preserve local!
+          const srv = mergedMap.get(w.start_time);
+          const localSets = Array.isArray(w.sets) ? w.sets : [];
+          const localVol = (typeof w.total_volume === 'number' && w.total_volume > 0)
+            ? w.total_volume
+            : localSets.reduce((sum, s) => sum + ((parseFloat(s.weight) || 0) * (parseInt(s.reps, 10) || 0)), 0);
+          const srvVol = srv.total_volume || 0;
+          const srvSets = srv.total_sets || 0;
+
+          const merged = { ...srv, ...w };
+          merged.total_volume = Math.max(srvVol, localVol);
+          merged.total_sets = Math.max(srvSets, localSets.length, w.total_sets || 0);
+          if (localSets.length > 0) {
+            merged.sets = localSets;
+          }
+          mergedMap.set(w.start_time, merged);
         }
       });
-      const combinedWorkouts = Array.from(mergedMap.values()).sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+      const combinedWorkouts = Array.from(mergedMap.values()).sort((a, b) => {
+        const da = parseSafeDate(a.start_time);
+        const db = parseSafeDate(b.start_time);
+        return (db ? db.getTime() : 0) - (da ? da.getTime() : 0);
+      });
 
-      // If client has workouts that the server is missing (e.g. Render server was restarted/redeployed)
-      const missingOnServer = storedFullWorkouts.filter(localW => 
-        !(histData || []).some(srvW => srvW.start_time === localW.start_time)
-      );
+      // If client has workouts that the server is missing or incomplete (0 sets/volume)
+      const missingOrIncompleteOnServer = Array.from(mergedMap.values()).filter(localW => {
+        const srv = (histData || []).find(s => s.start_time === localW.start_time);
+        if (!srv) return true;
+        if ((!srv.total_volume || srv.total_volume === 0) && (localW.total_volume > 0 || (localW.sets && localW.sets.length > 0))) {
+          return true;
+        }
+        return false;
+      });
 
-      if (missingOnServer.length > 0) {
-        console.log(`⚡ [Self-Healing] Restoring ${missingOnServer.length} workouts to server...`);
+      if (missingOrIncompleteOnServer.length > 0) {
+        console.log(`⚡ [Self-Healing] Restoring/Updating ${missingOrIncompleteOnServer.length} workouts to server...`);
         try {
           fetch('/api/workouts/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ workouts: missingOnServer })
+            body: JSON.stringify({ workouts: missingOrIncompleteOnServer })
           }).catch(() => {});
         } catch (syncErr) {
           console.warn("Workout sync warning:", syncErr);
@@ -2031,9 +2116,10 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   // Workout Session Duration Timer
   useEffect(() => {
     if (!activeWorkout) return;
-    const startTime = new Date(activeWorkout.start_time).getTime();
+    const sDate = parseSafeDate(activeWorkout.start_time);
+    const startTime = sDate ? sDate.getTime() : Date.now();
     const interval = setInterval(() => {
-      const now = new Date().getTime();
+      const now = Date.now();
       setWorkoutDuration(Math.max(0, Math.floor((now - startTime) / 1000)));
     }, 1000);
     return () => clearInterval(interval);
@@ -4357,7 +4443,9 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
     const map = {};
     workouts.forEach((w) => {
       if (!w.start_time) return;
-      const dateKey = w.start_time.split('T')[0].split(' ')[0];
+      const d = parseSafeDate(w.start_time);
+      if (!d) return;
+      const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       if (!map[dateKey]) map[dateKey] = [];
       map[dateKey].push(w);
     });
@@ -4367,66 +4455,99 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
   // Streak & monthly stats calculation
   const stats = useMemo(() => {
     if (!workouts || workouts.length === 0) {
-      return { streakWeeks: 0, monthCount: 0, monthVolume: 0, avgSets: 0 };
+      return { streakWeeks: 0, streakWorkouts: 0, monthCount: 0, monthVolume: 0, avgSets: 0 };
     }
 
     const now = new Date();
     const curYear = now.getFullYear();
     const curMonth = now.getMonth();
 
-    // Current month workouts
+    // 1. Current month workouts
     const thisMonthList = workouts.filter((w) => {
-      if (!w.start_time) return false;
-      const d = new Date(w.start_time);
+      const d = parseSafeDate(w.start_time);
+      if (!d) return false;
       return d.getFullYear() === curYear && d.getMonth() === curMonth;
     });
 
     const monthCount = thisMonthList.length;
-    const monthVolume = thisMonthList.reduce((sum, w) => sum + (w.total_volume || 0), 0);
+    const monthVolume = thisMonthList.reduce((sum, w) => {
+      const v = (w.total_volume && w.total_volume > 0)
+        ? w.total_volume
+        : (Array.isArray(w.sets) ? w.sets.reduce((s, set) => s + ((parseFloat(set.weight) || 0) * (parseInt(set.reps, 10) || 0)), 0) : 0);
+      return sum + v;
+    }, 0);
+
     const avgSets = workouts.length > 0 
-      ? Math.round(workouts.reduce((sum, w) => sum + (w.total_sets || 0), 0) / workouts.length) 
+      ? Math.round(workouts.reduce((sum, w) => {
+          const s = (w.total_sets && w.total_sets > 0)
+            ? w.total_sets
+            : (Array.isArray(w.sets) ? w.sets.length : 0);
+          return sum + s;
+        }, 0) / workouts.length) 
       : 0;
 
-    // Consecutive active weeks calculation
-    const getWeekKey = (d) => {
-      const target = new Date(d.valueOf());
-      const dayNr = (d.getDay() + 6) % 7;
-      target.setDate(target.getDate() - dayNr + 3);
-      const firstThursday = target.valueOf();
-      target.setMonth(0, 1);
-      if (target.getDay() !== 4) {
-        target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
-      }
-      const wk = 1 + Math.ceil((firstThursday - target) / 604800000);
-      return `${target.getFullYear()}-W${wk}`;
-    };
-
+    // 2. Active weeks collection
     const activeWeeks = new Set();
     workouts.forEach((w) => {
-      if (!w.start_time) return;
-      activeWeeks.add(getWeekKey(new Date(w.start_time)));
+      const k = getISOWeekKey(w.start_time);
+      if (k) activeWeeks.add(k);
     });
 
+    // 3. Weekly streak calculation
     let streakWeeks = 0;
-    let checkDate = new Date(now);
-    const thisWeekKey = getWeekKey(checkDate);
-    if (!activeWeeks.has(thisWeekKey)) {
-      checkDate.setDate(checkDate.getDate() - 7);
+    const currentWeekKey = getISOWeekKey(now);
+    const prevWeekKey = getISOWeekKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7));
+
+    let checkDate = null;
+    if (activeWeeks.has(currentWeekKey)) {
+      checkDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (activeWeeks.has(prevWeekKey)) {
+      checkDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
     }
 
-    while (true) {
-      const key = getWeekKey(checkDate);
-      if (activeWeeks.has(key)) {
-        streakWeeks++;
-        checkDate.setDate(checkDate.getDate() - 7);
-      } else {
-        break;
+    if (checkDate) {
+      while (true) {
+        const key = getISOWeekKey(checkDate);
+        if (activeWeeks.has(key)) {
+          streakWeeks++;
+          checkDate.setDate(checkDate.getDate() - 7);
+        } else {
+          break;
+        }
+        if (streakWeeks > 52) break;
       }
-      if (streakWeeks > 52) break;
+    }
+
+    // 4. Consecutive workouts streak calculation (session-by-session)
+    const validWorkouts = workouts
+      .map(w => ({ ...w, _parsedDate: parseSafeDate(w.start_time) }))
+      .filter(w => w._parsedDate !== null)
+      .sort((a, b) => b._parsedDate.getTime() - a._parsedDate.getTime());
+
+    let streakWorkouts = 0;
+    if (validWorkouts.length > 0) {
+      const lastWorkout = validWorkouts[0];
+      const msSinceLast = now.getTime() - lastWorkout._parsedDate.getTime();
+      const daysSinceLast = msSinceLast / (1000 * 60 * 60 * 24);
+
+      if (daysSinceLast <= 8.5) {
+        streakWorkouts = 1;
+        for (let i = 1; i < validWorkouts.length; i++) {
+          const prevW = validWorkouts[i - 1];
+          const currW = validWorkouts[i];
+          const gapDays = (prevW._parsedDate.getTime() - currW._parsedDate.getTime()) / (1000 * 60 * 60 * 24);
+          if (gapDays <= 8.5) {
+            streakWorkouts++;
+          } else {
+            break;
+          }
+        }
+      }
     }
 
     return {
-      streakWeeks: Math.max(1, streakWeeks),
+      streakWeeks,
+      streakWorkouts,
       monthCount,
       monthVolume,
       avgSets
@@ -4576,7 +4697,12 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
   // Filter workouts by selected date
   const filteredWorkouts = useMemo(() => {
     if (!selectedDate) return workouts;
-    return workouts.filter((w) => w.start_time && w.start_time.startsWith(selectedDate));
+    return workouts.filter((w) => {
+      const d = parseSafeDate(w.start_time);
+      if (!d) return false;
+      const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return dateKey === selectedDate;
+    });
   }, [workouts, selectedDate]);
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -4592,10 +4718,20 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
             </div>
             <div>
               <div className="flex items-center space-x-1.5">
-                <span className="text-lg font-black text-white">{stats.streakWeeks} {stats.streakWeeks === 1 ? 'неделя' : stats.streakWeeks < 5 ? 'недели' : 'недель'}</span>
+                <span className="text-lg font-black text-white">
+                  {stats.streakWorkouts > 0 
+                    ? `${stats.streakWorkouts} ${getPluralWorkouts(stats.streakWorkouts)} подряд`
+                    : stats.streakWeeks > 0 
+                    ? `${stats.streakWeeks} ${getPluralWeeks(stats.streakWeeks)}`
+                    : '0 тренировок'}
+                </span>
                 <span className="text-[10px] bg-amber-500/20 text-amber-400 font-bold px-1.5 py-0.5 rounded-full uppercase">Стрик</span>
               </div>
-              <p className="text-[11px] text-slate-400">Серия регулярных тренировок в зале</p>
+              <p className="text-[11px] text-slate-400">
+                {stats.streakWorkouts > 0 
+                  ? `🔥 Серия без пропусков • ${stats.streakWeeks} ${getPluralWeeks(stats.streakWeeks)} в зале`
+                  : 'Начните тренировку, чтобы запустить серию'}
+              </p>
             </div>
           </div>
         </div>
@@ -4610,7 +4746,7 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
           <div className="bg-gym-950/70 border border-gym-800/60 rounded-xl p-2">
             <span className="text-[10px] text-slate-500 block uppercase">Тоннаж мес.</span>
             <span className="text-sm font-black text-sky-400">
-              {stats.monthVolume >= 1000 ? `${(stats.monthVolume / 1000).toFixed(1)} т` : `${stats.monthVolume} кг`}
+              {stats.monthVolume >= 1000 ? `${(stats.monthVolume / 1000).toFixed(1)} т` : `${Math.round(stats.monthVolume)} кг`}
             </span>
           </div>
 
@@ -4797,7 +4933,7 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                       )}
                     </div>
                     <span className="text-xs text-slate-400 font-mono block">
-                      {formatDate(w.start_time)} • {new Date(w.start_time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                      {formatDate(w.start_time)} • {parseSafeDate(w.start_time)?.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) || ''}
                     </span>
                   </div>
 
@@ -4809,16 +4945,33 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                 </div>
 
                 {/* Quick stats pills */}
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gym-800/80 text-xs font-mono">
-                  <div className="text-slate-400 flex items-center space-x-1">
-                    <span>Подходов:</span>
-                    <strong className="text-white font-black">{w.total_sets}</strong>
-                  </div>
-                  <div className="text-slate-400 text-right flex items-center justify-end space-x-1">
-                    <span>Тоннаж:</span>
-                    <strong className="text-emerald-400 font-black">{w.total_volume ? `${w.total_volume.toLocaleString('ru-RU')} кг` : '0 кг'}</strong>
-                  </div>
-                </div>
+                {(() => {
+                  const cardSets = (w.total_sets && w.total_sets > 0)
+                    ? w.total_sets
+                    : (Array.isArray(w.sets) && w.sets.length > 0)
+                      ? w.sets.length
+                      : (details?.sets?.length || 0);
+                  const cardVol = (w.total_volume && w.total_volume > 0)
+                    ? w.total_volume
+                    : ((w.sets || details?.sets)
+                        ? (w.sets || details.sets).reduce((s, set) => s + ((parseFloat(set.weight) || 0) * (parseInt(set.reps, 10) || 0)), 0)
+                        : 0);
+
+                  return (
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gym-800/80 text-xs font-mono">
+                      <div className="text-slate-400 flex items-center space-x-1">
+                        <span>Подходов:</span>
+                        <strong className="text-white font-black">{cardSets}</strong>
+                      </div>
+                      <div className="text-slate-400 text-right flex items-center justify-end space-x-1">
+                        <span>Тоннаж:</span>
+                        <strong className="text-emerald-400 font-black">
+                          {cardVol > 0 ? `${Math.round(cardVol).toLocaleString('ru-RU')} кг` : '0 кг'}
+                        </strong>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Expanded sets & exercises breakdown */}
                 {isExpanded && (
