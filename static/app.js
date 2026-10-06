@@ -5379,10 +5379,11 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
-              </div>
-            );
+                  )}
+                </div>
+              )}
+            </div>
+          );
           })
         )}
       </div>
