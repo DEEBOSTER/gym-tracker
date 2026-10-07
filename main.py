@@ -6,7 +6,7 @@ import threading
 import asyncio
 import html
 from contextlib import asynccontextmanager
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 
 if hasattr(sys.stdout, 'reconfigure'):
@@ -1175,7 +1175,7 @@ class SyncSetItem(BaseModel):
     set_number: Optional[int] = None
 
 class SyncWorkoutItem(BaseModel):
-    id: Optional[int] = None
+    id: Optional[Union[int, str]] = None
     title: str
     start_time: str
     end_time: Optional[str] = None
@@ -1209,12 +1209,16 @@ def sync_workouts(
             )
             existing = cursor.fetchone()
             if existing:
-                # Check if existing has 0 sets in DB but incoming payload has sets
-                cursor.execute("SELECT COUNT(*) as c FROM workout_sets WHERE workout_id = ?;", (existing["id"],))
-                cnt = cursor.fetchone()["c"]
-                if cnt > 0 or not w.sets:
-                    continue
                 workout_id = existing["id"]
+                # Update title/notes if provided
+                cursor.execute(
+                    "UPDATE workouts SET title = COALESCE(?, title), notes = COALESCE(?, notes), end_time = COALESCE(?, end_time) WHERE id = ?;",
+                    (w.title, w.notes, w.end_time, workout_id)
+                )
+                if w.sets and len(w.sets) > 0:
+                    cursor.execute("DELETE FROM workout_sets WHERE workout_id = ?;", (workout_id,))
+                else:
+                    continue
             else:
                 cursor.execute(
                     "INSERT INTO workouts (user_id, title, start_time, end_time, notes) VALUES (?, ?, ?, ?, ?);",
