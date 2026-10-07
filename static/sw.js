@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gymtracker-v25';
+const CACHE_NAME = 'gymtracker-v26';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',

@@ -4257,14 +4257,21 @@ function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
             </button>
           </div>
 
-          <div className="flex items-center justify-between pt-1">
-            <button
-              type="button"
-              onClick={() => handleLogin('591306946')}
-              className="text-[11px] text-slate-400 hover:text-amber-300 font-mono underline decoration-dotted transition"
-            >
-              ⚡ В 1 клик восстановить профиль Дмитрия (591306946)
-            </button>
+          {/* Hint: How to find Telegram ID */}
+          <div className="bg-gym-900/60 border border-gym-800/80 rounded-xl p-3 text-[11px] space-y-1.5 text-slate-400 leading-relaxed">
+            <div className="flex items-center space-x-1.5 text-amber-400 font-bold">
+              <span>💡</span>
+              <span>Как узнать свой Telegram ID:</span>
+            </div>
+            <p>
+              1. Откройте в Telegram бота <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline font-mono font-bold">@userinfobot</a> или <a href="https://t.me/getmyid_bot" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline font-mono font-bold">@getmyid_bot</a>.
+            </p>
+            <p>
+              2. Отправьте команду <strong className="text-white">/start</strong> — бот сразу напишет ваш числовой <strong className="text-emerald-400 font-mono">Id</strong> (набор цифр).
+            </p>
+            <p>
+              3. Вставьте это число в поле выше и нажмите <strong>«Войти»</strong>, чтобы мгновенно подгрузить ваши тренировки.
+            </p>
           </div>
         </div>
 
