@@ -4557,34 +4557,123 @@ function AddSetsToWorkoutModal({ workout, isOpen, onClose, exercises = [], onSav
   const [showPasteBox, setShowPasteBox] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const parseTelegramReportText = (text) => {
+    if (!text || !text.trim()) return [];
+    const lines = text.split('\n');
+    const parsed = [];
+    const ignoreKeywords = ['день ', 'поднятый тоннаж', 'выполнено подходов', 'спец-сеты', 'совет тренера', 'выполненные упражнения', 'отчет'];
+    
+    for (let rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line) continue;
+      const lineLower = line.toLowerCase();
+      if (ignoreKeywords.some(kw => lineLower.includes(kw))) continue;
+
+      // Clean leading bullet points, numbers, asterisks, dashes, spaces
+      const cleaned = line.replace(/^[•\*\-\d\.\)\s]+/, '').trim();
+      if (!cleaned) continue;
+
+      // Pattern 1: contains подход / сет / set
+      const setsMatch = cleaned.match(/[:–\-]?\s*(\d+)\s*(?:подход|сет|set)[^\d]*/i);
+      if (setsMatch) {
+        const setsCount = parseInt(setsMatch[1], 10) || 3;
+        const prefix = cleaned.substring(0, setsMatch.index);
+        const exName = prefix.replace(/[\*_\s:]+$/g, '').trim();
+        const remainder = cleaned.substring(setsMatch.index + setsMatch[0].length);
+
+        let weight = 0;
+        let reps = 10;
+
+        // Weight and reps pattern: e.g. (макс. 100.0 кг × 10), (макс. *100.0 кг* × 10), 100 кг x 10, etc.
+        const wrMatch = remainder.match(/(?:макс\.\s*)?[\(\*]?\s*(\d+(?:[.,]\d+)?)\s*кг[\*\)]?\s*[×xх\*\-]\s*\*?(\d+)/i);
+        if (wrMatch) {
+          weight = parseFloat(wrMatch[1].replace(',', '.')) || 0;
+          reps = parseInt(wrMatch[2], 10) || 10;
+        } else {
+          const wMatch = remainder.match(/(?:макс\.\s*|по\s*)?[\(\*]?\s*(\d+(?:[.,]\d+)?)\s*кг/i);
+          if (wMatch) {
+            weight = parseFloat(wMatch[1].replace(',', '.')) || 0;
+          }
+          const rMatch = remainder.match(/[×xх\*]\s*(\d+)|(?:на\s*)?(\d+)\s*(?:повт|раз)/i);
+          if (rMatch) {
+            reps = parseInt(rMatch[1] || rMatch[2], 10) || 10;
+          }
+        }
+
+        if (exName && exName.length > 1 && !ignoreKeywords.some(kw => exName.toLowerCase().includes(kw))) {
+          parsed.push({
+            exercise_name: exName,
+            sets_count: setsCount,
+            weight: isNaN(weight) ? 0 : weight,
+            reps: isNaN(reps) ? 10 : reps
+          });
+          continue;
+        }
+      }
+
+      // Pattern 2: Exercise: 5 x 100 кг x 10
+      const colParts = cleaned.split(':');
+      if (colParts.length >= 2) {
+        const exName = colParts[0].replace(/[\*_]/g, '').trim();
+        const rest = colParts.slice(1).join(':').trim();
+        const nums = rest.match(/\d+(?:[.,]\d+)?/g);
+        if (nums && nums.length >= 3 && exName && exName.length > 1 && !ignoreKeywords.some(kw => exName.toLowerCase().includes(kw))) {
+          const setsCount = parseInt(nums[0], 10) || 3;
+          const weight = parseFloat(nums[1].replace(',', '.')) || 0;
+          const reps = parseInt(nums[2], 10) || 10;
+          parsed.push({
+            exercise_name: exName,
+            sets_count: setsCount,
+            weight: isNaN(weight) ? 0 : weight,
+            reps: isNaN(reps) ? 10 : reps
+          });
+        }
+      }
+    }
+
+    return parsed;
+  };
+
+  const applyParsedExercises = (parsedList) => {
+    if (parsedList && parsedList.length > 0) {
+      setRows(parsedList);
+      setShowPasteBox(false);
+      triggerHaptic('success');
+      return true;
+    }
+    return false;
+  };
+
   // Fast parser for Telegram report text
   const handleParseTelegramReport = () => {
     if (!pasteText.trim()) return;
-    const lines = pasteText.split('\n');
-    const parsed = [];
-    lines.forEach(line => {
-      const m = line.match(/[•\*\-]?\s*([^:–\n]+)[:–]\s*(\d+)\s*(?:подход|сет|set)[^\d]*?(?:\(макс\.\s*(\d+(?:[.,]\d+)?)\s*кг\s*[×xх]\s*(\d+)\))?/i);
-      if (m) {
-        const exName = m[1].replace(/[*_]/g, '').trim();
-        const setsCount = parseInt(m[2], 10) || 3;
-        const weight = m[3] ? parseFloat(m[3].replace(',', '.')) : 0;
-        const reps = m[4] ? parseInt(m[4], 10) : 10;
-        parsed.push({
-          exercise_name: exName,
-          weight: isNaN(weight) ? 0 : weight,
-          reps: isNaN(reps) ? 10 : reps,
-          sets_count: setsCount
-        });
-      }
-    });
-
-    if (parsed.length > 0) {
-      setRows(parsed);
-      setShowPasteBox(false);
-      triggerHaptic('success');
-    } else {
-      alert('Не удалось распознать упражнения из текста. Проверьте формат или заполните таблицу вручную.');
+    const parsed = parseTelegramReportText(pasteText);
+    if (!applyParsedExercises(parsed)) {
+      alert('Не удалось распознать упражнения из текста. Убедитесь, что скопирован отчет с упражнениями или заполните данные вручную.');
     }
+  };
+
+  const handleQuickPasteClick = async () => {
+    let clipboardText = '';
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.readText) {
+        clipboardText = await navigator.clipboard.readText();
+      }
+    } catch (e) {
+      console.log('Clipboard read note:', e);
+    }
+
+    if (clipboardText && clipboardText.trim()) {
+      const parsed = parseTelegramReportText(clipboardText);
+      if (applyParsedExercises(parsed)) {
+        return;
+      }
+      setPasteText(clipboardText);
+      setShowPasteBox(true);
+      return;
+    }
+
+    setShowPasteBox(prev => !prev);
   };
 
   const addRow = () => {
@@ -4672,7 +4761,7 @@ function AddSetsToWorkoutModal({ workout, isOpen, onClose, exercises = [], onSav
         <div className="flex items-center justify-between">
           <button
             type="button"
-            onClick={() => setShowPasteBox(!showPasteBox)}
+            onClick={handleQuickPasteClick}
             className="text-[11px] font-bold text-sky-400 hover:text-sky-300 flex items-center space-x-1"
           >
             <span>📋</span>
@@ -4689,12 +4778,32 @@ function AddSetsToWorkoutModal({ workout, isOpen, onClose, exercises = [], onSav
 
         {showPasteBox && (
           <div className="bg-gym-950 p-3 rounded-2xl border border-gym-800 space-y-2">
-            <label className="text-[10px] text-slate-400 block font-medium">Вставьте текст сообщения отчета из бота:</label>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] text-slate-400 block font-medium">Вставьте текст сообщения отчета из бота:</label>
+              {typeof navigator !== 'undefined' && navigator.clipboard && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const t = await navigator.clipboard.readText();
+                      if (t) {
+                        setPasteText(t);
+                        const parsed = parseTelegramReportText(t);
+                        if (parsed.length > 0) applyParsedExercises(parsed);
+                      }
+                    } catch (e) {}
+                  }}
+                  className="text-[10px] text-sky-400 hover:text-sky-300 font-bold"
+                >
+                  📋 Вставить из буфера
+                </button>
+              )}
+            </div>
             <textarea
               rows={4}
               value={pasteText}
               onChange={(e) => setPasteText(e.target.value)}
-              placeholder="📋 Выполненные упражнения:&#10;• Подтягивания: 3 подход. (макс. 0 кг × 8)&#10;• Тяга штанги в наклоне: 3 подход. (макс. 50 кг × 10)"
+              placeholder="📋 Выполненные упражнения:&#10;• Приседания со штангой на плечах: 5 подход. (макс. 100.0 кг × 10)&#10;• Румынская тяга: 4 подход. (макс. 80.0 кг × 10)"
               className="w-full bg-gym-900 border border-gym-800 rounded-xl p-2 text-[11px] text-white font-mono placeholder-slate-600 focus:outline-none focus:border-sky-400"
             />
             <button
