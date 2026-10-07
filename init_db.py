@@ -281,6 +281,14 @@ def seed_real_user_history():
 
         for u_id in user_ids:
             for w in workouts_data:
+                # If this workout was deleted by the user, do not re-seed it
+                try:
+                    cursor.execute("SELECT 1 FROM deleted_workouts WHERE user_id = ? AND start_time = ?;", (u_id, w['start_time']))
+                    if cursor.fetchone():
+                        continue
+                except Exception:
+                    pass
+
                 cursor.execute("SELECT id FROM workouts WHERE user_id = ? AND start_time = ?;", (u_id, w['start_time']))
                 existing = cursor.fetchone()
                 if existing:

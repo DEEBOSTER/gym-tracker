@@ -117,6 +117,16 @@ def init_database():
             );
         """)
 
+        # Deleted workouts tracking table (prevents re-seeding permanently)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS deleted_workouts (
+                user_id TEXT NOT NULL,
+                start_time TEXT NOT NULL,
+                deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, start_time)
+            );
+        """)
+
         # Also ensure legacy user_profile table exists for backward-compatibility
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS user_profile (

@@ -1369,6 +1369,52 @@ def delete_workout_set(set_id: int):
             raise HTTPException(status_code=404, detail="Подход не найден")
         return {"status": "ok", "deleted_id": set_id}
 
+@app.delete("/api/workouts/{workout_id}")
+def delete_workout(
+    workout_id: int,
+    user_id: str = Depends(get_current_user_id)
+):
+    """Permanently deletes a workout and its sets, and records in deleted_workouts to prevent auto-re-seeding."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, user_id, start_time FROM workouts WHERE id = ?;", (workout_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Тренировка не найдена")
+
+        w_uid = row["user_id"] or user_id
+        start_time = row["start_time"]
+
+        # Prevent automatic re-seeding on fresh server boot
+        if start_time:
+            try:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS deleted_workouts (
+                        user_id TEXT NOT NULL,
+                        start_time TEXT NOT NULL,
+                        deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (user_id, start_time)
+                    );
+                """)
+                cursor.execute(
+                    "INSERT OR REPLACE INTO deleted_workouts (user_id, start_time) VALUES (?, ?);",
+                    (w_uid, start_time)
+                )
+                if user_id != w_uid:
+                    cursor.execute(
+                        "INSERT OR REPLACE INTO deleted_workouts (user_id, start_time) VALUES (?, ?);",
+                        (user_id, start_time)
+                    )
+            except Exception as e:
+                print(f"⚠️ Note on deleted_workouts recording: {e}")
+
+        # Delete all sets for this workout
+        cursor.execute("DELETE FROM workout_sets WHERE workout_id = ?;", (workout_id,))
+        # Delete workout
+        cursor.execute("DELETE FROM workouts WHERE id = ?;", (workout_id,))
+
+        return {"status": "ok", "deleted_id": workout_id}
+
 # ==========================================
 # ⏱️ TELEGRAM BOT REST TIMER PUSH SCHEDULER
 # ==========================================
@@ -1479,6 +1525,7 @@ async def schedule_rest_timer(
     payload: ScheduleTimerRequest,
     user_id: str = Depends(get_current_user_id)
 ):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
     target_chat_id = payload.telegram_chat_id
     if not target_chat_id:
         if user_id.startswith("tg_") and user_id[3:].isdigit():
@@ -1494,6 +1541,54 @@ async def schedule_rest_timer(
                 p = cursor.fetchone()
                 if p and p["telegram_chat_id"]:
                     target_chat_id = p["telegram_chat_id"]
+                
+                # Check if ANY user profile has a telegram_chat_id
+                if not target_chat_id:
+                    cursor.execute("SELECT telegram_chat_id FROM user_profiles WHERE telegram_chat_id IS NOT NULL ORDER BY updated_at DESC LIMIT 1;")
+                    p_any = cursor.fetchone()
+                    if p_any and p_any["telegram_chat_id"]:
+                        target_chat_id = p_any["telegram_chat_id"]
+        except Exception:
+            pass
+
+    # Check telegram_chat_id.txt fallback file
+    if not target_chat_id:
+        chat_id_file = os.path.join(base_dir, "telegram_chat_id.txt")
+        if os.path.exists(chat_id_file):
+            try:
+                with open(chat_id_file, "r", encoding="utf-8") as f:
+                    v = f.read().strip()
+                    if v.isdigit():
+                        target_chat_id = int(v)
+            except Exception:
+                pass
+
+    # Check telegram bot getUpdates fallback
+    if not target_chat_id:
+        try:
+            bot_token = os.environ.get("BOT_TOKEN")
+            if not bot_token and os.path.exists(os.path.join(base_dir, "bot_token.txt")):
+                with open(os.path.join(base_dir, "bot_token.txt"), "r", encoding="utf-8") as f:
+                    bot_token = f.read().strip()
+            if bot_token:
+                req = urllib.request.Request(f"https://api.telegram.org/bot{bot_token}/getUpdates", timeout=4)
+                with urllib.request.urlopen(req) as r:
+                    upd_data = json.loads(r.read().decode())
+                    results = upd_data.get("result", [])
+                    if results:
+                        last_msg = results[-1].get("message", {})
+                        if last_msg.get("chat", {}).get("id"):
+                            target_chat_id = last_msg["chat"]["id"]
+        except Exception:
+            pass
+
+    # If resolved, cache it in user_profiles and telegram_chat_id.txt for future speed
+    if target_chat_id:
+        try:
+            with open(os.path.join(base_dir, "telegram_chat_id.txt"), "w", encoding="utf-8") as f:
+                f.write(str(target_chat_id))
+            with get_db() as conn:
+                conn.cursor().execute("UPDATE user_profiles SET telegram_chat_id = ? WHERE user_id = ?;", (target_chat_id, user_id))
         except Exception:
             pass
 
@@ -1533,12 +1628,24 @@ async def cancel_rest_timer(
     payload: Optional[CancelTimerRequest] = None,
     user_id: str = Depends(get_current_user_id)
 ):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
     target_chat_id = payload.telegram_chat_id if payload else None
     if not target_chat_id:
         if user_id.startswith("tg_") and user_id[3:].isdigit():
             target_chat_id = int(user_id[3:])
         elif user_id.isdigit():
             target_chat_id = int(user_id)
+
+    if not target_chat_id:
+        chat_id_file = os.path.join(base_dir, "telegram_chat_id.txt")
+        if os.path.exists(chat_id_file):
+            try:
+                with open(chat_id_file, "r", encoding="utf-8") as f:
+                    v = f.read().strip()
+                    if v.isdigit():
+                        target_chat_id = int(v)
+            except Exception:
+                pass
 
     user_key = f"{user_id}_{target_chat_id}"
     cancelled = False

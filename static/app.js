@@ -102,6 +102,15 @@ if (tg) {
   }
 }
 
+// --- AUDIO SESSION CONFIGURATION (MIX WITH BACKGROUND MUSIC) ---
+// Configures WebKit/Safari AudioSession to 'ambient' so opening the app
+// NEVER pauses user's background music (Spotify, Apple Music, etc.)
+try {
+  if (typeof navigator !== 'undefined' && 'audioSession' in navigator) {
+    navigator.audioSession.type = 'ambient';
+  }
+} catch (e) {}
+
 const triggerHaptic = (type = 'light') => {
   try {
     if (window.Telegram?.WebApp?.HapticFeedback) {
@@ -340,6 +349,9 @@ const formatTime = (seconds) => {
 // ==========================================
 function playChimeSound() {
   try {
+    if (typeof navigator !== 'undefined' && 'audioSession' in navigator) {
+      try { navigator.audioSession.type = 'ambient'; } catch (e) {}
+    }
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
@@ -364,8 +376,12 @@ function playChimeSound() {
     playTone(659.25, t, 0.18);       // E5
     playTone(880.00, t + 0.18, 0.22); // A5
     playTone(1318.51, t + 0.40, 0.45); // E6
+
+    setTimeout(() => {
+      try { ctx.close(); } catch (e) {}
+    }, 950);
   } catch (e) {
-    console.warn('AudioContext sound failed:', e);
+    console.warn('AudioContext sound note:', e);
   }
 }
 
@@ -1682,6 +1698,13 @@ function App() {
       const guidesData = await guidesRes.json().catch(() => ({}));
       let profData = await profRes.json().catch(() => null);
 
+      if (profData && profData.telegram_chat_id) {
+        try {
+          localStorage.setItem('gym_tracker_chat_id', String(profData.telegram_chat_id));
+          localStorage.setItem('gym_tracker_tg_id', 'tg_' + profData.telegram_chat_id);
+        } catch (e) {}
+      }
+
       // 🔄 SELF-HEALING SYNC FOR COLD SERVER STARTS:
       // If user finished onboarding on this device, but server woke up empty
       // (or reset due to sleep), seamlessly restore the saved profile to the server!
@@ -2161,6 +2184,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
       }
       const target = parseInt(targetStr, 10);
       const remaining = Math.max(0, Math.ceil((target - Date.now()) / 1000));
+      const overdueMs = Date.now() - target;
       setRestSecondsLeft(remaining);
 
       if (remaining <= 0) {
@@ -2172,18 +2196,32 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           localStorage.removeItem('gym_tracker_rest_badge');
         } catch (e) {}
 
-        // Haptic & Sound
         triggerHaptic('success');
         if (navigator.vibrate) navigator.vibrate([250, 100, 250, 100, 400]);
-        if (soundEnabled) playChimeSound();
 
-        // Browser Web Notification if permitted
+        // Only play chime sound if the timer expired just now (within 3.5 seconds)
+        // If the user reopened the app minutes later, do NOT interrupt their music or workout!
+        if (soundEnabled && overdueMs < 3500) {
+          playChimeSound();
+        }
+
+        // Browser Web Notification via ServiceWorker if supported
         try {
           if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('GymTracker ⏱️', {
-              body: 'Отдых окончен! Пора на следующий подход 💪',
-              icon: '/static/icon-192.png'
-            });
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+              navigator.serviceWorker.ready.then(reg => {
+                reg.showNotification('GymTracker ⏱️', {
+                  body: 'Отдых окончен! Пора на следующий подход 💪',
+                  icon: '/static/icon-192.png',
+                  badge: '/static/icon-192.png',
+                  tag: 'rest-timer'
+                });
+              }).catch(() => {
+                try { new Notification('GymTracker ⏱️', { body: 'Отдых окончен! Пора на следующий подход 💪', icon: '/static/icon-192.png' }); } catch (e) {}
+              });
+            } else {
+              try { new Notification('GymTracker ⏱️', { body: 'Отдых окончен! Пора на следующий подход 💪', icon: '/static/icon-192.png' }); } catch (e) {}
+            }
           }
         } catch (e) {}
       }
@@ -2211,7 +2249,9 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
     if (!botPushEnabled || seconds <= 0) return;
     try {
       const u = getTelegramUser();
-      let tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+      let tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id ||
+                     userProfile?.telegram_chat_id ||
+                     (parseInt(localStorage.getItem('gym_tracker_chat_id') || '0', 10) || null);
       if (!tgUserId && u?.id) {
         if (u.id.startsWith('tg_') && /^\d+$/.test(u.id.substring(3))) {
           tgUserId = parseInt(u.id.substring(3), 10);
@@ -2238,7 +2278,9 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   const cancelBotRestPush = () => {
     try {
       const u = getTelegramUser();
-      let tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+      let tgUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id ||
+                     userProfile?.telegram_chat_id ||
+                     (parseInt(localStorage.getItem('gym_tracker_chat_id') || '0', 10) || null);
       if (!tgUserId && u?.id) {
         if (u.id.startsWith('tg_') && /^\d+$/.test(u.id.substring(3))) {
           tgUserId = parseInt(u.id.substring(3), 10);
@@ -2402,6 +2444,32 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
       }
     } catch (e) {
       alert('Ошибка при завершении');
+    }
+  };
+
+  const handleDiscardWorkout = async () => {
+    if (!confirm('Отменить и удалить текущую тренировку? Все данные этой сессии будут сброшены.')) return;
+    cancelBotRestPush();
+    try {
+      const res = await fetch(`/api/workouts/${activeWorkout.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        try {
+          const uId = getTelegramUser().id;
+          const uKey = 'gym_tracker_full_workouts_' + uId;
+          const raw = localStorage.getItem(uKey) || localStorage.getItem('gym_tracker_full_workouts_backup') || '[]';
+          const list = JSON.parse(raw);
+          const filtered = list.filter(w => w.id !== activeWorkout.id && w.start_time !== activeWorkout.start_time);
+          localStorage.setItem(uKey, JSON.stringify(filtered));
+          localStorage.setItem('gym_tracker_full_workouts_backup', JSON.stringify(filtered));
+          localStorage.setItem('gym_tracker_history_' + uId, JSON.stringify(filtered));
+        } catch (e) {}
+        triggerHaptic('warning');
+        onRefresh();
+      } else {
+        alert('Не удалось сбросить тренировку');
+      }
+    } catch (e) {
+      alert('Ошибка соединения при сбросе тренировки');
     }
   };
 
@@ -2736,8 +2804,17 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           )}
 
           <button
+            type="button"
+            onClick={handleDiscardWorkout}
+            title="Отменить и удалить эту тренировку"
+            className="text-[11px] font-bold text-slate-400 hover:text-rose-400 bg-gym-800 hover:bg-rose-500/10 px-2 py-1 rounded-xl border border-gym-700 hover:border-rose-500/30 active:scale-95 transition"
+          >
+            Сбросить
+          </button>
+
+          <button
             onClick={handleFinishWorkout}
-            className="text-[11px] font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 px-2.5 py-1 rounded-xl border border-rose-500/30 active:scale-95 transition"
+            className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-xl border border-emerald-500/30 active:scale-95 transition"
           >
             Завершить
           </button>
@@ -4711,6 +4788,103 @@ function AddSetsToWorkoutModal({ workout, isOpen, onClose, exercises = [], onSav
 }
 
 // ==========================================
+// 🗑️ DELETE WORKOUT CONFIRMATION MODAL
+// ==========================================
+function DeleteWorkoutModal({ workout, isOpen, onClose, onDeleted }) {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  if (!isOpen || !workout) return null;
+
+  const workoutDate = formatDate(workout.start_time);
+  const workoutTime = parseSafeDate(workout.start_time)?.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) || '';
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/workouts/${workout.id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        // Purge from localStorage
+        try {
+          const uId = getTelegramUser().id;
+          const uKey = 'gym_tracker_full_workouts_' + uId;
+          const raw = localStorage.getItem(uKey) || localStorage.getItem('gym_tracker_full_workouts_backup') || '[]';
+          const list = JSON.parse(raw);
+          const filtered = list.filter(w => w.id !== workout.id && w.start_time !== workout.start_time);
+          localStorage.setItem(uKey, JSON.stringify(filtered));
+          localStorage.setItem('gym_tracker_full_workouts_backup', JSON.stringify(filtered));
+          localStorage.setItem('gym_tracker_history_' + uId, JSON.stringify(filtered));
+        } catch (e) {}
+
+        triggerHaptic('success');
+        if (typeof onDeleted === 'function') onDeleted(workout.id);
+        onClose();
+      } else {
+        alert('Не удалось удалить тренировку на сервере');
+      }
+    } catch (err) {
+      alert('Ошибка соединения при удалении');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+      <div 
+        className="w-full max-w-sm bg-gym-900 border border-gym-700/80 rounded-3xl p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center space-x-3">
+          <div className="w-11 h-11 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-xl shrink-0">
+            🗑️
+          </div>
+          <div>
+            <h3 className="text-base font-black text-white">Удалить тренировку?</h3>
+            <p className="text-xs text-slate-400">Это действие нельзя отменить</p>
+          </div>
+        </div>
+
+        <div className="bg-gym-950 p-3.5 rounded-2xl border border-gym-800 space-y-1.5 text-xs font-mono">
+          <div className="font-extrabold text-white text-sm font-sans">{workout.title}</div>
+          <div className="text-slate-400">
+            📅 {workoutDate} • {workoutTime}
+          </div>
+          <div className="text-slate-400 flex items-center space-x-3 pt-1 border-t border-gym-800/80">
+            <span>Подходов: <strong className="text-white">{workout.total_sets || 0}</strong></span>
+            <span>Тоннаж: <strong className="text-emerald-400">{Math.round(workout.total_volume || 0).toLocaleString('ru-RU')} кг</strong></span>
+          </div>
+        </div>
+
+        <p className="text-[11px] text-rose-300/90 leading-relaxed">
+          Тренировка будет навсегда удалена из базы данных, истории и исключена из подсчета стрика и общего тоннажа.
+        </p>
+
+        <div className="flex space-x-2 pt-1">
+          <button
+            type="button"
+            disabled={isDeleting}
+            onClick={onClose}
+            className="flex-1 py-2.5 bg-gym-800 hover:bg-gym-700 text-slate-300 font-bold text-xs rounded-xl active:scale-95 transition cursor-pointer"
+          >
+            Отмена
+          </button>
+          <button
+            type="button"
+            disabled={isDeleting}
+            onClick={handleDelete}
+            className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl shadow-lg shadow-rose-600/30 active:scale-95 transition cursor-pointer"
+          >
+            {isDeleting ? 'Удаление...' : 'Да, удалить'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
 // 📜 HISTORY SCREEN
 // ==========================================
 function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
@@ -4722,6 +4896,7 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
   const [showAddPastModal, setShowAddPastModal] = useState(false);
   const [editingWorkoutForSets, setEditingWorkoutForSets] = useState(null);
   const [editingSet, setEditingSet] = useState(null);
+  const [workoutToDelete, setWorkoutToDelete] = useState(null);
 
   // Group workouts by 'YYYY-MM-DD'
   const workoutsByDate = useMemo(() => {
@@ -5378,6 +5553,34 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                           ))}
                         </div>
                       )}
+
+                      {/* Workout Action Footer: Add Sets & Delete Workout */}
+                      <div className="pt-3 border-t border-gym-800/80 flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingWorkoutForSets(w);
+                          }}
+                          className="text-[11px] font-bold text-slate-300 hover:text-emerald-400 bg-gym-900 hover:bg-gym-800 border border-gym-700/80 px-3 py-1.5 rounded-xl flex items-center space-x-1.5 active:scale-95 transition cursor-pointer"
+                        >
+                          <span>📝</span>
+                          <span>{effectiveSets.length === 0 ? 'Внести подходы' : 'Править подходы'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setWorkoutToDelete(w);
+                          }}
+                          className="text-[11px] font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 px-3 py-1.5 rounded-xl flex items-center space-x-1.5 active:scale-95 transition cursor-pointer"
+                          title="Удалить эту тренировку"
+                        >
+                          <span>🗑️</span>
+                          <span>Удалить</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -5420,6 +5623,18 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
           onClose={() => setEditingSet(null)}
           onSave={handleSaveHistorySet}
           onDelete={handleDeleteHistorySet}
+        />
+      )}
+
+      {/* Delete Workout Modal */}
+      {workoutToDelete && (
+        <DeleteWorkoutModal
+          isOpen={!!workoutToDelete}
+          workout={workoutToDelete}
+          onClose={() => setWorkoutToDelete(null)}
+          onDeleted={() => {
+            if (typeof onRefresh === 'function') onRefresh();
+          }}
         />
       )}
     </div>
