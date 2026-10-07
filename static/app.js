@@ -1656,8 +1656,16 @@ function App() {
 
   const getCachedHistory = () => {
     try {
-      const s = localStorage.getItem('gym_tracker_history_' + currentUserId);
-      if (s) return JSON.parse(s) || [];
+      const s = localStorage.getItem('gym_tracker_history_' + currentUserId) ||
+                localStorage.getItem('gym_tracker_full_workouts_' + currentUserId) ||
+                localStorage.getItem('gym_tracker_full_workouts_backup');
+      if (s) {
+        const list = JSON.parse(s) || [];
+        return list.map((w, idx) => ({
+          ...w,
+          id: w.id || (w.start_time ? ('w_' + w.start_time.replace(/\D/g, '')) : `w_${idx}`)
+        }));
+      }
     } catch (e) {}
     return [];
   };
@@ -1745,13 +1753,17 @@ function App() {
 
       // Combine server workouts with stored local workouts by start_time
       const mergedMap = new Map();
-      (histData || []).forEach(w => {
-        if (w.start_time) mergedMap.set(w.start_time, { ...w });
+      (histData || []).forEach((w, srvIdx) => {
+        if (w.start_time) {
+          const wId = w.id || ('w_' + w.start_time.replace(/\D/g, ''));
+          mergedMap.set(w.start_time, { ...w, id: wId });
+        }
       });
-      storedFullWorkouts.forEach(w => {
+      storedFullWorkouts.forEach((w, localIdx) => {
         if (!w.start_time) return;
+        const wId = w.id || ('w_' + w.start_time.replace(/\D/g, ''));
         if (!mergedMap.has(w.start_time)) {
-          mergedMap.set(w.start_time, { ...w });
+          mergedMap.set(w.start_time, { ...w, id: wId });
         } else {
           // If server workout has 0 sets or volume, but local has sets or volume, preserve local!
           const srv = mergedMap.get(w.start_time);
@@ -1763,6 +1775,8 @@ function App() {
           const srvSets = srv.total_sets || 0;
 
           const merged = { ...srv, ...w };
+          // Guaranteed stable ID: preserve server ID first, fallback to local/start_time
+          merged.id = srv.id || w.id || wId;
           merged.total_volume = Math.max(srvVol, localVol);
           merged.total_sets = Math.max(srvSets, localSets.length, w.total_sets || 0);
           if (localSets.length > 0) {
@@ -4342,6 +4356,7 @@ function AddPastWorkoutModal({ isOpen, onClose, exercises = [], onSaved }) {
 
       const totalVol = flatSets.reduce((sum, s) => sum + (s.weight * s.reps), 0);
       const workoutObj = {
+        id: 'w_' + startTimeStr.replace(/\D/g, ''),
         title: title || 'Силовая тренировка',
         start_time: startTimeStr,
         end_time: endTimeStr,
@@ -4713,6 +4728,7 @@ function AddSetsToWorkoutModal({ workout, isOpen, onClose, exercises = [], onSav
       const totalVol = flatSets.reduce((sum, s) => sum + (s.weight * s.reps), 0);
       const updatedWorkout = {
         ...workout,
+        id: workout.id || ('w_' + (workout.start_time ? workout.start_time.replace(/\D/g, '') : Date.now())),
         total_sets: flatSets.length,
         total_volume: totalVol,
         sets: flatSets
@@ -4917,30 +4933,31 @@ function DeleteWorkoutModal({ workout, isOpen, onClose, onDeleted }) {
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/workouts/${workout.id}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        // Purge from localStorage
-        try {
-          const uId = getTelegramUser().id;
-          const uKey = 'gym_tracker_full_workouts_' + uId;
-          const raw = localStorage.getItem(uKey) || localStorage.getItem('gym_tracker_full_workouts_backup') || '[]';
-          const list = JSON.parse(raw);
-          const filtered = list.filter(w => w.id !== workout.id && w.start_time !== workout.start_time);
-          localStorage.setItem(uKey, JSON.stringify(filtered));
-          localStorage.setItem('gym_tracker_full_workouts_backup', JSON.stringify(filtered));
-          localStorage.setItem('gym_tracker_history_' + uId, JSON.stringify(filtered));
-        } catch (e) {}
+      const numericId = (typeof workout.id === 'number' && workout.id > 0)
+        ? workout.id
+        : (typeof workout.id === 'string' && /^\d+$/.test(workout.id) ? parseInt(workout.id, 10) : null);
 
-        triggerHaptic('success');
-        if (typeof onDeleted === 'function') onDeleted(workout.id);
-        onClose();
-      } else {
-        alert('Не удалось удалить тренировку на сервере');
+      if (numericId) {
+        await fetch(`/api/workouts/${numericId}`, { method: 'DELETE' }).catch(() => {});
       }
+
+      // Purge from localStorage
+      try {
+        const uId = getTelegramUser().id;
+        const uKey = 'gym_tracker_full_workouts_' + uId;
+        const raw = localStorage.getItem(uKey) || localStorage.getItem('gym_tracker_full_workouts_backup') || '[]';
+        const list = JSON.parse(raw);
+        const filtered = list.filter(w => (workout.id && w.id === workout.id) ? false : (w.start_time !== workout.start_time));
+        localStorage.setItem(uKey, JSON.stringify(filtered));
+        localStorage.setItem('gym_tracker_full_workouts_backup', JSON.stringify(filtered));
+        localStorage.setItem('gym_tracker_history_' + uId, JSON.stringify(filtered));
+      } catch (e) {}
+
+      triggerHaptic('success');
+      if (typeof onDeleted === 'function') onDeleted(workout.id || workout.start_time);
+      onClose();
     } catch (err) {
-      alert('Ошибка соединения при удалении');
+      alert('Ошибка при удалении');
     } finally {
       setIsDeleting(false);
     }
@@ -5155,22 +5172,36 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
   };
 
   // Toggle workout accordion details
-  const toggleWorkoutExpand = async (workoutId) => {
-    if (expandedWorkoutId === workoutId) {
+  const toggleWorkoutExpand = async (workout) => {
+    if (!workout) return;
+    const wKey = String(workout.id || workout.start_time || '');
+    if (!wKey) return;
+
+    if (expandedWorkoutId === wKey) {
       setExpandedWorkoutId(null);
       return;
     }
-    setExpandedWorkoutId(workoutId);
-    if (!workoutDetailsCache[workoutId]) {
+    setExpandedWorkoutId(wKey);
+
+    // If workout already contains its own local sets, prefill cache so it displays immediately
+    if (Array.isArray(workout.sets) && workout.sets.length > 0 && !workoutDetailsCache[wKey]) {
+      setWorkoutDetailsCache((prev) => ({ ...prev, [wKey]: workout }));
+    }
+
+    const numericId = (typeof workout.id === 'number' && workout.id > 0)
+      ? workout.id
+      : (typeof workout.id === 'string' && /^\d+$/.test(workout.id) ? parseInt(workout.id, 10) : null);
+
+    if (numericId && (!workoutDetailsCache[wKey] || !workoutDetailsCache[wKey].sets || workoutDetailsCache[wKey].sets.length === 0)) {
       try {
         setLoadingDetail(true);
-        const res = await fetch(`/api/workouts/${workoutId}`);
+        const res = await fetch(`/api/workouts/${numericId}`);
         if (res.ok) {
           const data = await res.json();
-          setWorkoutDetailsCache((prev) => ({ ...prev, [workoutId]: data }));
+          setWorkoutDetailsCache((prev) => ({ ...prev, [wKey]: data }));
         }
       } catch (err) {
-        console.error(err);
+        console.error('Error fetching workout details:', err);
       } finally {
         setLoadingDetail(false);
       }
@@ -5180,93 +5211,96 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
   const handleSaveHistorySet = async (updatedFields) => {
     if (!editingSet) return;
     try {
-      const res = await fetch(`/api/sets/${editingSet.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedFields)
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        const workoutId = editingSet.workout_id;
-        
-        // Update local cache for details
-        if (workoutId && workoutDetailsCache[workoutId]) {
-          setWorkoutDetailsCache(prev => {
-            const cur = prev[workoutId];
-            if (!cur || !cur.sets) return prev;
-            const updatedSets = cur.sets.map(s => s.id === updated.id ? { ...s, ...updated } : s);
-            return { ...prev, [workoutId]: { ...cur, sets: updatedSets } };
-          });
-        }
+      const setId = editingSet.id;
+      const wKey = editingSet.workout_key || String(editingSet.workout_id || '');
+      const numericSetId = (typeof setId === 'number' && setId > 0)
+        ? setId
+        : (typeof setId === 'string' && /^\d+$/.test(setId) ? parseInt(setId, 10) : null);
 
-        // Update localStorage backup so offline sync keeps edited values
-        try {
-          const uId = getTelegramUser().id;
-          const uKey = 'gym_tracker_full_workouts_' + uId;
-          const stored = JSON.parse(localStorage.getItem(uKey) || '[]');
-          const wIdx = stored.findIndex(w => w.id === workoutId || (w.sets && w.sets.some(s => s.id === updated.id)));
-          if (wIdx !== -1) {
-            const w = stored[wIdx];
-            const updatedSets = (w.sets || []).map(s => s.id === updated.id ? { ...s, ...updated } : s);
-            const newVol = updatedSets.reduce((sum, s) => sum + (s.weight * s.reps), 0);
-            stored[wIdx] = { ...w, sets: updatedSets, total_volume: newVol, total_sets: updatedSets.length };
-            localStorage.setItem(uKey, JSON.stringify(stored));
-            localStorage.setItem('gym_tracker_full_workouts_backup', JSON.stringify(stored));
-          }
-        } catch (e) {}
-
-        triggerHaptic('success');
-        setEditingSet(null);
-        if (typeof onRefresh === 'function') onRefresh();
-      } else {
-        alert('Ошибка при сохранении изменений');
+      if (numericSetId) {
+        const res = await fetch(`/api/sets/${numericSetId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedFields)
+        });
+        if (!res.ok) throw new Error('Update set failed');
       }
+
+      // Update local cache for details
+      if (wKey && workoutDetailsCache[wKey]) {
+        setWorkoutDetailsCache(prev => {
+          const cur = prev[wKey];
+          if (!cur || !cur.sets) return prev;
+          const updatedSets = cur.sets.map(s => (s.id === editingSet.id || (s.set_number === editingSet.set_number && s.exercise_name === editingSet.exercise_name)) ? { ...s, ...updatedFields } : s);
+          return { ...prev, [wKey]: { ...cur, sets: updatedSets } };
+        });
+      }
+
+      // Update localStorage backup so offline sync keeps edited values
+      try {
+        const uId = getTelegramUser().id;
+        const uKey = 'gym_tracker_full_workouts_' + uId;
+        const stored = JSON.parse(localStorage.getItem(uKey) || '[]');
+        const wIdx = stored.findIndex(w => (wKey && (w.id === wKey || w.start_time === wKey)) || (w.sets && w.sets.some(s => s.id === setId)));
+        if (wIdx !== -1) {
+          const w = stored[wIdx];
+          const updatedSets = (w.sets || []).map(s => (s.id === editingSet.id || (s.set_number === editingSet.set_number && s.exercise_name === editingSet.exercise_name)) ? { ...s, ...updatedFields } : s);
+          const newVol = updatedSets.reduce((sum, s) => sum + ((parseFloat(s.weight) || 0) * (parseInt(s.reps, 10) || 0)), 0);
+          stored[wIdx] = { ...w, sets: updatedSets, total_volume: newVol, total_sets: updatedSets.length };
+          localStorage.setItem(uKey, JSON.stringify(stored));
+          localStorage.setItem('gym_tracker_full_workouts_backup', JSON.stringify(stored));
+        }
+      } catch (e) {}
+
+      triggerHaptic('success');
+      setEditingSet(null);
+      if (typeof onRefresh === 'function') onRefresh();
     } catch (e) {
-      alert('Ошибка соединения с сервером');
+      alert('Ошибка при сохранении изменений');
     }
   };
 
   const handleDeleteHistorySet = async (setId) => {
     if (!confirm('Удалить этот подход из истории?')) return;
     try {
-      const res = await fetch(`/api/sets/${setId}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        const workoutId = editingSet?.workout_id;
-        
-        if (workoutId && workoutDetailsCache[workoutId]) {
-          setWorkoutDetailsCache(prev => {
-            const cur = prev[workoutId];
-            if (!cur || !cur.sets) return prev;
-            const updatedSets = cur.sets.filter(s => s.id !== setId);
-            return { ...prev, [workoutId]: { ...cur, sets: updatedSets } };
-          });
-        }
+      const wKey = editingSet?.workout_key || String(editingSet?.workout_id || '');
+      const numericSetId = (typeof setId === 'number' && setId > 0)
+        ? setId
+        : (typeof setId === 'string' && /^\d+$/.test(setId) ? parseInt(setId, 10) : null);
 
-        try {
-          const uId = getTelegramUser().id;
-          const uKey = 'gym_tracker_full_workouts_' + uId;
-          const stored = JSON.parse(localStorage.getItem(uKey) || '[]');
-          const wIdx = stored.findIndex(w => (workoutId && w.id === workoutId) || (w.sets && w.sets.some(s => s.id === setId)));
-          if (wIdx !== -1) {
-            const w = stored[wIdx];
-            const updatedSets = (w.sets || []).filter(s => s.id !== setId);
-            const newVol = updatedSets.reduce((sum, s) => sum + (s.weight * s.reps), 0);
-            stored[wIdx] = { ...w, sets: updatedSets, total_volume: newVol, total_sets: updatedSets.length };
-            localStorage.setItem(uKey, JSON.stringify(stored));
-            localStorage.setItem('gym_tracker_full_workouts_backup', JSON.stringify(stored));
-          }
-        } catch (e) {}
-
-        triggerHaptic('warning');
-        setEditingSet(null);
-        if (typeof onRefresh === 'function') onRefresh();
-      } else {
-        alert('Ошибка при удалении подхода');
+      if (numericSetId) {
+        await fetch(`/api/sets/${numericSetId}`, { method: 'DELETE' }).catch(() => {});
       }
+      
+      if (wKey && workoutDetailsCache[wKey]) {
+        setWorkoutDetailsCache(prev => {
+          const cur = prev[wKey];
+          if (!cur || !cur.sets) return prev;
+          const updatedSets = cur.sets.filter(s => s.id !== setId && !(s.set_number === editingSet?.set_number && s.exercise_name === editingSet?.exercise_name));
+          return { ...prev, [wKey]: { ...cur, sets: updatedSets } };
+        });
+      }
+
+      try {
+        const uId = getTelegramUser().id;
+        const uKey = 'gym_tracker_full_workouts_' + uId;
+        const stored = JSON.parse(localStorage.getItem(uKey) || '[]');
+        const wIdx = stored.findIndex(w => (wKey && (w.id === wKey || w.start_time === wKey)) || (w.sets && w.sets.some(s => s.id === setId)));
+        if (wIdx !== -1) {
+          const w = stored[wIdx];
+          const updatedSets = (w.sets || []).filter(s => s.id !== setId && !(s.set_number === editingSet?.set_number && s.exercise_name === editingSet?.exercise_name));
+          const newVol = updatedSets.reduce((sum, s) => sum + ((parseFloat(s.weight) || 0) * (parseInt(s.reps, 10) || 0)), 0);
+          stored[wIdx] = { ...w, sets: updatedSets, total_volume: newVol, total_sets: updatedSets.length };
+          localStorage.setItem(uKey, JSON.stringify(stored));
+          localStorage.setItem('gym_tracker_full_workouts_backup', JSON.stringify(stored));
+        }
+      } catch (e) {}
+
+      triggerHaptic('warning');
+      setEditingSet(null);
+      if (typeof onRefresh === 'function') onRefresh();
     } catch (e) {
-      alert('Ошибка соединения с сервером');
+      alert('Ошибка при удалении');
     }
   };
 
@@ -5476,9 +5510,10 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
             </button>
           </div>
         ) : (
-          filteredWorkouts.map((w) => {
-            const isExpanded = expandedWorkoutId === w.id;
-            const details = workoutDetailsCache[w.id];
+          filteredWorkouts.map((w, wIndex) => {
+            const wKey = String(w.id || w.start_time || ('w_' + wIndex));
+            const isExpanded = Boolean(expandedWorkoutId && expandedWorkoutId === wKey);
+            const details = workoutDetailsCache[wKey];
 
             const effectiveSets = (details?.sets && details.sets.length > 0)
               ? details.sets
@@ -5496,14 +5531,14 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
 
             return (
               <div
-                key={w.id}
+                key={wKey}
                 className={`bg-gym-900 border rounded-3xl p-4 space-y-3 transition-all shadow-md ${
                   isExpanded ? 'border-emerald-500/50 ring-1 ring-emerald-500/20' : 'border-gym-800 hover:border-gym-700'
                 }`}
               >
                 {/* Header row */}
                 <div
-                  onClick={() => toggleWorkoutExpand(w.id)}
+                  onClick={() => toggleWorkoutExpand(w)}
                   className="flex items-start justify-between cursor-pointer gap-2 select-none"
                 >
                   <div className="space-y-1 flex-1">
@@ -5604,7 +5639,7 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                                   const st = s.set_type || 'normal';
                                   const openEditModal = () => {
                                     triggerHaptic('light');
-                                    setEditingSet({ ...s, workout_id: w.id });
+                                    setEditingSet({ ...s, workout_id: w.id, workout_key: wKey });
                                   };
                                   if (st === 'warmup') {
                                     return (
@@ -5726,7 +5761,10 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
           onClose={() => setEditingWorkoutForSets(null)}
           exercises={exercises}
           onSaved={(updatedW) => {
-            setWorkoutDetailsCache(prev => ({ ...prev, [updatedW.id]: updatedW }));
+            const savedKey = String(updatedW.id || updatedW.start_time || '');
+            if (savedKey) {
+              setWorkoutDetailsCache(prev => ({ ...prev, [savedKey]: updatedW }));
+            }
             if (typeof onRefresh === 'function') onRefresh();
           }}
         />
