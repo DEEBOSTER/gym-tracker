@@ -3985,7 +3985,7 @@ function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
     ? currentUser.id.replace('tg_', '') 
     : (currentUser.id.startsWith('u_') ? '' : currentUser.id);
 
-  const personalUrl = window.location.origin + (cleanTgId ? ('/?tg_id=' + cleanTgId) : '/?tg_id=591306946');
+  const personalUrl = window.location.origin + (cleanTgId ? ('/?tg_id=' + cleanTgId) : '');
 
   const handleCopyLink = () => {
     try {
@@ -4243,7 +4243,7 @@ function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
             <input
               type="text"
               inputMode="numeric"
-              placeholder="Например: 591306946"
+              placeholder="Например: 123456789"
               value={tgInput}
               onChange={(e) => setTgInput(cleanNumericInput(e.target.value, false))}
               className="flex-1 bg-gym-900 border border-gym-800 rounded-xl px-3 py-2 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
