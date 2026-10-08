@@ -4861,7 +4861,7 @@ function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition shrink-0 active:scale-95 ${
                 copied 
                   ? 'bg-emerald-500 text-gym-950 font-black' 
-                  : 'bg-sky-500/20 text-sky-300 border border-sky-500/40 hover:bg-sky-500/30'
+                  : 'bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/40 hover:bg-sky-500/30'
               }`}
             >
               {copied ? '✓ Скопировано' : '📋 Скопировать'}
@@ -6219,7 +6219,7 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
   return (
     <div className="space-y-4">
       {/* 1. STREAK & MOTIVATIONAL STATS CARD */}
-      <div className="bg-gradient-to-br from-gym-900 via-gym-900 to-gym-950 border border-gym-800 rounded-3xl p-4 shadow-xl space-y-3">
+      <div className="neu-flat rounded-3xl p-4 shadow-xl space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
             <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-xl shadow-inner animate-pulse">
@@ -6227,16 +6227,16 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
             </div>
             <div>
               <div className="flex items-center space-x-1.5">
-                <span className="text-lg font-black text-white">
+                <span className="text-lg font-black text-slate-800 dark:text-white">
                   {stats.streakWorkouts > 0 
                     ? `${stats.streakWorkouts} ${getPluralWorkouts(stats.streakWorkouts)} подряд`
                     : stats.streakWeeks > 0 
                     ? `${stats.streakWeeks} ${getPluralWeeks(stats.streakWeeks)}`
                     : '0 тренировок'}
                 </span>
-                <span className="text-[10px] bg-amber-500/20 text-amber-400 font-bold px-1.5 py-0.5 rounded-full uppercase">Стрик</span>
+                <span className="text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold px-1.5 py-0.5 rounded-full uppercase">Стрик</span>
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 {stats.streakWorkouts > 0 
                   ? `🔥 Серия без пропусков • ${stats.streakWeeks} ${getPluralWeeks(stats.streakWeeks)} в зале`
                   : 'Начните тренировку, чтобы запустить серию'}
@@ -6246,38 +6246,38 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
         </div>
 
         {/* 3 Metrics Grid */}
-        <div className="grid grid-cols-3 gap-2 pt-1 border-t border-gym-800/80 text-center font-mono">
-          <div className="bg-gym-950/70 border border-gym-800/60 rounded-xl p-2">
-            <span className="text-[10px] text-slate-500 block uppercase">За месяц</span>
-            <span className="text-sm font-black text-emerald-400">{stats.monthCount} трен.</span>
+        <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-300/40 dark:border-white/5 text-center font-mono">
+          <div className="neu-inset rounded-xl p-2">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 block uppercase font-bold">За месяц</span>
+            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{stats.monthCount} трен.</span>
           </div>
 
-          <div className="bg-gym-950/70 border border-gym-800/60 rounded-xl p-2">
-            <span className="text-[10px] text-slate-500 block uppercase">Тоннаж мес.</span>
-            <span className="text-sm font-black text-sky-400">
+          <div className="neu-inset rounded-xl p-2">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 block uppercase font-bold">Тоннаж мес.</span>
+            <span className="text-sm font-black text-sky-600 dark:text-sky-400">
               {stats.monthVolume >= 1000 ? `${(stats.monthVolume / 1000).toFixed(1)} т` : `${Math.round(stats.monthVolume)} кг`}
             </span>
           </div>
 
-          <div className="bg-gym-950/70 border border-gym-800/60 rounded-xl p-2">
-            <span className="text-[10px] text-slate-500 block uppercase">Ср. сетов</span>
-            <span className="text-sm font-black text-purple-300">{stats.avgSets}</span>
+          <div className="neu-inset rounded-xl p-2">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 block uppercase font-bold">Ср. сетов</span>
+            <span className="text-sm font-black text-purple-600 dark:text-purple-300">{stats.avgSets}</span>
           </div>
         </div>
       </div>
 
       {/* 2. INTERACTIVE CALENDAR WIDGET */}
-      <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 shadow-xl space-y-3">
+      <div className="neu-flat rounded-3xl p-4 shadow-xl space-y-3">
         {/* Month Header & Controls */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="text-base font-black text-white">
+            <span className="text-base font-black text-slate-800 dark:text-white">
               {monthNames[viewMonth]} {viewYear}
             </span>
             {(viewMonth !== new Date().getMonth() || viewYear !== new Date().getFullYear()) && (
               <button
                 onClick={handleTodayMonth}
-                className="text-[10px] font-bold text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 px-2 py-0.5 rounded-lg transition"
+                className="text-[10px] font-bold text-sky-600 dark:text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 px-2 py-0.5 rounded-lg transition"
               >
                 Сегодня
               </button>
@@ -6287,14 +6287,14 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
           <div className="flex items-center space-x-1">
             <button
               onClick={handlePrevMonth}
-              className="w-8 h-8 rounded-xl bg-gym-800 hover:bg-gym-700 active:scale-95 text-slate-300 flex items-center justify-center font-bold text-sm transition"
+              className="w-8 h-8 rounded-xl neu-btn active:scale-95 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-sm transition"
               title="Предыдущий месяц"
             >
               ‹
             </button>
             <button
               onClick={handleNextMonth}
-              className="w-8 h-8 rounded-xl bg-gym-800 hover:bg-gym-700 active:scale-95 text-slate-300 flex items-center justify-center font-bold text-sm transition"
+              className="w-8 h-8 rounded-xl neu-btn active:scale-95 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-sm transition"
               title="Следующий месяц"
             >
               ›
@@ -6339,15 +6339,15 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                 }}
                 className={`h-9 rounded-xl flex flex-col items-center justify-center relative transition-all active:scale-95 font-mono text-xs ${
                   isSelected
-                    ? 'bg-emerald-500 text-gym-950 font-black shadow-lg shadow-emerald-500/30 ring-2 ring-emerald-300'
+                    ? 'bg-emerald-500 text-white font-black shadow-md ring-2 ring-emerald-300'
                     : hasWorkout
-                    ? 'bg-emerald-500/20 text-emerald-300 font-extrabold border border-emerald-500/40 hover:bg-emerald-500/30'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-gym-800/60'
-                } ${isToday && !isSelected ? 'ring-1 ring-sky-400 font-bold text-white' : ''}`}
+                    ? 'bg-emerald-500/20 dark:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 font-extrabold border border-emerald-500/40 hover:bg-emerald-500/30'
+                    : 'neu-btn text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                } ${isToday && !isSelected ? 'ring-2 ring-sky-400 font-bold text-sky-700 dark:text-sky-300' : ''}`}
               >
                 <span>{dayNum}</span>
                 {hasWorkout && !isSelected && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.8)] -mt-0.5" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] -mt-0.5" />
                 )}
               </button>
             );
@@ -6356,13 +6356,13 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
 
         {/* Date Filter Badge if active */}
         {selectedDate && (
-          <div className="pt-2 border-t border-gym-800 flex items-center justify-between text-xs animate-in fade-in">
-            <span className="text-slate-300">
-              Показаны тренировки за: <strong className="text-emerald-400">{formatDate(selectedDate)}</strong> ({filteredWorkouts.length})
+          <div className="pt-2 border-t border-slate-300/40 dark:border-white/5 flex items-center justify-between text-xs animate-in fade-in">
+            <span className="text-slate-600 dark:text-slate-300">
+              Показаны тренировки за: <strong className="text-emerald-600 dark:text-emerald-400">{formatDate(selectedDate)}</strong> ({filteredWorkouts.length})
             </span>
             <button
               onClick={() => setSelectedDate(null)}
-              className="text-[11px] font-bold text-slate-400 hover:text-white bg-gym-800 px-2 py-0.5 rounded-lg border border-gym-700"
+              className="text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white neu-btn px-2 py-0.5 rounded-lg"
             >
               ✕ Сбросить
             </button>
@@ -6373,19 +6373,19 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
       {/* 3. WORKOUTS LIST WITH EXPANDABLE DETAILED SETS */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+          <h3 className="text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">
             {selectedDate ? `Сессии за ${formatDate(selectedDate)}` : `Все тренировки (${filteredWorkouts.length})`}
           </h3>
           <div className="flex items-center space-x-2">
             {selectedDate && (
-              <button onClick={() => setSelectedDate(null)} className="text-[11px] text-sky-400 font-medium">
+              <button onClick={() => setSelectedDate(null)} className="text-[11px] text-sky-600 dark:text-sky-400 font-bold">
                 Показать все
               </button>
             )}
             <button
               type="button"
               onClick={() => setShowAddPastModal(true)}
-              className="text-[11px] font-bold text-emerald-400 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2.5 py-1 rounded-xl active:scale-95 transition flex items-center space-x-1"
+              className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2.5 py-1 rounded-xl active:scale-95 transition flex items-center space-x-1"
             >
               <span>+</span>
               <span>Внести вручную</span>
@@ -6394,16 +6394,16 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
         </div>
 
         {filteredWorkouts.length === 0 ? (
-          <div className="bg-gym-900 border border-gym-800 rounded-3xl p-6 text-center text-slate-400 text-xs space-y-2">
+          <div className="neu-flat rounded-3xl p-6 text-center text-slate-500 dark:text-slate-400 text-xs space-y-2">
             <p className="text-2xl">📋</p>
-            <p className="font-bold text-slate-200">Тренировок в истории пока нет</p>
-            <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+            <p className="font-bold text-slate-700 dark:text-slate-200">Тренировок в истории пока нет</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
               Завершите тренировку в режиме тренировки или внесите вчерашнюю тренировку вручную.
             </p>
             <button
               type="button"
               onClick={() => setShowAddPastModal(true)}
-              className="mt-2 text-xs font-black bg-emerald-500 text-gym-950 px-3.5 py-2 rounded-xl shadow-md active:scale-95 transition"
+              className="mt-2 text-xs font-black bg-emerald-500 text-white px-3.5 py-2 rounded-xl shadow-md active:scale-95 transition"
             >
               + Внести вчерашнюю тренировку
             </button>
@@ -6431,8 +6431,8 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
             return (
               <div
                 key={wKey}
-                className={`bg-gym-900 border rounded-3xl p-4 space-y-3 transition-all shadow-md ${
-                  isExpanded ? 'border-emerald-500/50 ring-1 ring-emerald-500/20' : 'border-gym-800 hover:border-gym-700'
+                className={`neu-flat rounded-3xl p-4 space-y-3 transition-all ${
+                  isExpanded ? 'border-emerald-500/50 ring-2 ring-emerald-500/30' : ''
                 }`}
               >
                 {/* Header row */}
@@ -6442,20 +6442,20 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                 >
                   <div className="space-y-1 flex-1">
                     <div className="flex items-center space-x-2">
-                      <span className="font-black text-white text-sm leading-snug">{w.title}</span>
+                      <span className="font-black text-slate-800 dark:text-white text-sm leading-snug">{w.title}</span>
                       {w.is_active && (
-                        <span className="text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-1.5 py-0.5 rounded-full uppercase live-dot">
+                        <span className="text-[9px] font-black bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 px-1.5 py-0.5 rounded-full uppercase live-dot">
                           В процессе
                         </span>
                       )}
                     </div>
-                    <span className="text-xs text-slate-400 font-mono block">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-mono block">
                       {formatDate(w.start_time)} • {parseSafeDate(w.start_time)?.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) || ''}
                     </span>
                   </div>
 
                   <div className="text-right shrink-0">
-                    <span className="text-[11px] font-bold text-sky-400 flex items-center space-x-1">
+                    <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400 flex items-center space-x-1">
                       <span>{isExpanded ? 'Скрыть ▲' : 'Детали ▼'}</span>
                     </span>
                   </div>
@@ -6475,14 +6475,14 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                         : 0);
 
                   return (
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gym-800/80 text-xs font-mono">
-                      <div className="text-slate-400 flex items-center space-x-1">
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-300/40 dark:border-white/5 text-xs font-mono">
+                      <div className="text-slate-500 dark:text-slate-400 flex items-center space-x-1">
                         <span>Подходов:</span>
-                        <strong className="text-white font-black">{cardSets}</strong>
+                        <strong className="text-slate-800 dark:text-white font-black">{cardSets}</strong>
                       </div>
-                      <div className="text-slate-400 text-right flex items-center justify-end space-x-1">
+                      <div className="text-slate-500 dark:text-slate-400 text-right flex items-center justify-end space-x-1">
                         <span>Тоннаж:</span>
-                        <strong className="text-emerald-400 font-black">
+                        <strong className="text-emerald-600 dark:text-emerald-400 font-black">
                           {cardVol > 0 ? `${Math.round(cardVol).toLocaleString('ru-RU')} кг` : '0 кг'}
                         </strong>
                       </div>
@@ -6527,10 +6527,10 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                         ) : (
                           <div className="space-y-2.5">
                           {Object.entries(groupedSets).map(([exName, sList]) => (
-                            <div key={exName} className="bg-gym-950/80 border border-gym-800/70 rounded-2xl p-3 space-y-2">
+                            <div key={exName} className="neu-inset rounded-2xl p-3 space-y-2">
                               <div className="flex items-center justify-between text-xs">
-                                <span className="font-extrabold text-white">{exName}</span>
-                                <span className="text-[10px] text-slate-400 font-mono">{sList.length} сет.</span>
+                                <span className="font-extrabold text-slate-800 dark:text-white">{exName}</span>
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{sList.length} сет.</span>
                               </div>
 
                               <div className="flex flex-wrap gap-1.5">
@@ -6546,12 +6546,12 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                                         key={s.id || idx}
                                         type="button"
                                         onClick={openEditModal}
-                                        className="bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                                        className="bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-700 dark:text-amber-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
                                         title="Нажмите, чтобы изменить или удалить"
                                       >
                                         <span className="text-[9px] bg-amber-500 text-gym-950 font-black px-1 rounded">W</span>
                                         <span>{s.weight} кг × {s.reps}</span>
-                                        <span className="text-[8px] text-amber-400/80">✏️</span>
+                                        <span className="text-[8px] text-amber-500/80">✏️</span>
                                       </button>
                                     );
                                   }
@@ -6561,12 +6561,12 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                                         key={s.id || idx}
                                         type="button"
                                         onClick={openEditModal}
-                                        className="bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                                        className="bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-700 dark:text-purple-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
                                         title="Нажмите, чтобы изменить или удалить"
                                       >
                                         <span className="text-[9px] bg-purple-500 text-white font-black px-1 rounded">D</span>
                                         <span>{s.weight} кг × {s.reps}</span>
-                                        <span className="text-[8px] text-purple-400/80">✏️</span>
+                                        <span className="text-[8px] text-purple-500/80">✏️</span>
                                       </button>
                                     );
                                   }
@@ -6576,12 +6576,12 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                                         key={s.id || idx}
                                         type="button"
                                         onClick={openEditModal}
-                                        className="bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                                        className="bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-700 dark:text-rose-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
                                         title="Нажмите, чтобы изменить или удалить"
                                       >
                                         <span className="text-[9px] bg-rose-500 text-white font-black px-1 rounded">F</span>
                                         <span>{s.weight} кг × {s.reps}</span>
-                                        <span className="text-[8px] text-rose-400/80">✏️</span>
+                                        <span className="text-[8px] text-rose-500/80">✏️</span>
                                       </button>
                                     );
                                   }
@@ -6590,11 +6590,11 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                                       key={s.id || idx}
                                       type="button"
                                       onClick={openEditModal}
-                                      className="bg-gym-900 hover:bg-gym-800 border border-gym-700/80 hover:border-emerald-500/50 px-2 py-0.5 rounded-lg text-emerald-400 font-mono font-bold text-[10px] flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                                      className="neu-btn px-2 py-0.5 rounded-lg text-emerald-700 dark:text-emerald-400 font-mono font-bold text-[10px] flex items-center space-x-1 active:scale-95 transition cursor-pointer"
                                       title="Нажмите, чтобы изменить или удалить"
                                     >
                                       <span>#{s.set_number || idx + 1}: {s.weight} кг × {s.reps}</span>
-                                      <span className="text-[8px] text-slate-500">✏️</span>
+                                      <span className="text-[8px] text-slate-400">✏️</span>
                                     </button>
                                   );
                                 })}
@@ -6605,14 +6605,14 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                       )}
 
                       {/* Workout Action Footer: Add Sets & Delete Workout */}
-                      <div className="pt-3 border-t border-gym-800/80 flex items-center justify-between gap-2">
+                      <div className="pt-3 border-t border-slate-300/40 dark:border-white/5 flex items-center justify-between gap-2">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingWorkoutForSets(w);
                           }}
-                          className="text-[11px] font-bold text-slate-300 hover:text-emerald-400 bg-gym-900 hover:bg-gym-800 border border-gym-700/80 px-3 py-1.5 rounded-xl flex items-center space-x-1.5 active:scale-95 transition cursor-pointer"
+                          className="text-[11px] font-bold text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 neu-btn px-3 py-1.5 rounded-xl flex items-center space-x-1.5 active:scale-95 transition cursor-pointer"
                         >
                           <span>📝</span>
                           <span>{effectiveSets.length === 0 ? 'Внести подходы' : 'Править подходы'}</span>
@@ -6624,7 +6624,7 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                             e.stopPropagation();
                             setWorkoutToDelete(w);
                           }}
-                          className="text-[11px] font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 px-3 py-1.5 rounded-xl flex items-center space-x-1.5 active:scale-95 transition cursor-pointer"
+                          className="text-[11px] font-bold text-rose-500 hover:text-rose-600 neu-btn px-3 py-1.5 rounded-xl flex items-center space-x-1.5 active:scale-95 transition cursor-pointer"
                           title="Удалить эту тренировку"
                         >
                           <span>🗑️</span>
@@ -7214,7 +7214,7 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 active:scale-95 ${
                   linkCopied 
                     ? 'bg-emerald-500 text-gym-950 font-black' 
-                    : 'bg-sky-500/20 text-sky-300 border border-sky-500/40 hover:bg-sky-500/30'
+                    : 'bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/40 hover:bg-sky-500/30'
                 }`}
               >
                 {linkCopied ? '✓ Скопировано' : '📋 Копировать'}

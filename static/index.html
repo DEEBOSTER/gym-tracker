@@ -397,6 +397,44 @@
     body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-100:not(.neu-dark-pill *):not(.neu-dial *) {
       color: #0f172a !important;
     }
+    /* ☀️ White text on light cards -> Dark charcoal slate, preserving white text on filled accent buttons/pills */
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-white:not(.neu-dark-pill):not(.neu-dark-pill *):not(.neu-dial):not(.neu-dial *):not(button.bg-emerald-500):not(button.bg-emerald-500 *):not(button.bg-emerald-600):not(button.bg-emerald-600 *):not(button.bg-sky-500):not(button.bg-sky-500 *):not(button.bg-sky-600):not(button.bg-sky-600 *):not(button.bg-rose-500):not(button.bg-rose-500 *):not(button.bg-rose-600):not(button.bg-rose-600 *):not(button.bg-amber-500):not(button.bg-amber-500 *):not(button.bg-purple-500):not(button.bg-purple-500 *):not(span.bg-purple-500):not(span.bg-rose-500):not(span.bg-amber-500):not(span.bg-emerald-500):not(span.bg-sky-500):not([class*="bg-gradient-to-r from-purple-500"]):not([class*="bg-gradient-to-r from-rose-500"]):not([class*="bg-gradient-to-r from-emerald-500"]),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-white:not(.neu-dark-pill):not(.neu-dark-pill *):not(.neu-dial):not(.neu-dial *):not(button.bg-emerald-500):not(button.bg-emerald-500 *):not(button.bg-emerald-600):not(button.bg-emerald-600 *):not(button.bg-sky-500):not(button.bg-sky-500 *):not(button.bg-sky-600):not(button.bg-sky-600 *):not(button.bg-rose-500):not(button.bg-rose-500 *):not(button.bg-rose-600):not(button.bg-rose-600 *):not(button.bg-amber-500):not(button.bg-amber-500 *):not(button.bg-purple-500):not(button.bg-purple-500 *):not(span.bg-purple-500):not(span.bg-rose-500):not(span.bg-amber-500):not(span.bg-emerald-500):not(span.bg-sky-500):not([class*="bg-gradient-to-r from-purple-500"]):not([class*="bg-gradient-to-r from-rose-500"]):not([class*="bg-gradient-to-r from-emerald-500"]) {
+      color: #0f172a !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) [class*="from-gym-"],
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) [class*="from-gym-"] {
+      background-image: none !important;
+      background-color: var(--neu-surface) !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-emerald-400,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-emerald-400 {
+      color: #059669 !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-emerald-300,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-emerald-300 {
+      color: #047857 !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-sky-400,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-sky-400 {
+      color: #0284c7 !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-sky-300,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-sky-300 {
+      color: #0369a1 !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-amber-300,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-amber-300 {
+      color: #b45309 !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-purple-300,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-purple-300 {
+      color: #7e22ce !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-rose-300,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-rose-300 {
+      color: #be123c !important;
+    }
 
     /* Dark Theme Typography Overrides */
     body.theme-neu-dark,
@@ -485,6 +523,6 @@
   </script>
 
   <!-- React App -->
-  <script type="text/babel" src="/static/app.js?v=37"></script>
+  <script type="text/babel" src="/static/app.js?v=38"></script>
 </body>
 </html>
