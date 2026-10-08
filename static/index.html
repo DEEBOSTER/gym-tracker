@@ -124,128 +124,240 @@
     }
 
     /* ==================================================== */
-    /* 🎨 NEUMORPHIC SOFT UI SYSTEM (Clay / Tactile Design) */
+    /* 🎨 DUAL-THEME NEUMORPHIC SOFT UI SYSTEM (Clay Design) */
     /* ==================================================== */
 
+    /* ☀️ LIGHT NEUMORPHIC PALETTE */
+    :root,
+    html.theme-neu-light,
+    body.theme-neu-light,
+    body.theme-soft-neu {
+      --neu-base: #dde2e8;
+      --neu-surface: #dde2e8;
+      --neu-surface-card: #e5ebf2;
+      --neu-inset-bg: #d2d8e2;
+      --neu-shadow-dark: #b4beca;
+      --neu-shadow-light: #ffffff;
+      --neu-border: rgba(255, 255, 255, 0.75);
+      --neu-border-subtle: rgba(180, 190, 202, 0.45);
+      --neu-text-primary: #1a202c;
+      --neu-text-secondary: #475569;
+      --neu-text-muted: #64748b;
+      --neu-lcd-bg: #abb39e;
+      --neu-lcd-text: #1e2417;
+      --neu-dark-pill: #1f2329;
+      --neu-dock-bg: #dde2e8;
+    }
+
+    /* 🌙 DARK NEUMORPHIC PALETTE (Same design, rich tactile dark styling) */
+    html.theme-neu-dark,
+    body.theme-neu-dark,
+    html.dark body.theme-neu-dark {
+      --neu-base: #14171c;
+      --neu-surface: #1a1e24;
+      --neu-surface-card: #20242c;
+      --neu-inset-bg: #101216;
+      --neu-shadow-dark: #090a0d;
+      --neu-shadow-light: #242932;
+      --neu-border: rgba(255, 255, 255, 0.08);
+      --neu-border-subtle: rgba(255, 255, 255, 0.04);
+      --neu-text-primary: #f8fafc;
+      --neu-text-secondary: #cbd5e1;
+      --neu-text-muted: #94a3b8;
+      --neu-lcd-bg: #1c2720;
+      --neu-lcd-text: #4ade80;
+      --neu-dark-pill: #0e1013;
+      --neu-dock-bg: #1a1e24;
+    }
+
+    /* Base Body & App Container */
+    body.theme-neu-light,
+    body.theme-neu-dark,
+    body.theme-soft-neu {
+      background-color: var(--neu-base) !important;
+      color: var(--neu-text-primary) !important;
+    }
+    body.theme-neu-light #root > div,
+    body.theme-neu-dark #root > div,
+    body.theme-soft-neu #root > div {
+      background-color: var(--neu-base) !important;
+      color: var(--neu-text-primary) !important;
+    }
+
+    /* Header */
+    body.theme-neu-light header,
+    body.theme-neu-dark header,
+    body.theme-soft-neu header {
+      background-color: var(--neu-surface) !important;
+      border-bottom: 1px solid var(--neu-border) !important;
+      box-shadow: 0 4px 12px var(--neu-shadow-dark) !important;
+    }
+
+    /* Core Neumorphic Primitives */
     .neu-flat {
-      background-color: var(--neu-base);
-      box-shadow: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light);
-      border: 1px solid rgba(255, 255, 255, 0.55);
+      background-color: var(--neu-surface) !important;
+      box-shadow: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light) !important;
+      border: 1px solid var(--neu-border) !important;
     }
     .neu-flat-sm {
-      background-color: var(--neu-base);
-      box-shadow: 3px 3px 8px var(--neu-shadow-dark), -3px -3px 8px var(--neu-shadow-light);
-      border: 1px solid rgba(255, 255, 255, 0.55);
+      background-color: var(--neu-surface) !important;
+      box-shadow: 3px 3px 8px var(--neu-shadow-dark), -3px -3px 8px var(--neu-shadow-light) !important;
+      border: 1px solid var(--neu-border) !important;
     }
     .neu-inset {
-      background-color: var(--neu-inset-bg);
-      box-shadow: inset 3px 3px 6px var(--neu-shadow-dark), inset -3px -3px 6px var(--neu-shadow-light);
+      background-color: var(--neu-inset-bg) !important;
+      box-shadow: inset 3px 3px 6px var(--neu-shadow-dark), inset -3px -3px 6px var(--neu-shadow-light) !important;
+      border: 1px solid var(--neu-border-subtle) !important;
     }
     .neu-btn {
-      background-color: var(--neu-base);
-      box-shadow: 4px 4px 10px var(--neu-shadow-dark), -4px -4px 10px var(--neu-shadow-light);
-      border: 1px solid rgba(255, 255, 255, 0.65);
+      background-color: var(--neu-surface) !important;
+      box-shadow: 4px 4px 10px var(--neu-shadow-dark), -4px -4px 10px var(--neu-shadow-light) !important;
+      border: 1px solid var(--neu-border) !important;
       transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .neu-btn:active {
-      box-shadow: inset 3px 3px 6px var(--neu-shadow-dark), inset -3px -3px 6px var(--neu-shadow-light);
+      box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light) !important;
       transform: scale(0.97);
     }
     .neu-dark-pill {
-      background-color: var(--neu-dark-pill);
-      color: #ffffff;
-      box-shadow: 3px 3px 8px var(--neu-shadow-dark), -2px -2px 6px var(--neu-shadow-light);
+      background-color: var(--neu-dark-pill) !important;
+      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      box-shadow: 4px 4px 10px var(--neu-shadow-dark), -2px -2px 6px var(--neu-shadow-light) !important;
+      color: #ffffff !important;
     }
     .neu-lcd {
-      background-color: var(--neu-lcd-bg);
-      color: var(--neu-lcd-text);
-      box-shadow: inset 3px 3px 6px #8c9481, inset -3px -3px 6px #c5cdb9;
-      font-family: 'Share Tech Mono', 'JetBrains Mono', monospace;
+      background-color: var(--neu-lcd-bg) !important;
+      color: var(--neu-lcd-text) !important;
+      box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.35), inset -3px -3px 6px rgba(255, 255, 255, 0.1) !important;
+      font-family: 'Share Tech Mono', 'JetBrains Mono', monospace !important;
+      border: 1px solid rgba(0, 0, 0, 0.15) !important;
     }
     .neu-dial {
-      background-color: #20221f;
-      color: #ffffff;
-      box-shadow: inset 2px 2px 5px rgba(0,0,0,0.5), inset -2px -2px 5px rgba(255,255,255,0.15);
+      background-color: #14161a !important;
+      color: #ffffff !important;
+      box-shadow: inset 2px 2px 5px rgba(0,0,0,0.7), inset -2px -2px 5px rgba(255,255,255,0.12) !important;
     }
     .neu-toggle {
-      background-color: var(--neu-inset-bg);
-      box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light);
+      background-color: var(--neu-inset-bg) !important;
+      box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light) !important;
+      border: 1px solid var(--neu-border-subtle) !important;
+    }
+    .neu-dock {
+      background-color: var(--neu-dock-bg) !important;
+      box-shadow: 0 10px 25px var(--neu-shadow-dark), 0 -2px 10px var(--neu-shadow-light) !important;
+      border: 1px solid var(--neu-border) !important;
+      backdrop-filter: blur(16px) !important;
+      -webkit-backdrop-filter: blur(16px) !important;
     }
 
-    /* ☀️ THEME SOFT NEUMORPHIC OVERRIDES */
-    body.theme-soft-neu {
-      background-color: #dde2e8 !important;
-      color: #1a202c !important;
+    /* 🏗️ Automated Card & Input Styling across entire app */
+    /* Outer elevated cards */
+    [class*="bg-gym-900"]:not(.neu-dock):not(.neu-dark-pill):not(.neu-btn),
+    [class*="bg-gym-850"]:not(.neu-dock):not(.neu-dark-pill):not(.neu-btn) {
+      background-color: var(--neu-surface) !important;
+      border-color: var(--neu-border) !important;
+      box-shadow: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light) !important;
     }
-    body.theme-soft-neu #root > div {
-      background-color: #dde2e8 !important;
-      color: #1a202c !important;
-    }
-    body.theme-soft-neu header {
-      background-color: #dde2e8 !important;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.7) !important;
-      box-shadow: 0 4px 12px rgba(182, 191, 202, 0.35) !important;
-    }
-    body.theme-soft-neu .bg-gym-950 {
-      background-color: #d6dce3 !important;
-      border-color: rgba(255, 255, 255, 0.45) !important;
+
+    /* Inner sub-containers (formerly dark slabs) -> Now smooth recessed clay pockets */
+    [class*="bg-gym-950"]:not(.neu-dark-pill):not(.neu-dock):not(input):not(button) {
+      background-color: var(--neu-inset-bg) !important;
+      border-color: var(--neu-border-subtle) !important;
       box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light) !important;
     }
-    body.theme-soft-neu .bg-gym-900,
-    body.theme-soft-neu .bg-gym-850 {
-      background-color: #dde2e8 !important;
-      border-color: rgba(255, 255, 255, 0.65) !important;
-      box-shadow: 5px 5px 13px var(--neu-shadow-dark), -5px -5px 13px var(--neu-shadow-light) !important;
-    }
-    body.theme-soft-neu .bg-gym-800 {
-      background-color: #dde2e8 !important;
-      border-color: rgba(255, 255, 255, 0.6) !important;
+
+    /* Tactile buttons inside containers */
+    button[class*="bg-gym-800"]:not(.neu-btn):not([class*="bg-sky-500"]):not([class*="bg-emerald-500"]):not([class*="bg-rose-500"]):not([class*="bg-amber-500"]),
+    button[class*="bg-gym-950"]:not(.neu-btn):not([class*="bg-sky-500"]):not([class*="bg-emerald-500"]):not([class*="bg-rose-500"]):not([class*="bg-amber-500"]) {
+      background-color: var(--neu-surface) !important;
       box-shadow: 3px 3px 8px var(--neu-shadow-dark), -3px -3px 8px var(--neu-shadow-light) !important;
+      border: 1px solid var(--neu-border) !important;
+      color: var(--neu-text-secondary) !important;
     }
-    body.theme-soft-neu input,
-    body.theme-soft-neu textarea,
-    body.theme-soft-neu select {
-      background-color: #d6dce3 !important;
-      color: #0f172a !important;
-      border: 1px solid rgba(255, 255, 255, 0.5) !important;
+
+    /* Inputs: transparent inside inset boxes */
+    input.bg-transparent {
+      background-color: transparent !important;
+      box-shadow: none !important;
+      border: none !important;
+      color: var(--neu-text-primary) !important;
+    }
+    input:not(.bg-transparent),
+    textarea,
+    select {
+      background-color: var(--neu-inset-bg) !important;
+      color: var(--neu-text-primary) !important;
+      border: 1px solid var(--neu-border-subtle) !important;
       box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light) !important;
     }
-    body.theme-soft-neu .text-white,
-    body.theme-soft-neu .text-slate-100,
-    body.theme-soft-neu .text-slate-200 {
+
+    /* High contrast text on dark pills, dials, and colored badges */
+    .neu-dark-pill,
+    .neu-dark-pill *,
+    [class*="bg-sky-500"] *,
+    [class*="bg-emerald-500"] *,
+    [class*="bg-rose-500"] *,
+    [class*="bg-amber-500"] *,
+    [class*="bg-purple-500"] *,
+    .neu-dial,
+    .neu-dial * {
+      color: #ffffff !important;
+    }
+    .neu-dark-pill .text-slate-400,
+    .neu-dark-pill .text-slate-500,
+    .neu-dark-pill p,
+    .neu-dark-pill span.font-mono {
+      color: #cbd5e1 !important;
+    }
+
+    /* Light Theme Typography Overrides */
+    body.theme-neu-light h1:not(.neu-dark-pill *):not([class*="bg-sky-500"] *):not([class*="bg-emerald-500"] *),
+    body.theme-neu-light h2:not(.neu-dark-pill *):not([class*="bg-sky-500"] *):not([class*="bg-emerald-500"] *),
+    body.theme-neu-light h3:not(.neu-dark-pill *):not([class*="bg-sky-500"] *):not([class*="bg-emerald-500"] *),
+    body.theme-soft-neu h1:not(.neu-dark-pill *):not([class*="bg-sky-500"] *):not([class*="bg-emerald-500"] *),
+    body.theme-soft-neu h2:not(.neu-dark-pill *):not([class*="bg-sky-500"] *):not([class*="bg-emerald-500"] *),
+    body.theme-soft-neu h3:not(.neu-dark-pill *):not([class*="bg-sky-500"] *):not([class*="bg-emerald-500"] *) {
       color: #1a202c !important;
     }
-    body.theme-soft-neu .text-slate-300 {
-      color: #334155 !important;
+    body.theme-neu-light .text-slate-100:not(.neu-dark-pill *),
+    body.theme-neu-light .text-slate-200:not(.neu-dark-pill *),
+    body.theme-soft-neu .text-slate-100:not(.neu-dark-pill *),
+    body.theme-soft-neu .text-slate-200:not(.neu-dark-pill *) {
+      color: #1a202c !important;
     }
-    body.theme-soft-neu .text-slate-400,
-    body.theme-soft-neu .text-slate-500 {
+    body.theme-neu-light .text-slate-400:not(.neu-dark-pill *),
+    body.theme-neu-light .text-slate-500:not(.neu-dark-pill *),
+    body.theme-soft-neu .text-slate-400:not(.neu-dark-pill *),
+    body.theme-soft-neu .text-slate-500:not(.neu-dark-pill *) {
       color: #64748b !important;
     }
-    body.theme-soft-neu .border-gym-800,
-    body.theme-soft-neu .border-gym-700 {
-      border-color: rgba(255, 255, 255, 0.55) !important;
+
+    /* Dark Theme Typography Overrides */
+    body.theme-neu-dark h1,
+    body.theme-neu-dark h2,
+    body.theme-neu-dark h3,
+    body.theme-neu-dark .text-white,
+    body.theme-neu-dark .text-slate-100,
+    body.theme-neu-dark .text-slate-200,
+    body.theme-neu-dark .text-slate-300 {
+      color: #f8fafc !important;
     }
-    body.theme-soft-neu nav.fixed.bottom-0 {
-      background-color: #dde2e8 !important;
-      box-shadow: 0 -4px 18px rgba(182, 191, 202, 0.45), 0 -1px 0 rgba(255, 255, 255, 0.9) !important;
-      border-top: 1px solid rgba(255, 255, 255, 0.8) !important;
-    }
-    body.theme-soft-neu nav button.bg-gym-800 {
-      background-color: #d6dce3 !important;
-      box-shadow: inset 2px 2px 4px var(--neu-shadow-dark), inset -2px -2px 4px var(--neu-shadow-light) !important;
-      color: #0f172a !important;
-    }
-    body.theme-soft-neu .fixed.inset-0.bg-black\/85,
-    body.theme-soft-neu .fixed.inset-0.bg-black\/80 {
-      background-color: rgba(30, 41, 59, 0.45) !important;
-      backdrop-filter: blur(8px) !important;
+    body.theme-neu-dark .text-slate-400,
+    body.theme-neu-dark .text-slate-500 {
+      color: #94a3b8 !important;
     }
 
-    /* 🌙 DARK GYM THEME STYLES */
-    html.dark body:not(.theme-soft-neu) {
-      background-color: #06090e;
-      color: #f8fafc;
+    /* Borders */
+    [class*="border-gym-800"],
+    [class*="border-gym-700"] {
+      border-color: var(--neu-border-subtle) !important;
+    }
+
+    /* Modals backdrop */
+    .fixed.inset-0.bg-black\/85,
+    .fixed.inset-0.bg-black\/80 {
+      background-color: rgba(15, 23, 42, 0.55) !important;
+      backdrop-filter: blur(8px) !important;
     }
 
     @keyframes pulse-ring {
@@ -293,6 +405,6 @@
   </script>
 
   <!-- React App -->
-  <script type="text/babel" src="/static/app.js?v=32"></script>
+  <script type="text/babel" src="/static/app.js?v=33"></script>
 </body>
 </html>

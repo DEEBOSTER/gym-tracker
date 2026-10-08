@@ -333,22 +333,22 @@ function DoodleCatRainbow() {
 
 // 3. Tactile Day/Night Rocker Switch
 function NeuThemeToggle({ theme, onToggle }) {
-  const isNeu = theme === 'neu';
+  const isLight = theme === 'neu' || theme === 'light';
   return (
     <button
       type="button"
       onClick={onToggle}
       className="neu-toggle relative w-16 h-8 rounded-full p-1 transition-all flex items-center justify-between px-2 cursor-pointer active:scale-95 shrink-0"
-      title="Сменить тему оформления"
+      title="Сменить стиль оформления (Светлый / Тёмный)"
     >
       <span className="text-[11px]">🌙</span>
       <span className="text-[11px]">☀️</span>
       <div 
-        className={`absolute top-1 bottom-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-200 flex items-center justify-center text-[10px] ${
-          isNeu ? 'right-1' : 'left-1'
+        className={`absolute top-1 bottom-1 w-6 h-6 rounded-full bg-white dark:bg-slate-700 shadow-md transition-all duration-200 flex items-center justify-center text-[10px] ${
+          isLight ? 'right-1' : 'left-1'
         }`}
       >
-        {isNeu ? '☀️' : '🌙'}
+        {isLight ? '☀️' : '🌙'}
       </div>
     </button>
   );
@@ -381,14 +381,14 @@ function NeuHeaderCard({ theme, onToggleTheme, coachDayTitle }) {
     <div className="neu-flat rounded-3xl p-4 flex items-center justify-between relative overflow-hidden">
       {/* Clock and date pill */}
       <div className="space-y-1.5 z-10">
-        <div className="font-digital text-3xl font-black tracking-wider text-slate-800 leading-none">
+        <div className="font-digital text-3xl font-black tracking-wider text-slate-800 dark:text-slate-100 leading-none">
           {timeStr || '09:29'}
         </div>
-        <div className="inline-flex items-center space-x-1.5 neu-inset px-2.5 py-0.5 rounded-xl text-[11px] font-mono font-bold text-slate-700">
+        <div className="inline-flex items-center space-x-1.5 neu-inset px-2.5 py-0.5 rounded-xl text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300">
           <span>{dateStr || 'Пт . 08/10'}</span>
         </div>
         {coachDayTitle && (
-          <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider pt-0.5">
+          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider pt-0.5">
             {coachDayTitle}
           </div>
         )}
@@ -450,8 +450,8 @@ function NeuWaterWidget() {
           +
         </button>
       </div>
-      <div className="text-center font-mono text-[10px] font-bold text-slate-600">
-        Drink water: <strong className="text-slate-800">{waterCups} / 8</strong>
+      <div className="text-center font-mono text-[10px] font-bold text-slate-500 dark:text-slate-400">
+        Drink water: <strong className="text-slate-800 dark:text-slate-100">{waterCups} / 8</strong>
       </div>
     </div>
   );
@@ -466,11 +466,11 @@ function NeuStreakDialWidget({ streak = 0, totalWorkouts = 0 }) {
         <div className="absolute inset-1 rounded-full border border-dashed border-slate-400/50" />
         <div className="w-12 h-12 rounded-full neu-dial flex flex-col items-center justify-center text-white z-10">
           <span className="font-digital text-sm font-black leading-none">{streak || 1}</span>
-          <span className="text-[7px] uppercase tracking-wider opacity-70 font-sans mt-0.5">Дней</span>
+          <span className="text-[7px] uppercase tracking-wider opacity-80 font-sans mt-0.5">Дней</span>
         </div>
       </div>
-      <div className="text-[9px] font-mono font-bold text-slate-600">
-        Серия: <strong className="text-slate-800">{streak || 1}</strong> дн.
+      <div className="text-[9px] font-mono font-bold text-slate-500 dark:text-slate-400">
+        Серия: <strong className="text-slate-800 dark:text-slate-100">{streak || 1}</strong> дн.
       </div>
     </div>
   );
@@ -486,7 +486,7 @@ function NeuSplitMenu({ onSelectDay, currentDayType }) {
 
   return (
     <div className="neu-flat rounded-3xl p-3 space-y-2">
-      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1">
+      <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1">
         Сплит тренировок
       </div>
       <div className="space-y-1.5">
@@ -497,9 +497,9 @@ function NeuSplitMenu({ onSelectDay, currentDayType }) {
               key={item.type}
               type="button"
               onClick={() => onSelectDay && onSelectDay(item.type)}
-              className={`w-full py-2 px-3 rounded-full flex items-center justify-between text-left transition-all active:scale-98 cursor-pointer ${
+              className={`w-full py-2.5 px-3 rounded-full flex items-center justify-between text-left transition-all active:scale-98 cursor-pointer ${
                 isSelected 
-                  ? 'neu-dark-pill ring-2 ring-emerald-400/40 font-bold' 
+                  ? 'neu-dark-pill ring-2 ring-emerald-400/50 font-bold' 
                   : 'neu-dark-pill opacity-95 hover:opacity-100'
               }`}
             >
@@ -509,7 +509,7 @@ function NeuSplitMenu({ onSelectDay, currentDayType }) {
                 </span>
                 <span className="text-xs font-bold text-white tracking-wide">{item.title}</span>
               </div>
-              <span className="text-[9px] font-mono text-slate-400">
+              <span className="text-[9px] font-mono text-slate-300 font-semibold">
                 {isSelected ? '✓ Выбран' : 'Выбрать →'}
               </span>
             </button>
@@ -1941,14 +1941,17 @@ function App() {
 
   useEffect(() => {
     try {
-      if (theme === 'neu') {
-        document.documentElement.classList.add('theme-soft-neu');
-        document.body.classList.add('theme-soft-neu');
-        document.documentElement.classList.remove('dark');
+      const isDark = theme === 'dark';
+      if (isDark) {
+        document.documentElement.classList.add('theme-neu-dark', 'dark');
+        document.documentElement.classList.remove('theme-neu-light', 'theme-soft-neu');
+        document.body.classList.add('theme-neu-dark');
+        document.body.classList.remove('theme-neu-light', 'theme-soft-neu');
       } else {
-        document.documentElement.classList.remove('theme-soft-neu');
-        document.body.classList.remove('theme-soft-neu');
-        document.documentElement.classList.add('dark');
+        document.documentElement.classList.add('theme-neu-light', 'theme-soft-neu');
+        document.documentElement.classList.remove('theme-neu-dark', 'dark');
+        document.body.classList.add('theme-neu-light', 'theme-soft-neu');
+        document.body.classList.remove('theme-neu-dark');
       }
       localStorage.setItem('gym_tracker_theme', theme);
     } catch (e) {}
@@ -1956,7 +1959,7 @@ function App() {
 
   const toggleTheme = () => {
     triggerHaptic('medium');
-    setTheme(prev => prev === 'neu' ? 'dark' : 'neu');
+    setTheme(prev => (prev === 'neu' || prev === 'light') ? 'dark' : 'neu');
   };
 
   const currentUserId = getTelegramUser().id;
@@ -2199,21 +2202,21 @@ function App() {
   }
 
   return (
-    <div className={`flex flex-col min-h-screen ${theme === 'neu' ? 'bg-[#dde2e8] text-slate-800' : 'bg-gym-950 text-slate-100'} font-sans select-none ${isInWorkoutFocus ? 'pb-safe-bottom pb-4' : 'safe-pb-nav'}`}>
+    <div className={`flex flex-col min-h-screen bg-[var(--neu-base)] text-[var(--neu-text-primary)] font-sans select-none ${isInWorkoutFocus ? 'pb-safe-bottom pb-4' : 'safe-pb-nav'}`}>
       {/* Top Header: Hidden in workout focus mode to maximize vertical space */}
       {!isInWorkoutFocus && (
-        <header className={`sticky top-0 z-40 px-4 pb-2.5 flex items-center justify-between safe-header ${theme === 'neu' ? 'bg-[#dde2e8] border-b border-white/60 shadow-sm' : 'bg-gym-900 border-b border-gym-800'}`}>
+        <header className="sticky top-0 z-40 px-4 pb-2.5 flex items-center justify-between safe-header bg-[var(--neu-surface)] border-b border-[var(--neu-border)] shadow-sm">
           <div className="flex items-center space-x-2.5">
             <img 
               src="/static/app-icon.png" 
               alt="GymTracker" 
-              className={`w-9 h-9 rounded-2xl object-cover shrink-0 ${theme === 'neu' ? 'neu-flat' : 'shadow-lg shadow-sky-500/10 border border-gym-700/80'}`} 
+              className="w-9 h-9 rounded-2xl object-cover shrink-0 neu-flat" 
             />
             <div>
-              <h1 className={`text-sm font-extrabold tracking-tight ${theme === 'neu' ? 'text-slate-800' : 'bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent'}`}>
+              <h1 className="text-sm font-extrabold tracking-tight text-[var(--neu-text-primary)]">
                 GymTracker
               </h1>
-              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">
+              <p className="text-[9px] text-[var(--neu-text-muted)] font-bold uppercase tracking-wider">
                 {userProfile?.fitness_goal === 'strength' ? 'Силовой тренинг' : userProfile?.fitness_goal === 'fat_loss' ? 'Сушка и рельеф' : 'Набор массы'} • Gemini AI
               </p>
             </div>
@@ -2225,11 +2228,7 @@ function App() {
             {activeWorkout ? (
               <button 
                 onClick={() => { setIsMinimized(false); setActiveTab('workout'); }}
-                className={`flex items-center space-x-2 px-3 py-1 rounded-full active:scale-95 transition ${
-                  theme === 'neu' 
-                    ? 'neu-btn text-emerald-600 font-bold border-white/60' 
-                    : 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 font-bold'
-                }`}
+                className="flex items-center space-x-2 px-3 py-1 rounded-full neu-btn text-emerald-500 font-bold active:scale-95 transition"
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-500 live-dot"></span>
                 <span className="text-xs">Активна ▶</span>
@@ -2239,9 +2238,9 @@ function App() {
                 <button
                   type="button"
                   onClick={() => setShowAccountModal(true)}
-                  className={`text-xs px-2.5 py-1 rounded-full border flex items-center space-x-1 font-mono transition active:scale-95 ${
+                  className={`text-xs px-2.5 py-1 rounded-full neu-btn flex items-center space-x-1 font-mono transition active:scale-95 ${
                     currentUserId.startsWith('tg_')
-                      ? (theme === 'neu' ? 'neu-btn text-slate-700 border-white/60' : 'bg-gym-800/90 text-slate-300 hover:text-white border-gym-700')
+                      ? 'text-[var(--neu-text-secondary)]'
                       : 'bg-amber-500/20 text-amber-600 border-amber-500/40 animate-pulse'
                   }`}
                   title="PWA и синхронизация аккаунта"
@@ -2255,11 +2254,7 @@ function App() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('profile')}
-                  className={`text-xs px-2.5 py-1 rounded-full flex items-center space-x-1 font-mono transition active:scale-95 ${
-                    theme === 'neu' 
-                      ? 'neu-btn text-slate-800 border-white/60' 
-                      : 'text-slate-300 hover:text-white bg-gym-800/90 border border-gym-700'
-                  }`}
+                  className="text-xs px-2.5 py-1 rounded-full neu-btn flex items-center space-x-1 font-mono transition active:scale-95 text-[var(--neu-text-primary)]"
                 >
                   <span>{userProfile?.weight || 80} кг</span>
                   <span className="text-emerald-500">⚙️</span>
@@ -2326,11 +2321,7 @@ function App() {
 
       {/* Bottom Floating Navigation Bar (Hidden during active workout focus) */}
       {!isInWorkoutFocus && (
-        <nav className={`fixed z-40 max-w-lg mx-auto safe-bottom ${
-          theme === 'neu'
-            ? 'bottom-2 left-3 right-3 rounded-3xl p-1.5 neu-dock shadow-xl'
-            : 'bottom-0 left-0 right-0 bg-gym-900 border-t border-gym-800 px-1 pt-1'
-        }`}>
+        <nav className="fixed z-40 max-w-lg mx-auto safe-bottom bottom-2 left-3 right-3 rounded-3xl p-1.5 neu-dock shadow-xl">
           <div className="grid grid-cols-5 gap-1">
             <NavButton 
               active={activeTab === 'workout'} 
@@ -2338,35 +2329,30 @@ function App() {
               icon={<Icons.Dumbbell />}
               label="Тренинг"
               badge={activeWorkout ? "•" : null}
-              isNeu={theme === 'neu'}
             />
             <NavButton 
               active={activeTab === 'analytics'} 
               onClick={() => setActiveTab('analytics')}
               icon={<Icons.Chart />}
               label="Анализ"
-              isNeu={theme === 'neu'}
             />
             <NavButton 
               active={activeTab === 'history'} 
               onClick={() => setActiveTab('history')}
               icon={<Icons.History />}
               label="История"
-              isNeu={theme === 'neu'}
             />
             <NavButton 
               active={activeTab === 'exercises'} 
               onClick={() => setActiveTab('exercises')}
               icon={<Icons.List />}
               label="База"
-              isNeu={theme === 'neu'}
             />
             <NavButton 
               active={activeTab === 'profile'} 
               onClick={() => setActiveTab('profile')}
               icon={<Icons.User />}
               label="О себе"
-              isNeu={theme === 'neu'}
             />
           </div>
         </nav>
@@ -2383,14 +2369,14 @@ function App() {
   );
 }
 
-function NavButton({ active, onClick, icon, label, badge, isNeu }) {
+function NavButton({ active, onClick, icon, label, badge }) {
   return (
     <button
       onClick={onClick}
       className={`relative flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all duration-150 active:scale-95 ${
-        isNeu
-          ? (active ? 'neu-inset text-emerald-600 font-black' : 'neu-btn text-slate-600 hover:text-slate-800 font-medium')
-          : (active ? 'bg-gym-800 text-emerald-400 font-bold shadow-inner' : 'text-slate-400 hover:text-slate-200')
+        active
+          ? 'neu-inset text-emerald-500 font-black'
+          : 'neu-btn text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
       }`}
     >
       <div className="relative">
@@ -2993,55 +2979,53 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
     return (
       <div className="space-y-4 pt-1">
-        {theme === 'neu' && (
-          <div className="space-y-3 pb-1">
-            {/* Top Clock Card from screenshot */}
-            <NeuHeaderCard 
-              theme={theme} 
-              onToggleTheme={onToggleTheme} 
-              coachDayTitle={recommendedDay ? `План: ${recommendedDay.title.split('—')[0]}` : null}
-            />
+        <div className="space-y-3 pb-1">
+          {/* Top Clock Card from screenshot */}
+          <NeuHeaderCard 
+            theme={theme} 
+            onToggleTheme={onToggleTheme} 
+            coachDayTitle={recommendedDay ? `План: ${recommendedDay.title.split('—')[0]}` : null}
+          />
 
-            {/* 2-Column Widget Grid from screenshot */}
-            <div className="grid grid-cols-2 gap-3 items-stretch">
-              {/* Left Column: Resting Cat Doodle Card + Dark Split Menu */}
-              <div className="space-y-3 flex flex-col justify-between">
-                <div className="neu-flat rounded-3xl p-3 flex flex-col items-center justify-center text-center">
-                  <DoodleCatRainbow />
-                  <div className="text-[10px] text-slate-600 font-bold mt-1 leading-tight">
-                    «Восстановление — залог анаболизма»
-                  </div>
+          {/* 2-Column Widget Grid from screenshot */}
+          <div className="grid grid-cols-2 gap-3 items-stretch">
+            {/* Left Column: Resting Cat Doodle Card + Dark Split Menu */}
+            <div className="space-y-3 flex flex-col justify-between">
+              <div className="neu-flat rounded-3xl p-3 flex flex-col items-center justify-center text-center">
+                <DoodleCatRainbow />
+                <div className="text-[10px] text-slate-600 dark:text-slate-400 font-bold mt-1 leading-tight">
+                  «Восстановление — залог анаболизма»
                 </div>
-
-                <NeuSplitMenu 
-                  currentDayType={recommendedDay?.type}
-                  onSelectDay={(type) => {
-                    handleStartDay(type, selectedVariant);
-                  }}
-                />
               </div>
 
-              {/* Right Column: Retro Water LCD Widget + Streak Dial Gauge */}
-              <div className="space-y-3 flex flex-col justify-between">
-                <NeuWaterWidget />
-                <NeuStreakDialWidget 
-                  streak={parseInt(localStorage.getItem('gym_tracker_streak') || '1', 10)}
-                  totalWorkouts={parseInt(localStorage.getItem('gym_tracker_total_workouts') || '5', 10)}
-                />
-              </div>
+              <NeuSplitMenu 
+                currentDayType={recommendedDay?.type}
+                onSelectDay={(type) => {
+                  handleStartDay(type, selectedVariant);
+                }}
+              />
             </div>
 
-            {/* Pastel Segmented Indicator Bar from screenshot */}
-            <div className="neu-flat rounded-3xl p-3 flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold text-slate-600">Недельная норма</span>
-              <NeuSegmentedBar current={4} total={7} />
-              <span className="text-[10px] font-mono font-bold text-slate-800">4 / 7</span>
+            {/* Right Column: Retro Water LCD Widget + Streak Dial Gauge */}
+            <div className="space-y-3 flex flex-col justify-between">
+              <NeuWaterWidget />
+              <NeuStreakDialWidget 
+                streak={parseInt(localStorage.getItem('gym_tracker_streak') || '1', 10)}
+                totalWorkouts={parseInt(localStorage.getItem('gym_tracker_total_workouts') || '5', 10)}
+              />
             </div>
           </div>
-        )}
+
+          {/* Pastel Segmented Indicator Bar from screenshot */}
+          <div className="neu-flat rounded-3xl p-3 flex items-center justify-between">
+            <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400">Недельная норма</span>
+            <NeuSegmentedBar current={4} total={7} />
+            <span className="text-[10px] font-mono font-bold text-slate-800 dark:text-slate-200">4 / 7</span>
+          </div>
+        </div>
 
         <div className="text-center py-2">
-          <h2 className={`text-2xl font-black tracking-tight ${theme === 'neu' ? 'text-slate-800' : 'text-white'}`}>
+          <h2 className="text-2xl font-black tracking-tight text-[var(--neu-text-primary)]">
             Выберите тренировку
           </h2>
           <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
@@ -6622,18 +6606,18 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
       </div>
 
       <form onSubmit={handleSave} className="space-y-3">
-        {/* Section 0: Theme Customization (Soft Neumorphism vs Dark Gym) */}
+        {/* Section 0: Theme Customization (Soft Neumorphism Light vs Dark) */}
         <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 space-y-3 shadow-lg">
           <span className="text-[11px] font-black text-amber-500 uppercase tracking-wider block">
             🎨 Стиль интерфейса
           </span>
-          <div className="flex items-center justify-between bg-gym-950/90 border border-gym-800 rounded-2xl p-3">
+          <div className="flex items-center justify-between neu-dark-pill rounded-2xl p-3.5">
             <div className="space-y-0.5">
               <span className="text-xs font-bold text-white block">
-                {theme === 'neu' ? '☀️ Мягкий невморфизм (Clay Soft UI)' : '🌙 Тёмный зал (Dark Gym)'}
+                {theme === 'neu' || theme === 'light' ? '☀️ Светлый стиль (Soft Clay Light)' : '🌙 Тёмный стиль (Dark Clay UI)'}
               </span>
-              <p className="text-[10px] text-slate-400">
-                {theme === 'neu' ? 'Светлый тактильный стиль с мягкими тенями' : 'Контрастная тёмная тема для тренировок'}
+              <p className="text-[10px] text-slate-300">
+                {theme === 'neu' || theme === 'light' ? 'Светлый тактильный стиль с мягкими тенями' : 'Тёмный тактильный стиль с глубокими тенями'}
               </p>
             </div>
             <NeuThemeToggle theme={theme} onToggle={onToggleTheme} />
@@ -6649,7 +6633,7 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
           <div className="grid grid-cols-2 gap-2.5">
             {/* Weight */}
             <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Вес тела</span>
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Вес тела</span>
               <div className="flex items-baseline space-x-1 my-1">
                 <input
                   type="text"
@@ -6659,16 +6643,16 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
                   onFocus={(e) => e.target.select()}
                   onClick={(e) => e.target.select()}
                   onChange={(e) => setFormData({ ...formData, weight: cleanNumericInput(e.target.value, true) })}
-                  className="w-20 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
+                  className="w-20 bg-transparent text-2xl font-black text-slate-800 dark:text-white focus:outline-none font-mono"
                 />
-                <span className="text-xs text-slate-400 font-bold">кг</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">кг</span>
               </div>
-              <span className="text-[9px] text-slate-500 font-mono">Расчет базовых весов</span>
+              <span className="text-[9px] text-slate-400 font-mono">Расчет базовых весов</span>
             </div>
 
             {/* Height */}
             <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Рост</span>
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Рост</span>
               <div className="flex items-baseline space-x-1 my-1">
                 <input
                   type="text"
@@ -6678,18 +6662,18 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
                   onFocus={(e) => e.target.select()}
                   onClick={(e) => e.target.select()}
                   onChange={(e) => setFormData({ ...formData, height: cleanNumericInput(e.target.value, false) })}
-                  className="w-20 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
+                  className="w-20 bg-transparent text-2xl font-black text-slate-800 dark:text-white focus:outline-none font-mono"
                 />
-                <span className="text-xs text-slate-400 font-bold">см</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">см</span>
               </div>
-              <span className="text-[9px] text-emerald-400 font-mono">ИМТ: {bmi} ({bmiLabel})</span>
+              <span className="text-[9px] text-emerald-500 dark:text-emerald-400 font-mono font-bold">ИМТ: {bmi} ({bmiLabel})</span>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
             {/* Age */}
             <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Возраст</span>
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Возраст</span>
               <div className="flex items-baseline space-x-1">
                 <input
                   type="text"
@@ -6698,27 +6682,35 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
                   onFocus={(e) => e.target.select()}
                   onClick={(e) => e.target.select()}
                   onChange={(e) => setFormData({ ...formData, age: cleanNumericInput(e.target.value, false) })}
-                  className="w-16 bg-transparent text-xl font-black text-white focus:outline-none font-mono"
+                  className="w-16 bg-transparent text-xl font-black text-slate-800 dark:text-white focus:outline-none font-mono"
                 />
-                <span className="text-xs text-slate-400 font-bold">лет</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">лет</span>
               </div>
             </div>
 
             {/* Gender */}
             <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Пол</span>
-              <div className="flex space-x-1 mt-1">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Пол</span>
+              <div className="flex space-x-1.5 mt-1">
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, gender: 'male' })}
-                  className={`flex-1 py-1 rounded-xl text-xs font-bold transition ${formData.gender === 'male' ? 'bg-sky-500 text-gym-950 font-black' : 'bg-gym-800 text-slate-300'}`}
+                  className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 ${
+                    formData.gender === 'male' 
+                      ? 'bg-sky-500 text-white font-black shadow-md' 
+                      : 'neu-btn text-slate-600 dark:text-slate-300'
+                  }`}
                 >
                   Муж
                 </button>
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, gender: 'female' })}
-                  className={`flex-1 py-1 rounded-xl text-xs font-bold transition ${formData.gender === 'female' ? 'bg-sky-500 text-gym-950 font-black' : 'bg-gym-800 text-slate-300'}`}
+                  className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 ${
+                    formData.gender === 'female' 
+                      ? 'bg-sky-500 text-white font-black shadow-md' 
+                      : 'neu-btn text-slate-600 dark:text-slate-300'
+                  }`}
                 >
                   Жен
                 </button>
@@ -6735,7 +6727,7 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
 
           {/* Fitness Goal */}
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Цель тренировок</label>
+            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Цель тренировок</label>
             <div className="grid grid-cols-3 gap-1.5 text-xs">
               {[
                 { id: 'hypertrophy', label: '🥩 Масса', desc: '8–12 повт.' },
@@ -6748,12 +6740,12 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
                   onClick={() => setFormData({ ...formData, fitness_goal: g.id })}
                   className={`p-2.5 rounded-2xl border flex flex-col items-center justify-center transition active:scale-95 ${
                     formData.fitness_goal === g.id
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400 font-black shadow-md'
-                      : 'bg-gym-950/70 text-slate-400 border-gym-800 hover:text-white'
+                      ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border-emerald-500/50 font-black shadow-sm neu-inset'
+                      : 'neu-btn text-slate-700 dark:text-slate-300 border-transparent hover:border-slate-300'
                   }`}
                 >
                   <span className="text-xs font-bold">{g.label}</span>
-                  <span className="text-[9px] text-slate-400 mt-0.5 font-mono">{g.desc}</span>
+                  <span className="text-[9px] opacity-75 mt-0.5 font-mono">{g.desc}</span>
                 </button>
               ))}
             </div>
@@ -6761,7 +6753,7 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
 
           {/* Experience Level */}
           <div className="space-y-1 pt-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Опыт в силовом тренинге</label>
+            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Опыт в силовом тренинге</label>
             <div className="grid grid-cols-3 gap-1.5 text-xs">
               {[
                 { id: 'beginner', label: 'Новичок', desc: '< 1 года' },
@@ -6774,12 +6766,12 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
                   onClick={() => setFormData({ ...formData, experience_level: l.id })}
                   className={`p-2 rounded-2xl border flex flex-col items-center justify-center transition active:scale-95 ${
                     formData.experience_level === l.id
-                      ? 'bg-sky-500/20 text-sky-300 border-sky-400 font-black shadow-md'
-                      : 'bg-gym-950/70 text-slate-400 border-gym-800 hover:text-white'
+                      ? 'bg-sky-500/20 text-sky-600 dark:text-sky-300 border-sky-500/50 font-black shadow-sm neu-inset'
+                      : 'neu-btn text-slate-700 dark:text-slate-300 border-transparent hover:border-slate-300'
                   }`}
                 >
                   <span className="text-xs font-bold">{l.label}</span>
-                  <span className="text-[9px] text-slate-400 mt-0.5">{l.desc}</span>
+                  <span className="text-[9px] opacity-75 mt-0.5">{l.desc}</span>
                 </button>
               ))}
             </div>
