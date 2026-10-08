@@ -150,21 +150,26 @@
     }
 
     /* 🌙 DARK NEUMORPHIC PALETTE (Same design, rich tactile dark styling) */
+    :root.dark,
+    :root.theme-neu-dark,
+    html.dark,
     html.theme-neu-dark,
+    body.dark,
     body.theme-neu-dark,
-    html.dark body.theme-neu-dark {
+    html.dark body,
+    html.theme-neu-dark body {
       --neu-base: #14171c;
       --neu-surface: #1a1e24;
       --neu-surface-card: #20242c;
       --neu-inset-bg: #101216;
       --neu-shadow-dark: #090a0d;
-      --neu-shadow-light: #242932;
+      --neu-shadow-light: #262b34;
       --neu-border: rgba(255, 255, 255, 0.08);
       --neu-border-subtle: rgba(255, 255, 255, 0.04);
       --neu-text-primary: #f8fafc;
       --neu-text-secondary: #cbd5e1;
       --neu-text-muted: #94a3b8;
-      --neu-lcd-bg: #1c2720;
+      --neu-lcd-bg: #18221c;
       --neu-lcd-text: #4ade80;
       --neu-dark-pill: #0e1013;
       --neu-dock-bg: #1a1e24;
@@ -205,7 +210,7 @@
       border: 1px solid var(--neu-border) !important;
     }
     .neu-inset {
-      background-color: var(--neu-inset-bg) !important;
+      background-color: var(--neu-inset-bg);
       box-shadow: inset 3px 3px 6px var(--neu-shadow-dark), inset -3px -3px 6px var(--neu-shadow-light) !important;
       border: 1px solid var(--neu-border-subtle) !important;
     }
@@ -236,16 +241,20 @@
       background-color: #14161a !important;
       color: #ffffff !important;
       box-shadow: inset 2px 2px 5px rgba(0,0,0,0.7), inset -2px -2px 5px rgba(255,255,255,0.12) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
     }
-    body.theme-neu-light .neu-dial,
-    body.theme-soft-neu .neu-dial {
+    .neu-dial * {
+      color: #ffffff !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .neu-dial,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .neu-dial {
       background-color: var(--neu-inset-bg) !important;
       color: #0f172a !important;
       box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light) !important;
       border: 1px solid var(--neu-border-subtle) !important;
     }
-    body.theme-neu-light .neu-dial *,
-    body.theme-soft-neu .neu-dial * {
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .neu-dial *,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .neu-dial * {
       color: #0f172a !important;
     }
     .neu-toggle {
@@ -342,50 +351,50 @@
     }
 
     /* Light Theme Typography: Headings and text contrast */
-    body.theme-neu-light,
-    body.theme-soft-neu,
-    body.theme-neu-light #root,
-    body.theme-soft-neu #root {
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark),
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) #root,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) #root {
       color: #1a202c !important;
     }
-    body.theme-neu-light h1:not(.neu-dark-pill *),
-    body.theme-neu-light h2:not(.neu-dark-pill *),
-    body.theme-neu-light h3:not(.neu-dark-pill *),
-    body.theme-neu-light h4:not(.neu-dark-pill *),
-    body.theme-soft-neu h1:not(.neu-dark-pill *),
-    body.theme-soft-neu h2:not(.neu-dark-pill *),
-    body.theme-soft-neu h3:not(.neu-dark-pill *),
-    body.theme-soft-neu h4:not(.neu-dark-pill *) {
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) h1:not(.neu-dark-pill *),
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) h2:not(.neu-dark-pill *),
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) h3:not(.neu-dark-pill *),
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) h4:not(.neu-dark-pill *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) h1:not(.neu-dark-pill *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) h2:not(.neu-dark-pill *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) h3:not(.neu-dark-pill *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) h4:not(.neu-dark-pill *) {
       color: #0f172a !important;
     }
-    body.theme-neu-light .text-slate-800,
-    body.theme-soft-neu .text-slate-800 {
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-800,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-800 {
       color: #1a202c !important;
     }
-    body.theme-neu-light .text-slate-700,
-    body.theme-soft-neu .text-slate-700 {
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-700,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-700 {
       color: #334155 !important;
     }
-    body.theme-neu-light .text-slate-600,
-    body.theme-soft-neu .text-slate-600 {
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-600,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-600 {
       color: #475569 !important;
     }
-    body.theme-neu-light .text-slate-400,
-    body.theme-soft-neu .text-slate-400,
-    body.theme-neu-light .text-gym-400,
-    body.theme-soft-neu .text-gym-400 {
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-400,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-400,
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-gym-400,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-gym-400 {
       color: #64748b !important;
     }
-    body.theme-neu-light .text-slate-300:not(.neu-dark-pill *):not(.neu-dial *),
-    body.theme-soft-neu .text-slate-300:not(.neu-dark-pill *):not(.neu-dial *) {
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-300:not(.neu-dark-pill *):not(.neu-dial *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-300:not(.neu-dark-pill *):not(.neu-dial *) {
       color: #334155 !important;
     }
-    body.theme-neu-light .text-slate-200:not(.neu-dark-pill *):not(.neu-dial *),
-    body.theme-soft-neu .text-slate-200:not(.neu-dark-pill *):not(.neu-dial *) {
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-200:not(.neu-dark-pill *):not(.neu-dial *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-200:not(.neu-dark-pill *):not(.neu-dial *) {
       color: #1e293b !important;
     }
-    body.theme-neu-light .text-slate-100:not(.neu-dark-pill *):not(.neu-dial *),
-    body.theme-soft-neu .text-slate-100:not(.neu-dark-pill *):not(.neu-dial *) {
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-100:not(.neu-dark-pill *):not(.neu-dial *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-100:not(.neu-dark-pill *):not(.neu-dial *) {
       color: #0f172a !important;
     }
 
@@ -476,6 +485,6 @@
   </script>
 
   <!-- React App -->
-  <script type="text/babel" src="/static/app.js?v=36"></script>
+  <script type="text/babel" src="/static/app.js?v=37"></script>
 </body>
 </html>

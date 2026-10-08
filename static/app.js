@@ -403,168 +403,9 @@ function NeuHeaderCard({ theme, onToggleTheme, coachDayTitle }) {
   );
 }
 
-// 5. Water / Hydration Retro LCD Widget
-function NeuWaterWidget() {
-  const [waterCups, setWaterCups] = useState(() => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const saved = localStorage.getItem('gym_tracker_water_' + today);
-      return saved ? parseInt(saved, 10) : 0;
-    } catch (e) {
-      return 0;
-    }
-  });
-
-  const updateWater = (delta) => {
-    triggerHaptic('light');
-    setWaterCups(prev => {
-      const next = Math.max(0, Math.min(16, prev + delta));
-      try {
-        const today = new Date().toISOString().split('T')[0];
-        localStorage.setItem('gym_tracker_water_' + today, String(next));
-      } catch (e) {}
-      return next;
-    });
-  };
-
-  return (
-    <div className="neu-flat rounded-3xl p-3 flex flex-col justify-between space-y-2 h-full">
-      {/* Retro LCD screen */}
-      <div className="neu-lcd rounded-2xl p-2 flex items-center justify-between text-slate-900">
-        <button
-          type="button"
-          onClick={() => updateWater(-1)}
-          className="w-6 h-6 rounded-lg flex items-center justify-center font-black text-sm active:scale-90 select-none hover:bg-black/10 transition"
-        >
-          –
-        </button>
-        <div className="flex flex-col items-center">
-          <span className="text-lg">🥛</span>
-          <span className="text-[8px] uppercase tracking-widest font-black opacity-80 mt-0.5">water</span>
-        </div>
-        <button
-          type="button"
-          onClick={() => updateWater(1)}
-          className="w-6 h-6 rounded-lg flex items-center justify-center font-black text-sm active:scale-90 select-none hover:bg-black/10 transition"
-        >
-          +
-        </button>
-      </div>
-      <div className="text-center font-mono text-[10px] font-bold text-slate-500 dark:text-slate-400">
-        Drink water: <strong className="text-slate-800 dark:text-slate-100">{waterCups} / 8</strong>
-      </div>
-    </div>
-  );
-}
-
-// 6. Circular Streak Dial Widget (285 Days style)
-function NeuStreakDialWidget({ streak = 0, totalWorkouts = 0 }) {
-  return (
-    <div className="neu-flat rounded-3xl p-3 flex flex-col items-center justify-center space-y-1.5 h-full text-center">
-      {/* Circular Dial with outer bezel */}
-      <div className="relative w-16 h-16 rounded-full neu-flat flex items-center justify-center p-1.5">
-        <div className="absolute inset-1 rounded-full border border-dashed border-slate-400/50" />
-        <div className="w-12 h-12 rounded-full neu-dial flex flex-col items-center justify-center text-white z-10">
-          <span className="font-digital text-sm font-black leading-none">{streak || 1}</span>
-          <span className="text-[7px] uppercase tracking-wider opacity-80 font-sans mt-0.5">Дней</span>
-        </div>
-      </div>
-      <div className="text-[9px] font-mono font-bold text-slate-500 dark:text-slate-400">
-        Серия: <strong className="text-slate-800 dark:text-slate-100">{streak || 1}</strong> дн.
-      </div>
-    </div>
-  );
-}
-
-// 7. Dark Contrast Split Menu (Files / Contacts / Themes style)
-function NeuSplitMenu({ onSelectDay, currentDayType }) {
-  const items = [
-    { type: 'push', title: 'День 1: Push (Жим)', icon: '🟢', bgIcon: 'bg-emerald-500/20 text-emerald-500' },
-    { type: 'pull', title: 'День 2: Pull (Тяга)', icon: '🔵', bgIcon: 'bg-sky-500/20 text-sky-500' },
-    { type: 'legs', title: 'День 3: Legs (Ноги)', icon: '🟠', bgIcon: 'bg-amber-500/20 text-amber-500' },
-  ];
-
-  return (
-    <div className="neu-flat rounded-3xl p-3 space-y-2">
-      <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1">
-        Сплит тренировок
-      </div>
-      <div className="space-y-1.5">
-        {items.map(item => {
-          const isSelected = currentDayType === item.type;
-          return (
-            <button
-              key={item.type}
-              type="button"
-              onClick={() => onSelectDay && onSelectDay(item.type)}
-              className={`w-full py-2.5 px-3 rounded-2xl flex items-center justify-between text-left transition-all active:scale-98 cursor-pointer ${
-                isSelected 
-                  ? 'neu-inset bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/40 text-emerald-800 dark:text-emerald-300 font-bold' 
-                  : 'neu-btn text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-300/40 dark:border-white/10'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${item.bgIcon}`}>
-                  {item.icon}
-                </span>
-                <span className={`text-xs font-bold tracking-wide ${isSelected ? 'text-emerald-800 dark:text-emerald-200' : 'text-slate-800 dark:text-slate-100'}`}>
-                  {item.title}
-                </span>
-              </div>
-              <span className={`text-[9px] font-mono font-semibold ${isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
-                {isSelected ? '✓ Выбран' : 'Выбрать →'}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// 8. Pastel Segmented Bar (Bottom dock indicator style from screenshot)
-function NeuSegmentedBar({ current = 4, total = 7 }) {
-  const colors = [
-    '#8baaa2', // pastel teal
-    '#9eb3a7', // sage
-    '#b2c4b8', // mint
-    '#cbd5c7', // cream
-    '#d9cfb0', // pale gold
-    '#dfbe93', // wheat
-    '#e3a979', // pastel peach
-  ];
-
-  return (
-    <div className="neu-inset rounded-full p-1.5 flex items-center justify-center space-x-1.5">
-      {colors.map((c, idx) => {
-        const active = idx < current;
-        return (
-          <div
-            key={idx}
-            className="w-3.5 h-5 rounded-full transition-all duration-300"
-            style={{
-              backgroundColor: c,
-              opacity: active ? 1 : 0.25,
-              transform: active ? 'scale(1)' : 'scale(0.85)'
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-const categoryColors = {
-  'Грудь': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  'Спина': 'bg-sky-500/10 text-sky-400 border-sky-500/20',
-  'Плечи': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  'Руки': 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  'Трицепс': 'bg-violet-500/10 text-violet-400 border-violet-500/20',
-  'Ноги': 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-  'Пресс': 'bg-teal-500/10 text-teal-400 border-teal-500/20',
-  'Базовые': 'bg-slate-500/10 text-slate-300 border-slate-500/20'
-};
-
+// ==========================================
+// 📅 DATE & TIME FORMATTING UTILITIES
+// ==========================================
 const parseSafeDate = (val) => {
   if (!val) return null;
   if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
@@ -633,6 +474,501 @@ const formatTime = (seconds) => {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+};
+
+// 5. Water / Hydration Retro LCD Widget
+function NeuWaterWidget() {
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const [waterMl, setWaterMl] = useState(() => {
+    try {
+      const savedMl = localStorage.getItem('gym_tracker_water_ml_' + today);
+      if (savedMl !== null) return parseInt(savedMl, 10);
+      const savedCups = localStorage.getItem('gym_tracker_water_' + today);
+      if (savedCups !== null) return parseInt(savedCups, 10) * 250;
+      return 0;
+    } catch (e) {
+      return 0;
+    }
+  });
+
+  const [showPresets, setShowPresets] = useState(false);
+  const targetMl = 2000;
+  const glassSize = 250;
+  const glasses = Math.round(waterMl / glassSize);
+  const targetGlasses = 8;
+  const progressPct = Math.min(100, Math.round((waterMl / targetMl) * 100));
+
+  const updateWater = (deltaMl) => {
+    triggerHaptic('light');
+    setWaterMl(prev => {
+      const next = Math.max(0, Math.min(5000, prev + deltaMl));
+      try {
+        localStorage.setItem('gym_tracker_water_ml_' + today, String(next));
+        localStorage.setItem('gym_tracker_water_' + today, String(Math.round(next / glassSize)));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const resetWater = () => {
+    triggerHaptic('medium');
+    setWaterMl(0);
+    try {
+      localStorage.setItem('gym_tracker_water_ml_' + today, '0');
+      localStorage.setItem('gym_tracker_water_' + today, '0');
+    } catch (e) {}
+    setShowPresets(false);
+  };
+
+  return (
+    <div className="neu-flat rounded-3xl p-3 flex flex-col justify-between space-y-2 h-full relative">
+      {/* Retro LCD screen */}
+      <div 
+        onClick={() => setShowPresets(prev => !prev)}
+        className="neu-lcd rounded-2xl p-2 flex items-center justify-between text-slate-900 cursor-pointer select-none relative overflow-hidden group shadow-inner"
+        title="Нажмите для быстрых объемов воды"
+      >
+        {/* Subtle Water Level Background Fill */}
+        <div 
+          className="absolute bottom-0 left-0 right-0 bg-sky-500/20 pointer-events-none transition-all duration-500"
+          style={{ height: `${progressPct}%` }}
+        />
+
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); updateWater(-glassSize); }}
+          className="w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs active:scale-90 select-none hover:bg-black/10 dark:hover:bg-white/10 transition z-10 shrink-0"
+          title="-250 мл"
+        >
+          –
+        </button>
+
+        <div className="flex flex-col items-center z-10 px-0.5 truncate">
+          <div className="flex items-center space-x-1 truncate">
+            <span className="text-sm">🥛</span>
+            <span className="font-digital text-sm font-black text-slate-900 dark:text-slate-100">
+              {waterMl}
+            </span>
+            <span className="text-[8px] font-mono font-bold opacity-75">мл</span>
+          </div>
+          <span className="text-[7.5px] uppercase tracking-tighter font-black opacity-70 mt-0.5 whitespace-nowrap">
+            {glasses} / {targetGlasses} ст. ({progressPct}%)
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); updateWater(glassSize); }}
+          className="w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs active:scale-90 select-none hover:bg-black/10 dark:hover:bg-white/10 transition z-10 shrink-0"
+          title="+250 мл"
+        >
+          +
+        </button>
+      </div>
+
+      {/* Quick Status / Quick Actions */}
+      {showPresets ? (
+        <div className="space-y-1 z-20">
+          <div className="grid grid-cols-3 gap-1">
+            <button
+              type="button"
+              onClick={() => { updateWater(250); setShowPresets(false); }}
+              className="py-1 px-1 rounded-xl text-[9px] font-bold neu-btn text-sky-600 dark:text-sky-400 active:scale-95"
+            >
+              +250
+            </button>
+            <button
+              type="button"
+              onClick={() => { updateWater(500); setShowPresets(false); }}
+              className="py-1 px-1 rounded-xl text-[9px] font-bold neu-btn text-sky-600 dark:text-sky-400 active:scale-95"
+            >
+              +500
+            </button>
+            <button
+              type="button"
+              onClick={resetWater}
+              className="py-1 px-1 rounded-xl text-[9px] font-bold neu-btn text-rose-500 active:scale-95"
+            >
+              Сброс
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between text-[9px] font-mono font-bold text-slate-500 dark:text-slate-400 px-0.5">
+          <span className="truncate">Вода:</span>
+          <strong className={`${waterMl >= targetMl ? 'text-emerald-500 font-extrabold' : 'text-slate-800 dark:text-slate-100'} whitespace-nowrap`}>
+            {waterMl >= targetMl ? '✓ Норма!' : `${waterMl} / ${targetMl} мл`}
+          </strong>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 6. Circular Streak Dial Widget (Accurate Calculation + Interactive Details)
+function NeuStreakDialWidget({ workouts = [], onNavigateTab }) {
+  const [showModal, setShowModal] = useState(false);
+
+  const stats = useMemo(() => {
+    if (!workouts || workouts.length === 0) {
+      return { streakWorkouts: 0, totalWorkouts: 0, totalVolume: 0 };
+    }
+
+    const now = new Date();
+    const validWorkouts = workouts
+      .map(w => ({ ...w, _parsedDate: parseSafeDate(w.start_time) }))
+      .filter(w => w._parsedDate !== null)
+      .sort((a, b) => b._parsedDate.getTime() - a._parsedDate.getTime());
+
+    let streakWorkouts = 0;
+    if (validWorkouts.length > 0) {
+      const lastWorkout = validWorkouts[0];
+      const msSinceLast = now.getTime() - lastWorkout._parsedDate.getTime();
+      const daysSinceLast = msSinceLast / (1000 * 60 * 60 * 24);
+
+      if (daysSinceLast <= 8.5) {
+        streakWorkouts = 1;
+        for (let i = 1; i < validWorkouts.length; i++) {
+          const prevW = validWorkouts[i - 1];
+          const currW = validWorkouts[i];
+          const gapDays = (prevW._parsedDate.getTime() - currW._parsedDate.getTime()) / (1000 * 60 * 60 * 24);
+          if (gapDays <= 8.5) {
+            streakWorkouts++;
+          } else {
+            break;
+          }
+        }
+      }
+    }
+
+    const totalVolume = workouts.reduce((sum, w) => sum + (parseFloat(w.total_volume) || 0), 0);
+
+    return {
+      streakWorkouts,
+      totalWorkouts: workouts.length,
+      totalVolume: Math.round(totalVolume)
+    };
+  }, [workouts]);
+
+  const displayStreak = stats.streakWorkouts;
+
+  return (
+    <>
+      <div 
+        onClick={() => setShowModal(true)}
+        className="neu-flat rounded-3xl p-3 flex flex-col items-center justify-center space-y-1.5 h-full text-center cursor-pointer active:scale-95 transition-all group"
+        title="Нажмите для статистики серии"
+      >
+        {/* Circular Dial with outer bezel */}
+        <div className="relative w-16 h-16 rounded-full neu-flat flex items-center justify-center p-1.5 transition-transform group-hover:scale-105">
+          <div className="absolute inset-1 rounded-full border border-dashed border-slate-400/40" />
+          <div className="w-12 h-12 rounded-full neu-dial flex flex-col items-center justify-center text-white z-10 shadow-inner">
+            <span className="font-digital text-sm font-black leading-none text-slate-800 dark:text-white">
+              {displayStreak}
+            </span>
+            <span className="text-[7px] uppercase tracking-wider opacity-80 font-sans mt-0.5 text-slate-600 dark:text-slate-300">
+              {displayStreak > 0 ? getPluralWorkouts(displayStreak).slice(0, 4) + '.' : 'дней'}
+            </span>
+          </div>
+        </div>
+
+        <div className="text-[9px] font-mono font-bold text-slate-500 dark:text-slate-400 leading-tight text-center">
+          <div>Серия: <strong className="text-slate-800 dark:text-slate-100">{displayStreak}</strong> {displayStreak === 1 ? 'трен.' : 'трен.'}</div>
+          <div className="text-[8px] opacity-75 mt-0.5">Всего: {stats.totalWorkouts}</div>
+        </div>
+      </div>
+
+      {/* Streak Info Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="neu-flat rounded-3xl p-5 max-w-xs w-full space-y-4 shadow-2xl border border-slate-200/50 dark:border-white/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">🔥</span>
+                <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">
+                  Серия тренировок
+                </h3>
+              </div>
+              <button 
+                onClick={() => setShowModal(false)}
+                className="w-7 h-7 rounded-full neu-btn flex items-center justify-center text-xs text-slate-500 hover:text-slate-800 dark:hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <div className="neu-inset rounded-2xl p-3 flex justify-between items-center">
+                <span className="text-slate-500 dark:text-slate-400">Текущая серия:</span>
+                <span className="font-black text-amber-500 text-sm">
+                  {stats.streakWorkouts} {getPluralWorkouts(stats.streakWorkouts)}
+                </span>
+              </div>
+              <div className="neu-inset rounded-2xl p-3 flex justify-between items-center">
+                <span className="text-slate-500 dark:text-slate-400">Всего тренировок:</span>
+                <span className="font-black text-slate-800 dark:text-white text-sm">
+                  {stats.totalWorkouts}
+                </span>
+              </div>
+              {stats.totalVolume > 0 && (
+                <div className="neu-inset rounded-2xl p-3 flex justify-between items-center">
+                  <span className="text-slate-500 dark:text-slate-400">Общий тоннаж:</span>
+                  <span className="font-black text-emerald-500 text-sm">
+                    {stats.totalVolume.toLocaleString('ru-RU')} кг
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center leading-relaxed">
+              Серия не сгорает, если интервал между тренировками не превышает 7 дней.
+            </p>
+
+            {onNavigateTab && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowModal(false);
+                  onNavigateTab('analytics');
+                }}
+                className="w-full py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-md transition active:scale-95"
+              >
+                Открыть подробный анализ →
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// 7. Dark Contrast Split Menu (Files / Contacts / Themes style)
+function NeuSplitMenu({ onSelectDay, currentDayType }) {
+  const items = [
+    { type: 'push', title: 'День 1: Push (Жим)', icon: '🟢', bgIcon: 'bg-emerald-500/20 text-emerald-500' },
+    { type: 'pull', title: 'День 2: Pull (Тяга)', icon: '🔵', bgIcon: 'bg-sky-500/20 text-sky-500' },
+    { type: 'legs', title: 'День 3: Legs (Ноги)', icon: '🟠', bgIcon: 'bg-amber-500/20 text-amber-500' },
+  ];
+
+  return (
+    <div className="neu-flat rounded-3xl p-3 space-y-2">
+      <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1">
+        Сплит тренировок
+      </div>
+      <div className="space-y-1.5">
+        {items.map(item => {
+          const isSelected = currentDayType === item.type;
+          return (
+            <button
+              key={item.type}
+              type="button"
+              onClick={() => onSelectDay && onSelectDay(item.type)}
+              className={`w-full py-2.5 px-3 rounded-2xl flex items-center justify-between text-left transition-all active:scale-98 cursor-pointer ${
+                isSelected 
+                  ? 'neu-inset bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/40 text-emerald-800 dark:text-emerald-300 font-bold' 
+                  : 'neu-btn text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-300/40 dark:border-white/10'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${item.bgIcon}`}>
+                  {item.icon}
+                </span>
+                <span className={`text-xs font-bold tracking-wide ${isSelected ? 'text-emerald-800 dark:text-emerald-200' : 'text-slate-800 dark:text-slate-100'}`}>
+                  {item.title}
+                </span>
+              </div>
+              <span className={`text-[9px] font-mono font-semibold ${isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                {isSelected ? '✓ Выбран' : 'Выбрать →'}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// 8. Interactive Weekly Norm & 7-Day Habit Tracker
+function NeuWeeklyNormWidget({ workouts = [] }) {
+  const [weeklyGoal, setWeeklyGoal] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gym_tracker_weekly_goal');
+      return saved ? parseInt(saved, 10) : 3;
+    } catch (e) {
+      return 3;
+    }
+  });
+
+  const [showGoalModal, setShowGoalModal] = useState(false);
+
+  // Compute 7 days of current week (Monday to Sunday) and which days have workouts
+  const weekData = useMemo(() => {
+    const now = new Date();
+    // Monday is index 0
+    const dayOfWeek = (now.getDay() + 6) % 7;
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek);
+
+    const dayLabels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    // Set of date strings YYYY-MM-DD for completed workouts
+    const workoutDates = new Set();
+    (workouts || []).forEach(w => {
+      const d = parseSafeDate(w.start_time);
+      if (d) {
+        const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        workoutDates.add(dStr);
+      }
+    });
+
+    const days = [];
+    let completedCount = 0;
+
+    for (let i = 0; i < 7; i++) {
+      const curDate = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+      const curStr = `${curDate.getFullYear()}-${String(curDate.getMonth() + 1).padStart(2, '0')}-${String(curDate.getDate()).padStart(2, '0')}`;
+      const hasWorkout = workoutDates.has(curStr);
+      const isToday = curStr === todayStr;
+      const isFuture = curDate.getTime() > now.getTime() && !isToday;
+
+      if (hasWorkout) {
+        completedCount++;
+      }
+
+      days.push({
+        label: dayLabels[i],
+        dateStr: curStr,
+        dayNum: curDate.getDate(),
+        hasWorkout,
+        isToday,
+        isFuture
+      });
+    }
+
+    return { days, completedCount };
+  }, [workouts]);
+
+  const updateGoal = (newGoal) => {
+    triggerHaptic('light');
+    setWeeklyGoal(newGoal);
+    try {
+      localStorage.setItem('gym_tracker_weekly_goal', String(newGoal));
+    } catch (e) {}
+    setShowGoalModal(false);
+  };
+
+  const isGoalReached = weekData.completedCount >= weeklyGoal;
+
+  return (
+    <>
+      <div 
+        onClick={() => setShowGoalModal(true)}
+        className="neu-flat rounded-3xl p-3 space-y-2.5 transition-all cursor-pointer group shadow-lg"
+        title="Нажмите для настройки цели на неделю"
+      >
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center space-x-1.5">
+            <span className="text-xs">📅</span>
+            <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Недельная норма
+            </span>
+          </div>
+          <div className="flex items-center space-x-1.5">
+            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+              isGoalReached 
+                ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black' 
+                : 'text-slate-800 dark:text-slate-200'
+            }`}>
+              {isGoalReached ? `✓ ${weekData.completedCount} / ${weeklyGoal} выполнено!` : `${weekData.completedCount} / ${weeklyGoal} трен.`}
+            </span>
+          </div>
+        </div>
+
+        {/* 7-Day Tactile Segmented Bar */}
+        <div className="neu-inset rounded-2xl p-1.5 grid grid-cols-7 gap-1">
+          {weekData.days.map((d, idx) => {
+            return (
+              <div
+                key={idx}
+                className={`py-1 px-0.5 rounded-xl flex flex-col items-center justify-center transition-all ${
+                  d.hasWorkout
+                    ? 'bg-emerald-500 text-white font-black shadow-sm'
+                    : d.isToday
+                    ? 'neu-btn ring-2 ring-sky-400/60 font-bold text-sky-600 dark:text-sky-400'
+                    : 'text-slate-400 dark:text-slate-500 opacity-60'
+                }`}
+              >
+                <span className="text-[9px] font-mono uppercase">{d.label}</span>
+                <span className="text-[10px] font-bold mt-0.5">
+                  {d.hasWorkout ? '✓' : d.dayNum}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Goal Adjustment Modal */}
+      {showGoalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="neu-flat rounded-3xl p-5 max-w-xs w-full space-y-4 shadow-2xl border border-slate-200/50 dark:border-white/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">🎯</span>
+                <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">
+                  Цель на неделю
+                </h3>
+              </div>
+              <button 
+                onClick={() => setShowGoalModal(false)}
+                className="w-7 h-7 rounded-full neu-btn flex items-center justify-center text-xs text-slate-500 hover:text-slate-800 dark:hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+              Выберите, сколько тренировок вы планируете выполнять каждую неделю:
+            </p>
+
+            <div className="grid grid-cols-4 gap-2">
+              {[2, 3, 4, 5].map(g => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => updateGoal(g)}
+                  className={`py-3 rounded-2xl font-black text-sm transition-all active:scale-95 flex flex-col items-center justify-center ${
+                    weeklyGoal === g
+                      ? 'bg-emerald-500 text-white shadow-md'
+                      : 'neu-btn text-slate-700 dark:text-slate-200'
+                  }`}
+                >
+                  <span>{g}</span>
+                  <span className="text-[8px] font-mono font-medium opacity-80 mt-0.5">трен.</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="neu-inset rounded-2xl p-3 text-xs text-center text-slate-600 dark:text-slate-300">
+              На этой неделе выполнено: <strong className="text-emerald-500 font-bold">{weekData.completedCount}</strong> из <strong className="font-bold">{weeklyGoal}</strong>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+const categoryColors = {
+  'Грудь': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  'Спина': 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+  'Плечи': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  'Руки': 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  'Трицепс': 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+  'Ноги': 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+  'Пресс': 'bg-teal-500/10 text-teal-400 border-teal-500/20',
+  'Базовые': 'bg-slate-500/10 text-slate-300 border-slate-500/20'
 };
 
 
@@ -2289,6 +2625,8 @@ function App() {
               onMinimize={() => setIsMinimized(true)}
               theme={theme}
               onToggleTheme={toggleTheme}
+              workouts={historyWorkouts}
+              onNavigateTab={setActiveTab}
             />
           )}
 
@@ -2408,7 +2746,7 @@ function NavButton({ active, onClick, icon, label, badge }) {
 // ==========================================
 // 🚀 FULLY GUIDED WORKOUT SCREEN (STEP-BY-STEP FLOW)
 // ==========================================
-function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuides = {}, userProfile, onRefresh, onMinimize, theme, onToggleTheme }) {
+function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuides = {}, userProfile, onRefresh, onMinimize, theme, onToggleTheme, workouts = [], onNavigateTab }) {
   // Navigation inside the plan
   const [currentPlanIndex, setCurrentPlanIndex] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState('a');
@@ -3022,19 +3360,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
             {/* Right Column: Retro Water LCD Widget + Streak Dial Gauge */}
             <div className="space-y-3 flex flex-col justify-between">
               <NeuWaterWidget />
-              <NeuStreakDialWidget 
-                streak={parseInt(localStorage.getItem('gym_tracker_streak') || '1', 10)}
-                totalWorkouts={parseInt(localStorage.getItem('gym_tracker_total_workouts') || '5', 10)}
-              />
+              <NeuStreakDialWidget workouts={workouts} onNavigateTab={onNavigateTab} />
             </div>
           </div>
 
-          {/* Pastel Segmented Indicator Bar from screenshot */}
-          <div className="neu-flat rounded-3xl p-3 flex items-center justify-between">
-            <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400">Недельная норма</span>
-            <NeuSegmentedBar current={4} total={7} />
-            <span className="text-[10px] font-mono font-bold text-slate-800 dark:text-slate-200">4 / 7</span>
-          </div>
+          {/* Interactive 7-Day Weekly Norm Tracker */}
+          <NeuWeeklyNormWidget workouts={workouts} />
         </div>
 
         <div className="text-center py-2">
