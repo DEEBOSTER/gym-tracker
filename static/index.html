@@ -273,7 +273,8 @@
     window.addEventListener('error', function(e) {
       var p = document.getElementById('app-loading-placeholder');
       if (p) {
-        p.innerHTML = '<div class="space-y-3 p-6 text-center max-w-xs mx-auto"><div class="text-3xl">⚠️</div><div class="text-sm font-black text-rose-400">Ошибка запуска</div><div class="text-xs text-slate-400 leading-relaxed">' + (e.message || 'Скрипт не смог загрузиться') + '</div><button onclick="window.location.reload(true)" class="mt-4 px-4 py-2 bg-emerald-500 text-gym-950 font-black text-xs rounded-xl shadow-lg active:scale-95 transition">Обновить</button></div>';
+        var msg = (e.message || 'Скрипт не смог загрузиться') + (e.lineno ? ' (строка ' + e.lineno + ')' : '');
+        p.innerHTML = '<div class="space-y-3 p-6 text-center max-w-xs mx-auto"><div class="text-3xl">⚠️</div><div class="text-sm font-black text-rose-400">Ошибка запуска</div><div class="text-xs text-slate-400 leading-relaxed font-mono text-[11px]">' + msg + '</div><button onclick="window.location.reload(true)" class="mt-4 px-4 py-2 bg-emerald-500 text-gym-950 font-black text-xs rounded-xl shadow-lg active:scale-95 transition">Обновить</button></div>';
       }
     });
   </script>
@@ -292,6 +293,6 @@
   </script>
 
   <!-- React App -->
-  <script type="text/babel" src="/static/app.js?v=31"></script>
+  <script type="text/babel" src="/static/app.js?v=32"></script>
 </body>
 </html>
