@@ -291,16 +291,36 @@
       box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light) !important;
     }
 
-    /* High contrast text on dark pills, dials, and colored badges */
+    /* Utility text classes */
+    .text-neu-primary {
+      color: var(--neu-text-primary) !important;
+    }
+    .text-neu-secondary {
+      color: var(--neu-text-secondary) !important;
+    }
+    .text-neu-muted {
+      color: var(--neu-text-muted) !important;
+    }
+    .bg-neu-base {
+      background-color: var(--neu-base) !important;
+    }
+    .bg-neu-surface {
+      background-color: var(--neu-surface) !important;
+    }
+
+    /* High contrast text on dark pills, dials, and solid accent buttons */
     .neu-dark-pill,
     .neu-dark-pill *,
-    [class*="bg-sky-500"] *,
-    [class*="bg-emerald-500"] *,
-    [class*="bg-rose-500"] *,
-    [class*="bg-amber-500"] *,
-    [class*="bg-purple-500"] *,
     .neu-dial,
-    .neu-dial * {
+    .neu-dial *,
+    button.bg-sky-500,
+    button.bg-sky-500 *,
+    button.bg-emerald-500,
+    button.bg-emerald-500 *,
+    button.bg-rose-500,
+    button.bg-rose-500 *,
+    button.bg-amber-500,
+    button.bg-amber-500 * {
       color: #ffffff !important;
     }
     .neu-dark-pill .text-slate-400,
@@ -310,37 +330,77 @@
       color: #cbd5e1 !important;
     }
 
-    /* Light Theme Typography Overrides */
-    body.theme-neu-light h1:not(.neu-dark-pill *):not([class*="bg-sky-500"] *):not([class*="bg-emerald-500"] *),
-    body.theme-neu-light h2:not(.neu-dark-pill *):not([class*="bg-sky-500"] *):not([class*="bg-emerald-500"] *),
-    body.theme-neu-light h3:not(.neu-dark-pill *):not([class*="bg-sky-500"] *):not([class*="bg-emerald-500"] *),
-    body.theme-soft-neu h1:not(.neu-dark-pill *):not([class*="bg-sky-500"] *):not([class*="bg-emerald-500"] *),
-    body.theme-soft-neu h2:not(.neu-dark-pill *):not([class*="bg-sky-500"] *):not([class*="bg-emerald-500"] *),
-    body.theme-soft-neu h3:not(.neu-dark-pill *):not([class*="bg-sky-500"] *):not([class*="bg-emerald-500"] *) {
+    /* Light Theme Typography: Headings and text contrast */
+    body.theme-neu-light,
+    body.theme-soft-neu,
+    body.theme-neu-light #root,
+    body.theme-soft-neu #root {
       color: #1a202c !important;
     }
-    body.theme-neu-light .text-slate-100:not(.neu-dark-pill *),
-    body.theme-neu-light .text-slate-200:not(.neu-dark-pill *),
-    body.theme-soft-neu .text-slate-100:not(.neu-dark-pill *),
-    body.theme-soft-neu .text-slate-200:not(.neu-dark-pill *) {
+    body.theme-neu-light h1:not(.neu-dark-pill *),
+    body.theme-neu-light h2:not(.neu-dark-pill *),
+    body.theme-neu-light h3:not(.neu-dark-pill *),
+    body.theme-neu-light h4:not(.neu-dark-pill *),
+    body.theme-soft-neu h1:not(.neu-dark-pill *),
+    body.theme-soft-neu h2:not(.neu-dark-pill *),
+    body.theme-soft-neu h3:not(.neu-dark-pill *),
+    body.theme-soft-neu h4:not(.neu-dark-pill *) {
+      color: #0f172a !important;
+    }
+    body.theme-neu-light .text-slate-800,
+    body.theme-soft-neu .text-slate-800 {
       color: #1a202c !important;
     }
-    body.theme-neu-light .text-slate-400:not(.neu-dark-pill *),
-    body.theme-neu-light .text-slate-500:not(.neu-dark-pill *),
-    body.theme-soft-neu .text-slate-400:not(.neu-dark-pill *),
-    body.theme-soft-neu .text-slate-500:not(.neu-dark-pill *) {
+    body.theme-neu-light .text-slate-700,
+    body.theme-soft-neu .text-slate-700 {
+      color: #334155 !important;
+    }
+    body.theme-neu-light .text-slate-600,
+    body.theme-soft-neu .text-slate-600 {
+      color: #475569 !important;
+    }
+    body.theme-neu-light .text-slate-400,
+    body.theme-soft-neu .text-slate-400,
+    body.theme-neu-light .text-gym-400,
+    body.theme-soft-neu .text-gym-400 {
       color: #64748b !important;
+    }
+    body.theme-neu-light .text-slate-300:not(.neu-dark-pill *):not(.neu-dial *),
+    body.theme-soft-neu .text-slate-300:not(.neu-dark-pill *):not(.neu-dial *) {
+      color: #334155 !important;
+    }
+    body.theme-neu-light .text-slate-200:not(.neu-dark-pill *):not(.neu-dial *),
+    body.theme-soft-neu .text-slate-200:not(.neu-dark-pill *):not(.neu-dial *) {
+      color: #1e293b !important;
+    }
+    body.theme-neu-light .text-slate-100:not(.neu-dark-pill *):not(.neu-dial *),
+    body.theme-soft-neu .text-slate-100:not(.neu-dark-pill *):not(.neu-dial *) {
+      color: #0f172a !important;
     }
 
     /* Dark Theme Typography Overrides */
+    body.theme-neu-dark,
+    body.theme-neu-dark #root {
+      color: #f8fafc !important;
+    }
     body.theme-neu-dark h1,
     body.theme-neu-dark h2,
     body.theme-neu-dark h3,
+    body.theme-neu-dark h4,
     body.theme-neu-dark .text-white,
     body.theme-neu-dark .text-slate-100,
     body.theme-neu-dark .text-slate-200,
     body.theme-neu-dark .text-slate-300 {
       color: #f8fafc !important;
+    }
+    body.theme-neu-dark .text-slate-800 {
+      color: #f8fafc !important;
+    }
+    body.theme-neu-dark .text-slate-700 {
+      color: #cbd5e1 !important;
+    }
+    body.theme-neu-dark .text-slate-600 {
+      color: #cbd5e1 !important;
     }
     body.theme-neu-dark .text-slate-400,
     body.theme-neu-dark .text-slate-500 {
@@ -370,7 +430,7 @@
     }
   </style>
 </head>
-<body class="theme-soft-neu text-slate-800 antialiased selection:bg-emerald-500 selection:text-white">
+<body class="theme-neu-light theme-soft-neu text-slate-800 antialiased selection:bg-emerald-500 selection:text-white">
   <div id="root">
     <div id="app-loading-placeholder" class="min-h-screen bg-gym-950 flex flex-col items-center justify-center p-6 text-center">
       <div class="w-14 h-14 rounded-2xl bg-gym-900 border border-gym-800 flex items-center justify-center shadow-xl animate-pulse mb-4">
@@ -405,6 +465,6 @@
   </script>
 
   <!-- React App -->
-  <script type="text/babel" src="/static/app.js?v=33"></script>
+  <script type="text/babel" src="/static/app.js?v=35"></script>
 </body>
 </html>

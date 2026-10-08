@@ -1535,7 +1535,7 @@ function OnboardingScreen({ initialProfile, onComplete, onCancel }) {
   const recReps = formData.fitness_goal === 'strength' ? '5–7 повт.' : formData.fitness_goal === 'fat_loss' ? '10–15 повт.' : '8–12 повт.';
 
   return (
-    <div className="min-h-screen bg-gym-950 text-slate-100 flex flex-col justify-between max-w-lg mx-auto p-4 sm:p-6 font-sans safe-top safe-bottom">
+    <div className="min-h-screen bg-[var(--neu-base)] text-[var(--neu-text-primary)] flex flex-col justify-between max-w-lg mx-auto p-4 sm:p-6 font-sans safe-top safe-bottom">
       {/* Top Header & Step Indicator */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
@@ -1543,22 +1543,22 @@ function OnboardingScreen({ initialProfile, onComplete, onCancel }) {
             <img 
               src="/static/app-icon.png" 
               alt="GymTracker" 
-              className="w-9 h-9 rounded-xl shadow-lg border border-gym-700/80 object-cover shrink-0" 
+              className="w-9 h-9 rounded-2xl neu-flat object-cover shrink-0" 
             />
             <div>
-              <span className="text-xs font-black text-white uppercase tracking-wider block">GymTracker</span>
-              <span className="text-[10px] text-emerald-400 font-bold">Персональная настройка</span>
+              <span className="text-xs font-black text-[var(--neu-text-primary)] uppercase tracking-wider block">GymTracker</span>
+              <span className="text-[10px] text-emerald-500 font-bold">Персональная настройка</span>
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-mono font-bold text-slate-400 bg-gym-900 border border-gym-800 px-2.5 py-1 rounded-full">
+            <span className="text-xs font-mono font-bold text-[var(--neu-text-secondary)] neu-inset px-2.5 py-1 rounded-full">
               Шаг {step} из 4
             </span>
             {initialProfile && initialProfile.onboarding_completed === 1 && onCancel && (
               <button 
                 type="button" 
                 onClick={onCancel} 
-                className="w-7 h-7 rounded-full bg-gym-900 border border-gym-800 text-slate-400 hover:text-white flex items-center justify-center text-xs transition active:scale-95"
+                className="w-7 h-7 rounded-full neu-btn text-[var(--neu-text-muted)] hover:text-[var(--neu-text-primary)] flex items-center justify-center text-xs transition active:scale-95"
               >
                 ✕
               </button>
@@ -1567,7 +1567,7 @@ function OnboardingScreen({ initialProfile, onComplete, onCancel }) {
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-gym-900 h-1.5 rounded-full overflow-hidden border border-gym-800">
+        <div className="w-full neu-inset h-2 rounded-full overflow-hidden p-0.5">
           <div 
             className="bg-gradient-to-r from-emerald-500 via-sky-500 to-emerald-400 h-full transition-all duration-300 rounded-full"
             style={{ width: `${(step / 4) * 100}%` }}
@@ -1579,24 +1579,24 @@ function OnboardingScreen({ initialProfile, onComplete, onCancel }) {
       {step === 1 && (
         <div className="py-4 space-y-4 animate-in fade-in slide-in-from-right-4 duration-200">
           <div className="space-y-1">
-            <h2 className="text-xl font-black text-white tracking-tight">
+            <h2 className="text-xl font-black text-[var(--neu-text-primary)] tracking-tight">
               Привет! 👋 Давай познакомимся
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-[var(--neu-text-muted)]">
               Укажи свои параметры, чтобы алгоритм точно подобрал стартовые веса и темп прогрессии.
             </p>
           </div>
 
           <div className="space-y-3">
             {/* Name Input */}
-            <div className="bg-gym-900 border border-gym-800 rounded-2xl p-3.5 space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Твое имя / позывной</label>
+            <div className="neu-flat rounded-2xl p-3.5 space-y-1">
+              <label className="text-[10px] font-bold text-[var(--neu-text-muted)] uppercase tracking-wide block">Твое имя / позывной</label>
               <input
                 type="text"
                 placeholder="Например: Дмитрий"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full bg-transparent text-base font-bold text-white focus:outline-none placeholder-slate-600"
+                className="w-full bg-transparent text-base font-bold text-[var(--neu-text-primary)] focus:outline-none placeholder-slate-400"
               />
             </div>
 
@@ -1927,7 +1927,15 @@ function OnboardingScreen({ initialProfile, onComplete, onCancel }) {
 // 📱 MAIN APPLICATION COMPONENT
 // ==========================================
 function App() {
-  const [activeTab, setActiveTab] = useState('workout'); // 'workout' | 'analytics' | 'history' | 'exercises' | 'profile'
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const hash = window.location.hash.replace('#', '').toLowerCase();
+      if (['workout', 'analytics', 'history', 'exercises', 'profile'].includes(hash)) {
+        return hash;
+      }
+    } catch (e) {}
+    return 'workout';
+  });
   const [exercises, setExercises] = useState([]);
   const [activeWorkout, setActiveWorkout] = useState(null);
 
@@ -2202,7 +2210,7 @@ function App() {
   }
 
   return (
-    <div className={`flex flex-col min-h-screen bg-[var(--neu-base)] text-[var(--neu-text-primary)] font-sans select-none ${isInWorkoutFocus ? 'pb-safe-bottom pb-4' : 'safe-pb-nav'}`}>
+    <div className={`flex flex-col min-h-screen bg-[var(--neu-base)] text-slate-800 dark:text-slate-100 font-sans select-none ${isInWorkoutFocus ? 'pb-safe-bottom pb-4' : 'safe-pb-nav'}`}>
       {/* Top Header: Hidden in workout focus mode to maximize vertical space */}
       {!isInWorkoutFocus && (
         <header className="sticky top-0 z-40 px-4 pb-2.5 flex items-center justify-between safe-header bg-[var(--neu-surface)] border-b border-[var(--neu-border)] shadow-sm">
@@ -2213,10 +2221,10 @@ function App() {
               className="w-9 h-9 rounded-2xl object-cover shrink-0 neu-flat" 
             />
             <div>
-              <h1 className="text-sm font-extrabold tracking-tight text-[var(--neu-text-primary)]">
+              <h1 className="text-sm font-extrabold tracking-tight text-slate-800 dark:text-white">
                 GymTracker
               </h1>
-              <p className="text-[9px] text-[var(--neu-text-muted)] font-bold uppercase tracking-wider">
+              <p className="text-[9px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                 {userProfile?.fitness_goal === 'strength' ? 'Силовой тренинг' : userProfile?.fitness_goal === 'fat_loss' ? 'Сушка и рельеф' : 'Набор массы'} • Gemini AI
               </p>
             </div>
@@ -3025,23 +3033,23 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
         </div>
 
         <div className="text-center py-2">
-          <h2 className="text-2xl font-black tracking-tight text-[var(--neu-text-primary)]">
+          <h2 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white">
             Выберите тренировку
           </h2>
-          <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
             ИИ подстраивает веса под ваши результаты и чередует упражнения для непрерывного прогресса.
           </p>
         </div>
 
         {/* Variant A vs Variant B Periodization Toggle */}
-        <div className="bg-gym-900 border border-gym-800 rounded-2xl p-1.5 shadow-lg">
+        <div className="neu-flat rounded-2xl p-1.5 shadow-lg">
           <div className="flex space-x-1.5">
             <button
               onClick={() => setSelectedVariant('a')}
               className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 ${
                 selectedVariant === 'a'
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-gym-950 shadow-md font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-gym-800/50'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md font-black'
+                  : 'neu-btn text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <span className="flex items-center space-x-1">
@@ -3055,8 +3063,8 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
               onClick={() => setSelectedVariant('b')}
               className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 ${
                 selectedVariant === 'b'
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-gym-950 shadow-md font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-gym-800/50'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md font-black'
+                  : 'neu-btn text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <span className="flex items-center space-x-1">
