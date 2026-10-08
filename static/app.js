@@ -260,7 +260,295 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
     </svg>
   )
-};
+// ==========================================
+// 🎨 SOFT NEUMORPHIC WIDGETS (Screenshot-inspired)
+// ==========================================
+
+// 1. Cute Sunshine & Cloud with Rainbow Doodle
+function DoodleSunRainbow() {
+  return (
+    <svg viewBox="0 0 160 85" className="w-24 h-12 shrink-0 overflow-visible" fill="none">
+      <defs>
+        <linearGradient id="neu-rainbow" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#f87171" stopOpacity="0.45" />
+          <stop offset="25%" stopColor="#fb923c" stopOpacity="0.45" />
+          <stop offset="50%" stopColor="#facc15" stopOpacity="0.45" />
+          <stop offset="75%" stopColor="#4ade80" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.45" />
+        </linearGradient>
+      </defs>
+      {/* Rainbow Arc */}
+      <path d="M 12 78 Q 80 18 148 78" stroke="url(#neu-rainbow)" strokeWidth="12" strokeLinecap="round" />
+      {/* Sun rays */}
+      <g stroke="#1a1c1e" strokeWidth="2.2" strokeLinecap="round">
+        <line x1="108" y1="24" x2="108" y2="16" />
+        <line x1="94" y1="28" x2="89" y2="23" />
+        <line x1="122" y1="28" x2="127" y2="23" />
+        <line x1="84" y1="38" x2="78" y2="36" />
+        <line x1="132" y1="38" x2="138" y2="36" />
+      </g>
+      {/* Sun circle */}
+      <circle cx="108" cy="42" r="18" fill="#ffeaa7" stroke="#1a1c1e" strokeWidth="2.2" />
+      {/* Sun cute face */}
+      <circle cx="102" cy="41" r="1.5" fill="#1a1c1e" />
+      <circle cx="114" cy="41" r="1.5" fill="#1a1c1e" />
+      <path d="M 105 46 Q 108 49 111 46" stroke="#1a1c1e" strokeWidth="1.5" strokeLinecap="round" />
+      {/* Clouds */}
+      <path d="M 55 78 Q 70 56 92 62 Q 112 50 132 60 Q 152 56 156 78 Z" fill="#dde2e8" stroke="#1a1c1e" strokeWidth="2.2" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// 2. Cute Sleeping Cat with Rainbow Yarn Doodle
+function DoodleCatRainbow() {
+  return (
+    <svg viewBox="0 0 180 85" className="w-28 h-14 shrink-0 overflow-visible" fill="none">
+      <defs>
+        <linearGradient id="neu-rainbow-cat" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#f87171" stopOpacity="0.45" />
+          <stop offset="25%" stopColor="#fb923c" stopOpacity="0.45" />
+          <stop offset="50%" stopColor="#facc15" stopOpacity="0.45" />
+          <stop offset="75%" stopColor="#4ade80" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.45" />
+        </linearGradient>
+      </defs>
+      {/* Sparkles */}
+      <path d="M 22 18 L 24 13 L 26 18 L 31 20 L 26 22 L 24 27 L 22 22 L 17 20 Z" fill="#1a1c1e" />
+      <path d="M 38 24 L 39 20 L 40 24 L 44 25 L 40 26 L 39 30 L 38 26 L 34 25 Z" fill="#1a1c1e" />
+      {/* Yarn ball with rainbow tail */}
+      <path d="M 6 68 Q 24 62 44 70" stroke="url(#neu-rainbow-cat)" strokeWidth="6" strokeLinecap="round" />
+      <circle cx="26" cy="68" r="11" fill="#dde2e8" stroke="#1a1c1e" strokeWidth="2" />
+      <path d="M 18 65 Q 26 60 34 71 M 21 72 Q 28 66 33 63" stroke="#1a1c1e" strokeWidth="1.5" />
+      {/* Resting cat */}
+      <path d="M 135 50 Q 142 22 155 30 Q 160 40 150 56" fill="#1a1c1e" stroke="#1a1c1e" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M 58 68 Q 60 46 80 46 Q 96 46 106 50 Q 124 50 138 64 Q 142 70 130 70 L 65 70 Q 58 70 58 68 Z" fill="#dde2e8" stroke="#1a1c1e" strokeWidth="2.2" />
+      <path d="M 70 46 Q 78 43 84 50 Q 78 57 70 52 Z" fill="#1a1c1e" />
+      <path d="M 66 57 Q 70 60 74 57 M 60 60 Q 63 62 66 61" stroke="#1a1c1e" strokeWidth="1.8" strokeLinecap="round" />
+      <ellipse cx="106" cy="70" rx="9" ry="3.5" fill="#dde2e8" stroke="#1a1c1e" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
+// 3. Tactile Day/Night Rocker Switch
+function NeuThemeToggle({ theme, onToggle }) {
+  const isNeu = theme === 'neu';
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="neu-toggle relative w-16 h-8 rounded-full p-1 transition-all flex items-center justify-between px-2 cursor-pointer active:scale-95 shrink-0"
+      title="Сменить тему оформления"
+    >
+      <span className="text-[11px]">🌙</span>
+      <span className="text-[11px]">☀️</span>
+      <div 
+        className={`absolute top-1 bottom-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-200 flex items-center justify-center text-[10px] ${
+          isNeu ? 'right-1' : 'left-1'
+        }`}
+      >
+        {isNeu ? '☀️' : '🌙'}
+      </div>
+    </button>
+  );
+}
+
+// 4. Hero Clock & Date Card
+function NeuHeaderCard({ theme, onToggleTheme, coachDayTitle }) {
+  const [timeStr, setTimeStr] = useState('');
+  const [dateStr, setDateStr] = useState('');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      setTimeStr(`${h}:${m}`);
+
+      const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+      const dName = days[now.getDay()];
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      setDateStr(`${dName} . ${day}/${month}`);
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="neu-flat rounded-3xl p-4 flex items-center justify-between relative overflow-hidden">
+      {/* Clock and date pill */}
+      <div className="space-y-1.5 z-10">
+        <div className="font-digital text-3xl font-black tracking-wider text-slate-800 leading-none">
+          {timeStr || '09:29'}
+        </div>
+        <div className="inline-flex items-center space-x-1.5 neu-inset px-2.5 py-0.5 rounded-xl text-[11px] font-mono font-bold text-slate-700">
+          <span>{dateStr || 'Пт . 08/10'}</span>
+        </div>
+        {coachDayTitle && (
+          <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider pt-0.5">
+            {coachDayTitle}
+          </div>
+        )}
+      </div>
+
+      {/* Sun Doodle & Rocker Switch */}
+      <div className="flex flex-col items-end space-y-1.5 z-10">
+        <DoodleSunRainbow />
+        <NeuThemeToggle theme={theme} onToggle={onToggleTheme} />
+      </div>
+    </div>
+  );
+}
+
+// 5. Water / Hydration Retro LCD Widget
+function NeuWaterWidget() {
+  const [waterCups, setWaterCups] = useState(() => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const saved = localStorage.getItem('gym_tracker_water_' + today);
+      return saved ? parseInt(saved, 10) : 0;
+    } catch (e) {
+      return 0;
+    }
+  });
+
+  const updateWater = (delta) => {
+    triggerHaptic('light');
+    setWaterCups(prev => {
+      const next = Math.max(0, Math.min(16, prev + delta));
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        localStorage.setItem('gym_tracker_water_' + today, String(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  return (
+    <div className="neu-flat rounded-3xl p-3 flex flex-col justify-between space-y-2 h-full">
+      {/* Retro LCD screen */}
+      <div className="neu-lcd rounded-2xl p-2 flex items-center justify-between text-slate-900">
+        <button
+          type="button"
+          onClick={() => updateWater(-1)}
+          className="w-6 h-6 rounded-lg flex items-center justify-center font-black text-sm active:scale-90 select-none hover:bg-black/10 transition"
+        >
+          –
+        </button>
+        <div className="flex flex-col items-center">
+          <span className="text-lg">🥛</span>
+          <span className="text-[8px] uppercase tracking-widest font-black opacity-80 mt-0.5">water</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => updateWater(1)}
+          className="w-6 h-6 rounded-lg flex items-center justify-center font-black text-sm active:scale-90 select-none hover:bg-black/10 transition"
+        >
+          +
+        </button>
+      </div>
+      <div className="text-center font-mono text-[10px] font-bold text-slate-600">
+        Drink water: <strong className="text-slate-800">{waterCups} / 8</strong>
+      </div>
+    </div>
+  );
+}
+
+// 6. Circular Streak Dial Widget (285 Days style)
+function NeuStreakDialWidget({ streak = 0, totalWorkouts = 0 }) {
+  return (
+    <div className="neu-flat rounded-3xl p-3 flex flex-col items-center justify-center space-y-1.5 h-full text-center">
+      {/* Circular Dial with outer bezel */}
+      <div className="relative w-16 h-16 rounded-full neu-flat flex items-center justify-center p-1.5">
+        <div className="absolute inset-1 rounded-full border border-dashed border-slate-400/50" />
+        <div className="w-12 h-12 rounded-full neu-dial flex flex-col items-center justify-center text-white z-10">
+          <span className="font-digital text-sm font-black leading-none">{streak || 1}</span>
+          <span className="text-[7px] uppercase tracking-wider opacity-70 font-sans mt-0.5">Дней</span>
+        </div>
+      </div>
+      <div className="text-[9px] font-mono font-bold text-slate-600">
+        Серия: <strong className="text-slate-800">{streak || 1}</strong> дн.
+      </div>
+    </div>
+  );
+}
+
+// 7. Dark Contrast Split Menu (Files / Contacts / Themes style)
+function NeuSplitMenu({ onSelectDay, currentDayType }) {
+  const items = [
+    { type: 'push', title: 'День 1: Push (Жим)', icon: '🟢', bgIcon: 'bg-emerald-500/20 text-emerald-400' },
+    { type: 'pull', title: 'День 2: Pull (Тяга)', icon: '🔵', bgIcon: 'bg-sky-500/20 text-sky-400' },
+    { type: 'legs', title: 'День 3: Legs (Ноги)', icon: '🟠', bgIcon: 'bg-amber-500/20 text-amber-400' },
+  ];
+
+  return (
+    <div className="neu-flat rounded-3xl p-3 space-y-2">
+      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1">
+        Сплит тренировок
+      </div>
+      <div className="space-y-1.5">
+        {items.map(item => {
+          const isSelected = currentDayType === item.type;
+          return (
+            <button
+              key={item.type}
+              type="button"
+              onClick={() => onSelectDay && onSelectDay(item.type)}
+              className={`w-full py-2 px-3 rounded-full flex items-center justify-between text-left transition-all active:scale-98 cursor-pointer ${
+                isSelected 
+                  ? 'neu-dark-pill ring-2 ring-emerald-400/40 font-bold' 
+                  : 'neu-dark-pill opacity-95 hover:opacity-100'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${item.bgIcon}`}>
+                  {item.icon}
+                </span>
+                <span className="text-xs font-bold text-white tracking-wide">{item.title}</span>
+              </div>
+              <span className="text-[9px] font-mono text-slate-400">
+                {isSelected ? '✓ Выбран' : 'Выбрать →'}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// 8. Pastel Segmented Bar (Bottom dock indicator style from screenshot)
+function NeuSegmentedBar({ current = 4, total = 7 }) {
+  const colors = [
+    '#8baaa2', // pastel teal
+    '#9eb3a7', // sage
+    '#b2c4b8', // mint
+    '#cbd5c7', // cream
+    '#d9cfb0', // pale gold
+    '#dfbe93', // wheat
+    '#e3a979', // pastel peach
+  ];
+
+  return (
+    <div className="neu-inset rounded-full p-1.5 flex items-center justify-center space-x-1.5">
+      {colors.map((c, idx) => {
+        const active = idx < current;
+        return (
+          <div
+            key={idx}
+            className="w-3.5 h-5 rounded-full transition-all duration-300"
+            style={{
+              backgroundColor: c,
+              opacity: active ? 1 : 0.25,
+              transform: active ? 'scale(1)' : 'scale(0.85)'
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 const categoryColors = {
   'Грудь': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
@@ -1641,6 +1929,34 @@ function App() {
   const [exercises, setExercises] = useState([]);
   const [activeWorkout, setActiveWorkout] = useState(null);
 
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('gym_tracker_theme') || 'neu';
+    } catch (e) {
+      return 'neu';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (theme === 'neu') {
+        document.documentElement.classList.add('theme-soft-neu');
+        document.body.classList.add('theme-soft-neu');
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.remove('theme-soft-neu');
+        document.body.classList.remove('theme-soft-neu');
+        document.documentElement.classList.add('dark');
+      }
+      localStorage.setItem('gym_tracker_theme', theme);
+    } catch (e) {}
+  }, [theme]);
+
+  const toggleTheme = () => {
+    triggerHaptic('medium');
+    setTheme(prev => prev === 'neu' ? 'dark' : 'neu');
+  };
+
   const currentUserId = getTelegramUser().id;
 
   const getCachedProfile = () => {
@@ -1881,62 +2197,74 @@ function App() {
   }
 
   return (
-    <div className={`flex flex-col min-h-screen bg-gym-950 text-slate-100 font-sans select-none ${isInWorkoutFocus ? 'pb-safe-bottom pb-4' : 'safe-pb-nav'}`}>
+    <div className={`flex flex-col min-h-screen ${theme === 'neu' ? 'bg-[#dde2e8] text-slate-800' : 'bg-gym-950 text-slate-100'} font-sans select-none ${isInWorkoutFocus ? 'pb-safe-bottom pb-4' : 'safe-pb-nav'}`}>
       {/* Top Header: Hidden in workout focus mode to maximize vertical space */}
       {!isInWorkoutFocus && (
-        <header className="sticky top-0 z-40 bg-gym-900 border-b border-gym-800 px-4 pb-2.5 flex items-center justify-between safe-header">
+        <header className={`sticky top-0 z-40 px-4 pb-2.5 flex items-center justify-between safe-header ${theme === 'neu' ? 'bg-[#dde2e8] border-b border-white/60 shadow-sm' : 'bg-gym-900 border-b border-gym-800'}`}>
           <div className="flex items-center space-x-2.5">
             <img 
               src="/static/app-icon.png" 
               alt="GymTracker" 
-              className="w-9 h-9 rounded-xl shadow-lg shadow-sky-500/10 border border-gym-700/80 object-cover shrink-0" 
+              className={`w-9 h-9 rounded-2xl object-cover shrink-0 ${theme === 'neu' ? 'neu-flat' : 'shadow-lg shadow-sky-500/10 border border-gym-700/80'}`} 
             />
             <div>
-              <h1 className="text-sm font-extrabold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+              <h1 className={`text-sm font-extrabold tracking-tight ${theme === 'neu' ? 'text-slate-800' : 'bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent'}`}>
                 GymTracker
               </h1>
-              <p className="text-[9px] text-slate-400 font-medium uppercase">
-                {userProfile?.fitness_goal === 'strength' ? 'Силовой тренинг' : userProfile?.fitness_goal === 'fat_loss' ? 'Сушка и рельеф' : 'Набор массы'} • Gemini Coach
+              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">
+                {userProfile?.fitness_goal === 'strength' ? 'Силовой тренинг' : userProfile?.fitness_goal === 'fat_loss' ? 'Сушка и рельеф' : 'Набор массы'} • Gemini AI
               </p>
             </div>
           </div>
 
-          {activeWorkout ? (
-            <button 
-              onClick={() => { setIsMinimized(false); setActiveTab('workout'); }}
-              className="flex items-center space-x-2 bg-emerald-500/15 border border-emerald-500/40 px-3 py-1 rounded-full active:scale-95 transition"
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 live-dot"></span>
-              <span className="text-xs font-bold text-emerald-400">Тренировка активна ▶</span>
-            </button>
-          ) : (
-            <div className="flex items-center space-x-1.5">
-              <button
-                type="button"
-                onClick={() => setShowAccountModal(true)}
-                className={`text-xs px-2.5 py-1 rounded-full border flex items-center space-x-1 font-mono transition active:scale-95 ${
-                  currentUserId.startsWith('tg_')
-                    ? 'bg-gym-800/90 text-slate-300 hover:text-white border-gym-700'
-                    : 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
-                }`}
-                title="PWA и синхронизация аккаунта"
-              >
-                <span>{isStandalonePWA() ? '🚀' : currentUserId.startsWith('tg_') ? '📱' : '⚠️'}</span>
-                <span className="text-[11px] font-bold">
-                  {currentUserId.startsWith('tg_') ? 'PWA' : 'Войти'}
-                </span>
-              </button>
+          <div className="flex items-center space-x-1.5">
+            <NeuThemeToggle theme={theme} onToggle={toggleTheme} />
 
-              <button
-                type="button"
-                onClick={() => setActiveTab('profile')}
-                className="text-xs text-slate-300 hover:text-white bg-gym-800/90 px-2.5 py-1 rounded-full border border-gym-700 flex items-center space-x-1 font-mono"
+            {activeWorkout ? (
+              <button 
+                onClick={() => { setIsMinimized(false); setActiveTab('workout'); }}
+                className={`flex items-center space-x-2 px-3 py-1 rounded-full active:scale-95 transition ${
+                  theme === 'neu' 
+                    ? 'neu-btn text-emerald-600 font-bold border-white/60' 
+                    : 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 font-bold'
+                }`}
               >
-                <span>{userProfile?.weight || 80} кг</span>
-                <span className="text-emerald-400">⚙️</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 live-dot"></span>
+                <span className="text-xs">Активна ▶</span>
               </button>
-            </div>
-          )}
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowAccountModal(true)}
+                  className={`text-xs px-2.5 py-1 rounded-full border flex items-center space-x-1 font-mono transition active:scale-95 ${
+                    currentUserId.startsWith('tg_')
+                      ? (theme === 'neu' ? 'neu-btn text-slate-700 border-white/60' : 'bg-gym-800/90 text-slate-300 hover:text-white border-gym-700')
+                      : 'bg-amber-500/20 text-amber-600 border-amber-500/40 animate-pulse'
+                  }`}
+                  title="PWA и синхронизация аккаунта"
+                >
+                  <span>{isStandalonePWA() ? '🚀' : currentUserId.startsWith('tg_') ? '📱' : '⚠️'}</span>
+                  <span className="text-[11px] font-bold">
+                    {currentUserId.startsWith('tg_') ? 'PWA' : 'Войти'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('profile')}
+                  className={`text-xs px-2.5 py-1 rounded-full flex items-center space-x-1 font-mono transition active:scale-95 ${
+                    theme === 'neu' 
+                      ? 'neu-btn text-slate-800 border-white/60' 
+                      : 'text-slate-300 hover:text-white bg-gym-800/90 border border-gym-700'
+                  }`}
+                >
+                  <span>{userProfile?.weight || 80} кг</span>
+                  <span className="text-emerald-500">⚙️</span>
+                </button>
+              </>
+            )}
+          </div>
         </header>
       )}
 
@@ -1952,24 +2280,28 @@ function App() {
               userProfile={userProfile}
               onRefresh={loadAppData}
               onMinimize={() => setIsMinimized(true)}
+              theme={theme}
+              onToggleTheme={toggleTheme}
             />
           )}
 
           {activeTab === 'analytics' && (
-            <AnalyticsScreen exercises={exercises} />
+            <AnalyticsScreen exercises={exercises} theme={theme} />
           )}
 
           {activeTab === 'history' && (
-            <HistoryScreen workouts={historyWorkouts} exercises={exercises} onRefresh={loadAppData} />
+            <HistoryScreen workouts={historyWorkouts} exercises={exercises} onRefresh={loadAppData} theme={theme} />
           )}
 
           {activeTab === 'exercises' && (
-            <ExercisesScreen exercises={exercises} exerciseGuides={exerciseGuides} onRefresh={loadAppData} />
+            <ExercisesScreen exercises={exercises} exerciseGuides={exerciseGuides} onRefresh={loadAppData} theme={theme} />
           )}
 
           {activeTab === 'profile' && (
             <ProfileScreen 
               profile={userProfile} 
+              theme={theme}
+              onToggleTheme={toggleTheme}
               onOpenAccountModal={() => setShowAccountModal(true)}
               onUpdateProfile={(updated) => {
                 setUserProfile(updated);
@@ -1990,40 +2322,49 @@ function App() {
         </>
       </main>
 
-      {/* Bottom Fixed Navigation Bar (Hidden during active workout focus) */}
+      {/* Bottom Floating Navigation Bar (Hidden during active workout focus) */}
       {!isInWorkoutFocus && (
-        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-gym-900 border-t border-gym-800 px-1 pt-1 max-w-lg mx-auto safe-bottom">
-          <div className="grid grid-cols-5 gap-0.5">
+        <nav className={`fixed z-40 max-w-lg mx-auto safe-bottom ${
+          theme === 'neu'
+            ? 'bottom-2 left-3 right-3 rounded-3xl p-1.5 neu-dock shadow-xl'
+            : 'bottom-0 left-0 right-0 bg-gym-900 border-t border-gym-800 px-1 pt-1'
+        }`}>
+          <div className="grid grid-cols-5 gap-1">
             <NavButton 
               active={activeTab === 'workout'} 
               onClick={() => { setIsMinimized(false); setActiveTab('workout'); }}
               icon={<Icons.Dumbbell />}
               label="Тренинг"
               badge={activeWorkout ? "•" : null}
+              isNeu={theme === 'neu'}
             />
             <NavButton 
               active={activeTab === 'analytics'} 
               onClick={() => setActiveTab('analytics')}
               icon={<Icons.Chart />}
               label="Анализ"
+              isNeu={theme === 'neu'}
             />
             <NavButton 
               active={activeTab === 'history'} 
               onClick={() => setActiveTab('history')}
               icon={<Icons.History />}
               label="История"
+              isNeu={theme === 'neu'}
             />
             <NavButton 
               active={activeTab === 'exercises'} 
               onClick={() => setActiveTab('exercises')}
               icon={<Icons.List />}
               label="База"
+              isNeu={theme === 'neu'}
             />
             <NavButton 
               active={activeTab === 'profile'} 
               onClick={() => setActiveTab('profile')}
               icon={<Icons.User />}
               label="О себе"
+              isNeu={theme === 'neu'}
             />
           </div>
         </nav>
@@ -2040,18 +2381,20 @@ function App() {
   );
 }
 
-function NavButton({ active, onClick, icon, label, badge }) {
+function NavButton({ active, onClick, icon, label, badge, isNeu }) {
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all duration-150 active:scale-95 ${
-        active ? 'bg-gym-800 text-emerald-400 font-bold shadow-inner' : 'text-slate-400 hover:text-slate-200'
+      className={`relative flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all duration-150 active:scale-95 ${
+        isNeu
+          ? (active ? 'neu-inset text-emerald-600 font-black' : 'neu-btn text-slate-600 hover:text-slate-800 font-medium')
+          : (active ? 'bg-gym-800 text-emerald-400 font-bold shadow-inner' : 'text-slate-400 hover:text-slate-200')
       }`}
     >
       <div className="relative">
         {icon}
         {badge && (
-          <span className="absolute -top-1 -right-1.5 text-emerald-400 text-xs font-black animate-pulse">
+          <span className="absolute -top-1 -right-1.5 text-emerald-500 text-xs font-black animate-pulse">
             {badge}
           </span>
         )}
@@ -2064,7 +2407,7 @@ function NavButton({ active, onClick, icon, label, badge }) {
 // ==========================================
 // 🚀 FULLY GUIDED WORKOUT SCREEN (STEP-BY-STEP FLOW)
 // ==========================================
-function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuides = {}, userProfile, onRefresh, onMinimize }) {
+function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuides = {}, userProfile, onRefresh, onMinimize, theme, onToggleTheme }) {
   // Navigation inside the plan
   const [currentPlanIndex, setCurrentPlanIndex] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState('a');
@@ -2648,9 +2991,58 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
     return (
       <div className="space-y-4 pt-1">
+        {theme === 'neu' && (
+          <div className="space-y-3 pb-1">
+            {/* Top Clock Card from screenshot */}
+            <NeuHeaderCard 
+              theme={theme} 
+              onToggleTheme={onToggleTheme} 
+              coachDayTitle={recommendedDay ? `План: ${recommendedDay.title.split('—')[0]}` : null}
+            />
+
+            {/* 2-Column Widget Grid from screenshot */}
+            <div className="grid grid-cols-2 gap-3 items-stretch">
+              {/* Left Column: Resting Cat Doodle Card + Dark Split Menu */}
+              <div className="space-y-3 flex flex-col justify-between">
+                <div className="neu-flat rounded-3xl p-3 flex flex-col items-center justify-center text-center">
+                  <DoodleCatRainbow />
+                  <div className="text-[10px] text-slate-600 font-bold mt-1 leading-tight">
+                    «Восстановление — залог анаболизма»
+                  </div>
+                </div>
+
+                <NeuSplitMenu 
+                  currentDayType={recommendedDay?.type}
+                  onSelectDay={(type) => {
+                    handleStartDay(type, selectedVariant);
+                  }}
+                />
+              </div>
+
+              {/* Right Column: Retro Water LCD Widget + Streak Dial Gauge */}
+              <div className="space-y-3 flex flex-col justify-between">
+                <NeuWaterWidget />
+                <NeuStreakDialWidget 
+                  streak={parseInt(localStorage.getItem('gym_tracker_streak') || '1', 10)}
+                  totalWorkouts={parseInt(localStorage.getItem('gym_tracker_total_workouts') || '5', 10)}
+                />
+              </div>
+            </div>
+
+            {/* Pastel Segmented Indicator Bar from screenshot */}
+            <div className="neu-flat rounded-3xl p-3 flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold text-slate-600">Недельная норма</span>
+              <NeuSegmentedBar current={4} total={7} />
+              <span className="text-[10px] font-mono font-bold text-slate-800">4 / 7</span>
+            </div>
+          </div>
+        )}
+
         <div className="text-center py-2">
-          <h2 className="text-2xl font-black text-white tracking-tight">Выберите тренировку</h2>
-          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+          <h2 className={`text-2xl font-black tracking-tight ${theme === 'neu' ? 'text-slate-800' : 'text-white'}`}>
+            Выберите тренировку
+          </h2>
+          <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
             ИИ подстраивает веса под ваши результаты и чередует упражнения для непрерывного прогресса.
           </p>
         </div>
@@ -6139,7 +6531,7 @@ function ExercisesScreen({ exercises, exerciseGuides = {}, onRefresh }) {
 // ==========================================
 // 👤 USER PROFILE SCREEN ("О СЕБЕ")
 // ==========================================
-function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAccountModal }) {
+function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAccountModal, theme, onToggleTheme }) {
   const [formData, setFormData] = useState({
     name: 'Атлет',
     gender: 'male',
@@ -6228,6 +6620,24 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
       </div>
 
       <form onSubmit={handleSave} className="space-y-3">
+        {/* Section 0: Theme Customization (Soft Neumorphism vs Dark Gym) */}
+        <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 space-y-3 shadow-lg">
+          <span className="text-[11px] font-black text-amber-500 uppercase tracking-wider block">
+            🎨 Стиль интерфейса
+          </span>
+          <div className="flex items-center justify-between bg-gym-950/90 border border-gym-800 rounded-2xl p-3">
+            <div className="space-y-0.5">
+              <span className="text-xs font-bold text-white block">
+                {theme === 'neu' ? '☀️ Мягкий невморфизм (Clay Soft UI)' : '🌙 Тёмный зал (Dark Gym)'}
+              </span>
+              <p className="text-[10px] text-slate-400">
+                {theme === 'neu' ? 'Светлый тактильный стиль с мягкими тенями' : 'Контрастная тёмная тема для тренировок'}
+              </p>
+            </div>
+            <NeuThemeToggle theme={theme} onToggle={onToggleTheme} />
+          </div>
+        </div>
+
         {/* Section 1: Body stats */}
         <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 space-y-3 shadow-lg">
           <span className="text-[11px] font-black text-sky-400 uppercase tracking-wider block">

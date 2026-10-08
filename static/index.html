@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" class="dark">
+<html lang="ru" class="theme-soft-neu">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -7,9 +7,9 @@
 
   <!-- PWA Meta Tags -->
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#0c121d">
+  <meta name="theme-color" content="#dde2e8">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="GymTracker">
   <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
@@ -21,10 +21,10 @@
   <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-  <!-- Inter Font -->
+  <!-- Fonts: Plus Jakarta Sans, JetBrains Mono & Share Tech Mono (for retro digital LCD) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -36,6 +36,7 @@
           fontFamily: {
             sans: ['"Plus Jakarta Sans"', 'sans-serif'],
             mono: ['"JetBrains Mono"', 'monospace'],
+            digital: ['"Share Tech Mono"', '"JetBrains Mono"', 'monospace'],
           },
           colors: {
             gym: {
@@ -49,6 +50,13 @@
               neon: '#38bdf8', // Sky
               warn: '#f59e0b',
               danger: '#ef4444'
+            },
+            neu: {
+              bg: '#dde2e8',
+              surface: '#dde2e8',
+              inset: '#d6dce3',
+              dark: '#1a1c1e',
+              lcd: '#abb39e',
             }
           }
         }
@@ -73,6 +81,15 @@
       --sab: env(safe-area-inset-bottom, 0px);
       --sal: env(safe-area-inset-left, 0px);
       --sar: env(safe-area-inset-right, 0px);
+      
+      /* Neumorphic Soft UI Tokens */
+      --neu-base: #dde2e8;
+      --neu-inset-bg: #d6dce3;
+      --neu-dark-pill: #1a1c1e;
+      --neu-lcd-bg: #abb39e;
+      --neu-lcd-text: #1a2218;
+      --neu-shadow-dark: #b6bfca;
+      --neu-shadow-light: #ffffff;
     }
 
     .safe-header {
@@ -85,13 +102,12 @@
       padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
     }
     .safe-pb-nav {
-      padding-bottom: max(4.25rem, calc(env(safe-area-inset-bottom, 0px) + 4rem));
+      padding-bottom: max(5rem, calc(env(safe-area-inset-bottom, 0px) + 4.75rem));
     }
     .pt-safe-top {
       padding-top: max(0.5rem, calc(env(safe-area-inset-top, 0px) + 0.35rem));
     }
 
-    /* Mobile-first gym app polish */
     * {
       -webkit-tap-highlight-color: transparent;
       user-select: none;
@@ -99,7 +115,6 @@
     input, textarea {
       user-select: auto;
     }
-    /* Hide scrollbar for smooth clean horizontal scroll */
     .no-scrollbar::-webkit-scrollbar {
       display: none;
     }
@@ -107,14 +122,132 @@
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
-    /* Prevent rubber banding on iOS */
-    html, body {
+
+    /* ==================================================== */
+    /* 🎨 NEUMORPHIC SOFT UI SYSTEM (Clay / Tactile Design) */
+    /* ==================================================== */
+
+    .neu-flat {
+      background-color: var(--neu-base);
+      box-shadow: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+    }
+    .neu-flat-sm {
+      background-color: var(--neu-base);
+      box-shadow: 3px 3px 8px var(--neu-shadow-dark), -3px -3px 8px var(--neu-shadow-light);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+    }
+    .neu-inset {
+      background-color: var(--neu-inset-bg);
+      box-shadow: inset 3px 3px 6px var(--neu-shadow-dark), inset -3px -3px 6px var(--neu-shadow-light);
+    }
+    .neu-btn {
+      background-color: var(--neu-base);
+      box-shadow: 4px 4px 10px var(--neu-shadow-dark), -4px -4px 10px var(--neu-shadow-light);
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .neu-btn:active {
+      box-shadow: inset 3px 3px 6px var(--neu-shadow-dark), inset -3px -3px 6px var(--neu-shadow-light);
+      transform: scale(0.97);
+    }
+    .neu-dark-pill {
+      background-color: var(--neu-dark-pill);
+      color: #ffffff;
+      box-shadow: 3px 3px 8px var(--neu-shadow-dark), -2px -2px 6px var(--neu-shadow-light);
+    }
+    .neu-lcd {
+      background-color: var(--neu-lcd-bg);
+      color: var(--neu-lcd-text);
+      box-shadow: inset 3px 3px 6px #8c9481, inset -3px -3px 6px #c5cdb9;
+      font-family: 'Share Tech Mono', 'JetBrains Mono', monospace;
+    }
+    .neu-dial {
+      background-color: #20221f;
+      color: #ffffff;
+      box-shadow: inset 2px 2px 5px rgba(0,0,0,0.5), inset -2px -2px 5px rgba(255,255,255,0.15);
+    }
+    .neu-toggle {
+      background-color: var(--neu-inset-bg);
+      box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light);
+    }
+
+    /* ☀️ THEME SOFT NEUMORPHIC OVERRIDES */
+    body.theme-soft-neu {
+      background-color: #dde2e8 !important;
+      color: #1a202c !important;
+    }
+    body.theme-soft-neu #root > div {
+      background-color: #dde2e8 !important;
+      color: #1a202c !important;
+    }
+    body.theme-soft-neu header {
+      background-color: #dde2e8 !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.7) !important;
+      box-shadow: 0 4px 12px rgba(182, 191, 202, 0.35) !important;
+    }
+    body.theme-soft-neu .bg-gym-950 {
+      background-color: #d6dce3 !important;
+      border-color: rgba(255, 255, 255, 0.45) !important;
+      box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light) !important;
+    }
+    body.theme-soft-neu .bg-gym-900,
+    body.theme-soft-neu .bg-gym-850 {
+      background-color: #dde2e8 !important;
+      border-color: rgba(255, 255, 255, 0.65) !important;
+      box-shadow: 5px 5px 13px var(--neu-shadow-dark), -5px -5px 13px var(--neu-shadow-light) !important;
+    }
+    body.theme-soft-neu .bg-gym-800 {
+      background-color: #dde2e8 !important;
+      border-color: rgba(255, 255, 255, 0.6) !important;
+      box-shadow: 3px 3px 8px var(--neu-shadow-dark), -3px -3px 8px var(--neu-shadow-light) !important;
+    }
+    body.theme-soft-neu input,
+    body.theme-soft-neu textarea,
+    body.theme-soft-neu select {
+      background-color: #d6dce3 !important;
+      color: #0f172a !important;
+      border: 1px solid rgba(255, 255, 255, 0.5) !important;
+      box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light) !important;
+    }
+    body.theme-soft-neu .text-white,
+    body.theme-soft-neu .text-slate-100,
+    body.theme-soft-neu .text-slate-200 {
+      color: #1a202c !important;
+    }
+    body.theme-soft-neu .text-slate-300 {
+      color: #334155 !important;
+    }
+    body.theme-soft-neu .text-slate-400,
+    body.theme-soft-neu .text-slate-500 {
+      color: #64748b !important;
+    }
+    body.theme-soft-neu .border-gym-800,
+    body.theme-soft-neu .border-gym-700 {
+      border-color: rgba(255, 255, 255, 0.55) !important;
+    }
+    body.theme-soft-neu nav.fixed.bottom-0 {
+      background-color: #dde2e8 !important;
+      box-shadow: 0 -4px 18px rgba(182, 191, 202, 0.45), 0 -1px 0 rgba(255, 255, 255, 0.9) !important;
+      border-top: 1px solid rgba(255, 255, 255, 0.8) !important;
+    }
+    body.theme-soft-neu nav button.bg-gym-800 {
+      background-color: #d6dce3 !important;
+      box-shadow: inset 2px 2px 4px var(--neu-shadow-dark), inset -2px -2px 4px var(--neu-shadow-light) !important;
+      color: #0f172a !important;
+    }
+    body.theme-soft-neu .fixed.inset-0.bg-black\/85,
+    body.theme-soft-neu .fixed.inset-0.bg-black\/80 {
+      background-color: rgba(30, 41, 59, 0.45) !important;
+      backdrop-filter: blur(8px) !important;
+    }
+
+    /* 🌙 DARK GYM THEME STYLES */
+    html.dark body:not(.theme-soft-neu) {
       background-color: #06090e;
       color: #f8fafc;
-      overscroll-behavior-y: none;
-      min-height: 100vh;
     }
-    /* Pulsing recording indicator */
+
     @keyframes pulse-ring {
       0% { transform: scale(0.95); opacity: 0.8; }
       50% { transform: scale(1.05); opacity: 0.4; }
@@ -125,7 +258,7 @@
     }
   </style>
 </head>
-<body class="bg-gym-950 text-slate-100 antialiased selection:bg-emerald-500 selection:text-white">
+<body class="theme-soft-neu text-slate-800 antialiased selection:bg-emerald-500 selection:text-white">
   <div id="root">
     <div id="app-loading-placeholder" class="min-h-screen bg-gym-950 flex flex-col items-center justify-center p-6 text-center">
       <div class="w-14 h-14 rounded-2xl bg-gym-900 border border-gym-800 flex items-center justify-center shadow-xl animate-pulse mb-4">
@@ -159,6 +292,6 @@
   </script>
 
   <!-- React App -->
-  <script type="text/babel" src="/static/app.js?v=30"></script>
+  <script type="text/babel" src="/static/app.js?v=31"></script>
 </body>
 </html>
