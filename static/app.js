@@ -479,9 +479,9 @@ function NeuStreakDialWidget({ streak = 0, totalWorkouts = 0 }) {
 // 7. Dark Contrast Split Menu (Files / Contacts / Themes style)
 function NeuSplitMenu({ onSelectDay, currentDayType }) {
   const items = [
-    { type: 'push', title: 'День 1: Push (Жим)', icon: '🟢', bgIcon: 'bg-emerald-500/20 text-emerald-400' },
-    { type: 'pull', title: 'День 2: Pull (Тяга)', icon: '🔵', bgIcon: 'bg-sky-500/20 text-sky-400' },
-    { type: 'legs', title: 'День 3: Legs (Ноги)', icon: '🟠', bgIcon: 'bg-amber-500/20 text-amber-400' },
+    { type: 'push', title: 'День 1: Push (Жим)', icon: '🟢', bgIcon: 'bg-emerald-500/20 text-emerald-500' },
+    { type: 'pull', title: 'День 2: Pull (Тяга)', icon: '🔵', bgIcon: 'bg-sky-500/20 text-sky-500' },
+    { type: 'legs', title: 'День 3: Legs (Ноги)', icon: '🟠', bgIcon: 'bg-amber-500/20 text-amber-500' },
   ];
 
   return (
@@ -497,19 +497,21 @@ function NeuSplitMenu({ onSelectDay, currentDayType }) {
               key={item.type}
               type="button"
               onClick={() => onSelectDay && onSelectDay(item.type)}
-              className={`w-full py-2.5 px-3 rounded-full flex items-center justify-between text-left transition-all active:scale-98 cursor-pointer ${
+              className={`w-full py-2.5 px-3 rounded-2xl flex items-center justify-between text-left transition-all active:scale-98 cursor-pointer ${
                 isSelected 
-                  ? 'neu-dark-pill ring-2 ring-emerald-400/50 font-bold' 
-                  : 'neu-dark-pill opacity-95 hover:opacity-100'
+                  ? 'neu-inset bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/40 text-emerald-800 dark:text-emerald-300 font-bold' 
+                  : 'neu-btn text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-300/40 dark:border-white/10'
               }`}
             >
               <div className="flex items-center space-x-2">
                 <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${item.bgIcon}`}>
                   {item.icon}
                 </span>
-                <span className="text-xs font-bold text-white tracking-wide">{item.title}</span>
+                <span className={`text-xs font-bold tracking-wide ${isSelected ? 'text-emerald-800 dark:text-emerald-200' : 'text-slate-800 dark:text-slate-100'}`}>
+                  {item.title}
+                </span>
               </div>
-              <span className="text-[9px] font-mono text-slate-300 font-semibold">
+              <span className={`text-[9px] font-mono font-semibold ${isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
                 {isSelected ? '✓ Выбран' : 'Выбрать →'}
               </span>
             </button>
@@ -2329,8 +2331,8 @@ function App() {
 
       {/* Bottom Floating Navigation Bar (Hidden during active workout focus) */}
       {!isInWorkoutFocus && (
-        <nav className="fixed z-40 max-w-lg mx-auto safe-bottom bottom-2 left-3 right-3 rounded-3xl p-1.5 neu-dock shadow-xl">
-          <div className="grid grid-cols-5 gap-1">
+        <nav className="fixed z-40 max-w-lg mx-auto safe-bottom bottom-2 left-3 right-3 rounded-full neu-dock shadow-xl px-2 py-1.5">
+          <div className="flex items-center justify-between">
             <NavButton 
               active={activeTab === 'workout'} 
               onClick={() => { setIsMinimized(false); setActiveTab('workout'); }}
@@ -2381,21 +2383,24 @@ function NavButton({ active, onClick, icon, label, badge }) {
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all duration-150 active:scale-95 ${
+      className={`relative flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all duration-150 active:scale-95 group ${
         active
-          ? 'neu-inset text-emerald-500 font-black'
-          : 'neu-btn text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
+          ? 'text-emerald-600 dark:text-emerald-400 font-extrabold bg-emerald-500/12 dark:bg-emerald-500/20'
+          : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
       }`}
     >
       <div className="relative">
-        {icon}
+        <div className={`transition-transform duration-150 ${active ? 'scale-110' : 'group-hover:scale-105'}`}>
+          {icon}
+        </div>
         {badge && (
-          <span className="absolute -top-1 -right-1.5 text-emerald-500 text-xs font-black animate-pulse">
-            {badge}
-          </span>
+          <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-emerald-500 animate-pulse ring-2 ring-white dark:ring-gym-900" />
         )}
       </div>
-      <span className="text-[10px] mt-0.5 tracking-tight font-medium">{label}</span>
+      <span className="text-[10px] mt-0.5 tracking-tight">{label}</span>
+      {active && (
+        <span className="w-1.5 h-1 rounded-full bg-emerald-500 mt-0.5" />
+      )}
     </button>
   );
 }
@@ -3048,8 +3053,8 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
               onClick={() => setSelectedVariant('a')}
               className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 ${
                 selectedVariant === 'a'
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md font-black'
-                  : 'neu-btn text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                  ? 'neu-inset bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 font-black shadow-inner'
+                  : 'neu-btn text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold'
               }`}
             >
               <span className="flex items-center space-x-1">
@@ -3063,8 +3068,8 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
               onClick={() => setSelectedVariant('b')}
               className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 ${
                 selectedVariant === 'b'
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md font-black'
-                  : 'neu-btn text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                  ? 'neu-inset bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 font-black shadow-inner'
+                  : 'neu-btn text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold'
               }`}
             >
               <span className="flex items-center space-x-1">
@@ -3075,13 +3080,13 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
             </button>
           </div>
 
-          <div className="text-[11px] text-center text-slate-400 pt-2 pb-0.5 font-medium">
+          <div className="text-[11px] text-center pt-2 pb-0.5 font-medium">
             {recommendedDay?.variant === selectedVariant ? (
-              <span className="text-emerald-400">
-                ✨ Рекомендация тренера: сегодня тренируем <strong>{recommendedDay?.title?.split('—')[0]}</strong>
+              <span className="text-slate-600 dark:text-slate-300">
+                ✨ Рекомендация тренера: сегодня тренируем <strong className="text-emerald-600 dark:text-emerald-400">{recommendedDay?.title?.split('—')[0]}</strong>
               </span>
             ) : (
-              <span>Чередование вариантов развивает мышцы под разными углами и предотвращает застой</span>
+              <span className="text-slate-500 dark:text-slate-400">Чередование вариантов развивает мышцы под разными углами и предотвращает застой</span>
             )}
           </div>
         </div>
@@ -3090,50 +3095,53 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
         <div className="grid grid-cols-1 gap-3">
           {displayDays.map((day) => {
             const isRec = day.is_recommended;
-            const dayTypeColor = day.type === 'push' ? 'from-rose-950/60 to-gym-900 border-rose-500/40' 
-                               : day.type === 'pull' ? 'from-sky-950/60 to-gym-900 border-sky-500/40' 
-                               : 'from-emerald-950/60 to-gym-900 border-emerald-500/40';
+            const accentBorder = day.type === 'push' ? 'border-rose-400/40 dark:border-rose-500/30' 
+                               : day.type === 'pull' ? 'border-sky-400/40 dark:border-sky-500/30' 
+                               : 'border-amber-400/40 dark:border-amber-500/30';
+            const accentGlow = day.type === 'push' ? 'bg-gradient-to-br from-rose-500/5 via-transparent to-transparent dark:from-rose-950/20'
+                             : day.type === 'pull' ? 'bg-gradient-to-br from-sky-500/5 via-transparent to-transparent dark:from-sky-950/20'
+                             : 'bg-gradient-to-br from-amber-500/5 via-transparent to-transparent dark:from-amber-950/20';
 
             return (
               <div
                 key={`${day.type}_${day.variant}`}
-                className={`bg-gradient-to-r ${dayTypeColor} border rounded-3xl p-5 shadow-xl transition-all relative overflow-hidden`}
+                className={`neu-flat ${accentGlow} border ${accentBorder} rounded-3xl p-5 shadow-lg transition-all relative overflow-hidden`}
               >
                 {isRec && (
-                  <div className="absolute top-0 right-0 bg-emerald-500 text-gym-950 text-[10px] font-black px-3.5 py-1 rounded-bl-2xl uppercase tracking-wider shadow">
+                  <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-black px-3.5 py-1 rounded-bl-2xl uppercase tracking-wider shadow-sm">
                     ⭐ Рекомендуется сегодня
                   </div>
                 )}
 
                 <div className="mb-2">
                   <div className="flex items-center space-x-2">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">
                       {day.focus}
                     </span>
                   </div>
-                  <h3 className="text-xl font-black text-white mt-0.5">{day.title}</h3>
+                  <h3 className="text-xl font-black text-slate-800 dark:text-white mt-0.5">{day.title}</h3>
                 </div>
 
                 {/* Exercises Preview with pre-calculated weights & progression badges */}
-                <div className="bg-gym-950/70 border border-gym-800/80 rounded-2xl p-3 my-3 space-y-2">
+                <div className="neu-inset rounded-2xl p-3 my-3 space-y-2 border border-slate-300/40 dark:border-white/5">
                   {day.exercises.map((ex, i) => (
                     <div key={i} className="flex items-center justify-between text-xs font-mono">
                       <div className="flex items-center space-x-1.5 truncate max-w-[65%]">
                         <span className="text-slate-400 text-[10px]">{i + 1}.</span>
-                        <span className="text-slate-200 truncate">{ex.name.split('(')[0].trim()}</span>
+                        <span className="text-slate-800 dark:text-slate-100 font-semibold truncate">{ex.name.split('(')[0].trim()}</span>
                       </div>
                       <div className="flex items-center space-x-2 whitespace-nowrap">
                         {ex.progression_badge && (
                           <span className={`text-[9px] px-1.5 py-0.5 rounded font-black ${
                             ex.progression_status === 'INCREASE' 
-                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' 
-                              : 'bg-gym-800 text-slate-400'
+                              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30' 
+                              : 'bg-slate-200/80 dark:bg-gym-800 text-slate-600 dark:text-slate-400'
                           }`}>
                             {ex.progression_badge}
                           </span>
                         )}
-                        <span className="text-emerald-400 font-bold">
-                          {ex.target_sets}×{ex.target_reps} • <strong className="text-white">{ex.recommended_weight} кг</strong>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                          {ex.target_sets}×{ex.target_reps} • <strong className="text-slate-900 dark:text-white">{ex.recommended_weight} кг</strong>
                         </span>
                       </div>
                     </div>
@@ -3142,10 +3150,10 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
                 <button
                   onClick={() => handleStartDay(day.type, day.variant)}
-                  className={`w-full py-3.5 rounded-2xl font-black text-sm uppercase tracking-wide transition flex items-center justify-center space-x-2 shadow-lg active:scale-98 ${
+                  className={`w-full py-3.5 rounded-2xl font-black text-sm uppercase tracking-wide transition flex items-center justify-center space-x-2 shadow active:scale-98 ${
                     isRec 
-                      ? 'bg-emerald-500 hover:bg-emerald-400 text-gym-950 shadow-emerald-500/20' 
-                      : 'bg-gym-800 hover:bg-white hover:text-gym-950 text-white'
+                      ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20' 
+                      : 'neu-btn text-slate-800 dark:text-white hover:text-slate-950 font-black'
                   }`}
                 >
                   <Icons.Plus />
