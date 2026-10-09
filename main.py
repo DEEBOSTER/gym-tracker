@@ -16,7 +16,7 @@ if hasattr(sys.stderr, 'reconfigure'):
 
 from fastapi import FastAPI, HTTPException, status, Header, Depends
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import urllib.parse
 
@@ -145,10 +145,11 @@ GUIDES_FILE_PATH = os.path.join(os.path.dirname(__file__), "static", "exercise_g
 
 @app.get("/api/exercises/guides")
 def get_exercise_guides():
+    content = {}
     if os.path.exists(GUIDES_FILE_PATH):
         with open(GUIDES_FILE_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+            content = json.load(f)
+    return JSONResponse(content=content, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 # --- COACH & PROGRESSIVE OVERLOAD DEFINITIONS ---
 
@@ -818,9 +819,19 @@ def get_active_workout(
 
         # Auto-migrate any pullover in planned exercises if present
         for p_ex in planned_exercises:
-            if "пуловер с гантелью" in p_ex.get("name", "").lower():
+            if "пуловер" in p_ex.get("name", "").lower():
                 p_ex["name"] = "Пуловер в тренажере"
                 p_ex["tip"] = "Упритесь локтями в подушки, плавно опускайте рычаг вниз усилием широчайших"
+
+        for s in sets:
+            if "пуловер с гантелью" in s.get("exercise_name", "").lower():
+                s["exercise_name"] = "Пуловер в тренажере"
+
+        try:
+            cursor.execute("UPDATE workout_sets SET exercise_name = 'Пуловер в тренажере' WHERE workout_id = ? AND exercise_name LIKE '%пуловер с гантелью%';", (w_row["id"],))
+            cursor.execute("UPDATE workouts SET notes = REPLACE(notes, 'Пуловер с гантелью на скамье', 'Пуловер в тренажере') WHERE id = ?;", (w_row["id"],))
+        except Exception:
+            pass
 
         start_time_val = w_row["start_time"]
         if start_time_val and not start_time_val.endswith("Z"):
