@@ -415,6 +415,10 @@ const parseSafeDate = (val) => {
   }
   if (typeof val === 'string') {
     const clean = val.trim();
+    if (/Z|[+-]\d{2}:?\d{2}$/i.test(clean)) {
+      const d = new Date(clean);
+      if (!isNaN(d.getTime())) return d;
+    }
     const match = clean.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
     if (match) {
       const year = parseInt(match[1], 10);
@@ -1395,12 +1399,30 @@ function ExercisePickerModal({ isOpen, onClose, exercises, selectedId, onSelect 
 // ==========================================
 function SwapExerciseModal({ isOpen, onClose, currentEx, exercises, onSwap }) {
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const tg = window.Telegram?.WebApp;
+    if (tg?.BackButton) {
+      tg.BackButton.show();
+      const handleBack = () => onClose();
+      tg.BackButton.onClick(handleBack);
+      return () => {
+        tg.BackButton.offClick(handleBack);
+        tg.BackButton.hide();
+      };
+    }
+  }, [isOpen, onClose]);
+
   if (!isOpen || !currentEx) return null;
 
   const alternatives = currentEx.alternatives || [];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-150">
+    <div 
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-150"
+      onClick={onClose}
+    >
       <div 
         className="w-full max-w-lg bg-gym-900 border border-gym-700/80 rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
@@ -1493,11 +1515,28 @@ function SwapExerciseModal({ isOpen, onClose, currentEx, exercises, onSwap }) {
 // 🪜 WARMUP LADDER MODAL (SMART PYRAMID)
 // ==========================================
 function WarmupLadderModal({ isOpen, onClose, exerciseName, targetWeight, onSelectStep }) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const tg = window.Telegram?.WebApp;
+    if (tg?.BackButton) {
+      tg.BackButton.show();
+      const handleBack = () => onClose();
+      tg.BackButton.onClick(handleBack);
+      return () => {
+        tg.BackButton.offClick(handleBack);
+        tg.BackButton.hide();
+      };
+    }
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
   const ladder = calculateWarmupLadder(targetWeight, exerciseName);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-150">
+    <div 
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-150"
+      onClick={onClose}
+    >
       <div 
         className="w-full max-w-lg bg-gym-900 border border-gym-700/80 rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
@@ -1579,6 +1618,20 @@ function WarmupLadderModal({ isOpen, onClose, exerciseName, targetWeight, onSele
 function ExerciseVideoModal({ isOpen, onClose, exerciseName, guide }) {
   const [videoTab, setVideoTab] = useState('animation'); // 'animation' | 'youtube'
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const tg = window.Telegram?.WebApp;
+    if (tg?.BackButton) {
+      tg.BackButton.show();
+      const handleBack = () => onClose();
+      tg.BackButton.onClick(handleBack);
+      return () => {
+        tg.BackButton.offClick(handleBack);
+        tg.BackButton.hide();
+      };
+    }
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const currentGuide = guide || {
@@ -1592,7 +1645,10 @@ function ExerciseVideoModal({ isOpen, onClose, exerciseName, guide }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-150">
+    <div 
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-150"
+      onClick={onClose}
+    >
       <div 
         className="w-full max-w-lg bg-gym-900 border border-gym-700/80 rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
@@ -2623,6 +2679,8 @@ function App() {
               userProfile={userProfile}
               onRefresh={loadAppData}
               onMinimize={() => setIsMinimized(true)}
+              isMinimized={isMinimized}
+              onMaximize={() => setIsMinimized(false)}
               theme={theme}
               onToggleTheme={toggleTheme}
               workouts={historyWorkouts}
@@ -2746,7 +2804,7 @@ function NavButton({ active, onClick, icon, label, badge }) {
 // ==========================================
 // 🚀 FULLY GUIDED WORKOUT SCREEN (STEP-BY-STEP FLOW)
 // ==========================================
-function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuides = {}, userProfile, onRefresh, onMinimize, theme, onToggleTheme, workouts = [], onNavigateTab }) {
+function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuides = {}, userProfile, onRefresh, onMinimize, isMinimized = false, onMaximize, theme, onToggleTheme, workouts = [], onNavigateTab }) {
   // Navigation inside the plan
   const [currentPlanIndex, setCurrentPlanIndex] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState('a');
@@ -2832,17 +2890,50 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
     }
   }, [currentPlanIndex, activeWorkout?.id]);
 
-  // Workout Session Duration Timer
+  // Workout Session Duration Timer (Guaranteed 0-start & background persistent)
   useEffect(() => {
     if (!activeWorkout) return;
-    const sDate = parseSafeDate(activeWorkout.start_time);
-    const startTime = sDate ? sDate.getTime() : Date.now();
-    const interval = setInterval(() => {
+    const storageKey = 'gym_tracker_active_start_' + activeWorkout.id;
+    let startTime = null;
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) startTime = parseInt(stored, 10);
+    } catch (e) {}
+
+    if (!startTime || isNaN(startTime)) {
+      let st = activeWorkout.start_time;
+      if (typeof st === 'string' && !st.endsWith('Z') && !st.includes('+')) {
+        const utcDate = new Date(st.replace(' ', 'T') + 'Z');
+        if (!isNaN(utcDate.getTime())) {
+          startTime = utcDate.getTime();
+        }
+      }
+      if (!startTime) {
+        const sDate = parseSafeDate(st);
+        startTime = sDate ? sDate.getTime() : Date.now();
+      }
+
+      // Timezone safeguard: if calculated elapsed time is >= 4 hours (e.g. 300 minutes UTC+5 offset)
+      // on a freshly opened or 0-set workout, reset start to now so it starts from 00:00!
+      const now = Date.now();
+      const elapsed = Math.floor((now - startTime) / 1000);
+      if (elapsed >= 14400 && (!activeWorkout.sets || activeWorkout.sets.length <= 1)) {
+        startTime = now;
+      }
+
+      try {
+        localStorage.setItem(storageKey, String(startTime));
+      } catch (e) {}
+    }
+
+    const updateTimer = () => {
       const now = Date.now();
       setWorkoutDuration(Math.max(0, Math.floor((now - startTime) / 1000)));
-    }, 1000);
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [activeWorkout]);
+  }, [activeWorkout?.id, activeWorkout?.start_time]);
 
   // Restore running rest timer from localStorage on mount (e.g. if WebApp was minimized)
   useEffect(() => {
@@ -3135,6 +3226,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
         })
       });
       if (res.ok) {
+        try { localStorage.removeItem('gym_tracker_active_start_' + activeWorkout.id); } catch (e) {}
         alert('🎉 Отличная работа! Тренировка сохранена в историю, а сводка отправлена вам в Telegram.');
         onRefresh();
       }
@@ -3150,6 +3242,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
       const res = await fetch(`/api/workouts/${activeWorkout.id}`, { method: 'DELETE' });
       if (res.ok) {
         try {
+          localStorage.removeItem('gym_tracker_active_start_' + activeWorkout.id);
           const uId = getTelegramUser().id;
           const uKey = 'gym_tracker_full_workouts_' + uId;
           const raw = localStorage.getItem(uKey) || localStorage.getItem('gym_tracker_full_workouts_backup') || '[]';
@@ -3321,15 +3414,37 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   };
 
   // ==========================================
-  // 1. ВЫБОР ДНЯ (ЕСЛИ ТРЕНИРОВКА ЕЩЕ НЕ НАЧАТА)
+  // 1. ВЫБОР ДНЯ (ЕСЛИ ТРЕНИРОВКА ЕЩЕ НЕ НАЧАТА ИЛИ СВЕРНУТА)
   // ==========================================
-  if (!activeWorkout) {
+  if (!activeWorkout || isMinimized) {
     const recommendedDay = coachDays.find(d => d.is_recommended) || coachDays[0];
     const filteredDays = coachDays.filter(d => d.variant === selectedVariant);
     const displayDays = filteredDays.length > 0 ? filteredDays : coachDays.slice(0, 3);
 
     return (
       <div className="space-y-4 pt-1">
+        {/* Sticky Active Workout Banner when minimized */}
+        {activeWorkout && isMinimized && (
+          <div 
+            onClick={() => { if (typeof onMaximize === 'function') onMaximize(); }}
+            className="neu-flat rounded-2xl p-3 flex items-center justify-between bg-emerald-500/10 border-2 border-emerald-500/40 text-emerald-800 dark:text-emerald-300 shadow-md cursor-pointer animate-pulse transition-all active:scale-[0.98]"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Тренировка продолжается</div>
+                <div className="text-sm font-black truncate text-slate-800 dark:text-white">{activeWorkout.title || 'Активная тренировка'} · ⏱ {formatTime(workoutDuration)}</div>
+              </div>
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); if (typeof onMaximize === 'function') onMaximize(); }}
+              className="px-3 py-1.5 rounded-xl bg-emerald-500 text-white text-xs font-black shadow-md hover:bg-emerald-600 transition-all shrink-0 ml-2"
+            >
+              Развернуть ▶
+            </button>
+          </div>
+        )}
+
         <div className="space-y-3 pb-1">
           {/* Top Clock Card from screenshot */}
           <NeuHeaderCard 
@@ -3518,44 +3633,51 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
   return (
     <div className="space-y-3 pb-2 select-none">
-      {/* 1. Sleek Compact Header */}
-      <div className="flex items-center justify-between py-1 px-0.5">
-        <div className="flex items-center space-x-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 live-dot"></span>
-          <h2 className="text-sm font-extrabold text-white tracking-tight truncate max-w-[150px] sm:max-w-xs">
-            {activeWorkout.title}
-          </h2>
-        </div>
-
-        <div className="flex items-center space-x-1.5">
-          <span className="text-xs font-mono font-bold text-slate-300 bg-gym-900 border border-gym-800 px-2 py-1 rounded-xl">
+      {/* 1. Responsive 2-Tier Workout Header (100% mobile fit, no overflow) */}
+      <div className="bg-gym-900 border border-gym-800 rounded-2xl p-3 shadow-lg space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center space-x-2 min-w-0">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 live-dot shrink-0"></span>
+            <h2 className="text-sm font-extrabold text-white tracking-tight truncate">
+              {activeWorkout.title}
+            </h2>
+          </div>
+          <span className="text-xs font-mono font-black text-emerald-400 bg-gym-950/80 border border-gym-800 px-2.5 py-1 rounded-xl shrink-0 shadow-inner">
             ⏱ {formatTime(workoutDuration)}
           </span>
+        </div>
 
+        <div className="grid grid-cols-3 gap-1.5 pt-0.5">
           {onMinimize && (
             <button
+              type="button"
               onClick={onMinimize}
-              title="Свернуть тренировку"
-              className="text-[11px] font-bold text-slate-400 hover:text-white bg-gym-800 px-2 py-1 rounded-xl border border-gym-700 active:scale-95 transition"
+              title="Свернуть тренировку в фоновый режим"
+              className="w-full text-center text-xs font-bold text-slate-300 hover:text-white bg-gym-800 hover:bg-gym-700 py-2 px-1 rounded-xl border border-gym-700 active:scale-95 transition flex items-center justify-center space-x-1"
             >
-              Свернуть
+              <span>▾</span>
+              <span>Свернуть</span>
             </button>
           )}
 
           <button
             type="button"
             onClick={handleDiscardWorkout}
-            title="Отменить и удалить эту тренировку"
-            className="text-[11px] font-bold text-slate-400 hover:text-rose-400 bg-gym-800 hover:bg-rose-500/10 px-2 py-1 rounded-xl border border-gym-700 hover:border-rose-500/30 active:scale-95 transition"
+            title="Отменить и сбросить эту тренировку"
+            className="w-full text-center text-xs font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 py-2 px-1 rounded-xl border border-rose-500/30 active:scale-95 transition flex items-center justify-center space-x-1"
           >
-            Сбросить
+            <span>🗑</span>
+            <span>Сбросить</span>
           </button>
 
           <button
+            type="button"
             onClick={handleFinishWorkout}
-            className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-xl border border-emerald-500/30 active:scale-95 transition"
+            title="Завершить тренировку и сохранить в историю"
+            className="w-full text-center text-xs font-black text-emerald-300 hover:text-white bg-emerald-500/20 hover:bg-emerald-500/30 py-2 px-1 rounded-xl border border-emerald-500/50 shadow-sm active:scale-95 transition flex items-center justify-center space-x-1"
           >
-            Завершить
+            <span>✓</span>
+            <span>Завершить</span>
           </button>
         </div>
       </div>
@@ -3679,14 +3801,14 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           </div>
 
           {/* Quick presets & Time adjustments */}
-          <div className="flex items-center justify-between pt-1 border-t border-gym-800/80 text-[11px]">
-            <div className="flex items-center space-x-1">
+          <div className="flex items-center justify-between gap-1 pt-1 border-t border-gym-800/80 text-[11px]">
+            <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar py-0.5 max-w-[65%]">
               {[45, 60, 90, 120, 150, 180].map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => setFixedRestTime(s)}
-                  className={`px-1.5 py-0.5 rounded-lg font-mono text-[10px] font-bold border transition ${
+                  className={`px-1.5 py-0.5 rounded-lg font-mono text-[10px] font-bold border shrink-0 transition ${
                     Math.abs(restSecondsLeft - s) < 3
                       ? 'bg-sky-500 text-gym-950 border-sky-400 font-black'
                       : 'bg-gym-900 text-slate-400 border-gym-800 hover:text-white'
@@ -3697,7 +3819,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
               ))}
             </div>
 
-            <div className="flex items-center space-x-1">
+            <div className="flex items-center space-x-1 shrink-0">
               <button
                 type="button"
                 onClick={() => adjustRestTime(-15)}

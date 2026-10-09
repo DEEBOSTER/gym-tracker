@@ -318,7 +318,7 @@ PPL_PROGRAMS = {
         "variant": "b",
         "variant_title": "Вариант Б (Смена углов & гипертрофия)",
         "title": "День 2: Pull (Тяни) — Вариант Б",
-        "focus": "V-тяга спины, пуловер, скамья Скотта, пик бицепса",
+        "focus": "V-тяга спины, пуловер в тренажере, скамья Скотта, пик бицепса",
         "exercises": [
             {
                 "name": "Тяга верхнего блока параллельным хватом",
@@ -335,11 +335,11 @@ PPL_PROGRAMS = {
                 "alternatives": ["Тяга Т-грифа с упором в грудь", "Тяга штанги в наклоне"]
             },
             {
-                "name": "Пуловер с гантелью на скамье",
+                "name": "Пуловер в тренажере",
                 "target_sets": 3,
                 "target_reps": "10–12",
-                "tip": "Глубокий вдох при опускании за голову, растягивай широчайшие",
-                "alternatives": ["Тяга верхнего блока прямыми руками (Straight-arm)"]
+                "tip": "Упритесь локтями в подушки, плавно опускайте рычаг вниз усилием широчайших",
+                "alternatives": ["Пуловер с гантелью на скамье", "Тяга верхнего блока прямыми руками (Straight-arm)"]
             },
             {
                 "name": "Тяга каната к лицу (Face pulls)",
@@ -705,6 +705,9 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default"):
             elif "гантел" in name_low:
                 rec_weight = round(user_weight * 0.18 * mult, 1)
                 rec_note = f"Расчет от веса тела ({user_weight} кг): гантели по {rec_weight} кг"
+            elif "пуловер" in name_low:
+                rec_weight = round(user_weight * 0.35 * mult, 1)
+                rec_note = f"Тренажер пуловер ({user_weight} кг): ~{rec_weight} кг"
             elif "блок" in name_low or "тяга" in name_low:
                 rec_weight = round(user_weight * 0.45 * mult, 1)
                 rec_note = f"Расчет от веса тела ({user_weight} кг): ~{rec_weight} кг"
@@ -813,10 +816,20 @@ def get_active_workout(
                 profile = get_user_profile_dict(cursor, user_id=user_id, user_name=user_name)
                 planned_exercises = enrich_single_plan(template_copy, cursor, profile=profile, user_id=user_id)["exercises"]
 
+        # Auto-migrate any pullover in planned exercises if present
+        for p_ex in planned_exercises:
+            if "пуловер с гантелью" in p_ex.get("name", "").lower():
+                p_ex["name"] = "Пуловер в тренажере"
+                p_ex["tip"] = "Упритесь локтями в подушки, плавно опускайте рычаг вниз усилием широчайших"
+
+        start_time_val = w_row["start_time"]
+        if start_time_val and not start_time_val.endswith("Z"):
+            start_time_val = start_time_val.replace(" ", "T") + "Z"
+
         return {
             "id": w_row["id"],
             "title": w_row["title"],
-            "start_time": w_row["start_time"],
+            "start_time": start_time_val,
             "end_time": w_row["end_time"],
             "notes": w_row["notes"] or "",
             "is_active": True,
@@ -840,7 +853,7 @@ def start_workout(
             # Return currently active workout instead of creating orphan duplicate
             return get_active_workout(user_id=user_id, user_name=user_name)
 
-        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now_str = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
         cursor.execute(
             "INSERT INTO workouts (user_id, title, start_time, notes) VALUES (?, ?, ?, ?);",
             (user_id, payload.title or "Силовая тренировка", now_str, payload.notes or "")
