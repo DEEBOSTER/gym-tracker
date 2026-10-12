@@ -259,6 +259,11 @@ const Icons = {
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
     </svg>
+  ),
+  Play: ({ className = "w-4 h-4" }) => (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M8 5v14l11-7z" />
+    </svg>
   )
 };
 
@@ -621,51 +626,51 @@ function NeuGamificationHUDCard({ profile, onOpenModal }) {
         </div>
       </div>
 
-      {/* Level XP Progress Bar */}
-      <div className="space-y-1 mb-3">
+      {/* Level XP Progress Bar (Strava Athletic Orange) */}
+      <div className="space-y-1.5 mb-3">
         <div className="flex justify-between items-center text-[10px] font-bold">
           <span className="text-slate-600 dark:text-slate-400">Прогресс до Уровня {level + 1}</span>
-          <span className="text-emerald-700 dark:text-emerald-400 font-mono font-black">{currentLevelXp} / {neededLevelXp} XP ({levelPercent}%)</span>
+          <span className="text-[#fc4c02] font-mono font-black">{currentLevelXp} / {neededLevelXp} XP ({levelPercent}%)</span>
         </div>
         <div className="w-full h-2 rounded-full neu-inset overflow-hidden p-0.5">
           <div 
-            className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500 shadow-sm"
+            className="h-full rounded-full bg-gradient-to-r from-[#fc4c02] to-[#ff7a45] transition-all duration-500 shadow-sm"
             style={{ width: `${levelPercent}%` }}
           />
         </div>
       </div>
 
-      {/* 4-Stat Metric Strip */}
-      <div className="grid grid-cols-4 gap-2 pt-1 border-t border-slate-200/40 dark:border-slate-700/40">
-        <div className="neu-inset rounded-xl py-1.5 px-1 text-center">
-          <div className="text-[11px] font-black font-mono text-slate-800 dark:text-slate-100">
+      {/* 4-Stat Metric Strip (Strava Athletic Overview) */}
+      <div className="grid grid-cols-4 gap-2 pt-1 border-t border-slate-200/40 dark:border-white/5">
+        <div className="neu-inset rounded-xl py-2 px-1 text-center">
+          <div className="text-[12px] font-black font-mono text-slate-800 dark:text-white">
             {displayVolume}
           </div>
-          <div className="text-[8px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+          <div className="text-[8px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-0.5">
             Тоннаж
           </div>
         </div>
-        <div className="neu-inset rounded-xl py-1.5 px-1 text-center">
-          <div className="text-[11px] font-black font-mono text-amber-700 dark:text-amber-400">
+        <div className="neu-inset rounded-xl py-2 px-1 text-center">
+          <div className="text-[12px] font-black font-mono text-[#fc4c02]">
             {prCount}
           </div>
-          <div className="text-[8px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+          <div className="text-[8px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-0.5">
             Рекордов
           </div>
         </div>
-        <div className="neu-inset rounded-xl py-1.5 px-1 text-center">
-          <div className="text-[11px] font-black font-mono text-emerald-700 dark:text-emerald-400">
+        <div className="neu-inset rounded-xl py-2 px-1 text-center">
+          <div className="text-[12px] font-black font-mono text-emerald-600 dark:text-emerald-400">
             {streak}
           </div>
-          <div className="text-[8px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+          <div className="text-[8px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-0.5">
             Серия (нед)
           </div>
         </div>
-        <div className="neu-inset rounded-xl py-1.5 px-1 text-center">
-          <div className="text-[11px] font-black font-mono text-indigo-700 dark:text-indigo-400">
+        <div className="neu-inset rounded-xl py-2 px-1 text-center">
+          <div className="text-[12px] font-black font-mono text-sky-600 dark:text-sky-400">
             {totalWorkouts}
           </div>
-          <div className="text-[8px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+          <div className="text-[8px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-0.5">
             Сессий
           </div>
         </div>
@@ -3012,79 +3017,70 @@ function App() {
   return (
     <div className={`flex flex-col min-h-screen bg-[var(--neu-base)] text-slate-800 dark:text-slate-100 font-sans select-none ${isInWorkoutFocus ? 'pb-safe-bottom pb-4' : 'safe-pb-nav'}`}>
       {/* Top Header: Hidden in workout focus mode to maximize vertical space */}
+      {/* Top Header: Strava Athletic Layout (100% responsive, never overflows) */}
       {!isInWorkoutFocus && (
-        <header className="sticky top-0 z-40 px-4 pb-2.5 flex items-center justify-between safe-header bg-[var(--neu-surface)] border-b border-[var(--neu-border)] shadow-sm">
-          <div className="flex items-center space-x-2.5">
-            <img 
-              src="/static/app-icon.png" 
-              alt="GymTracker" 
-              className="w-9 h-9 rounded-2xl object-cover shrink-0 neu-flat" 
-            />
-            <div>
-              <h1 className="text-sm font-extrabold tracking-tight text-slate-800 dark:text-white">
-                GymTracker
-              </h1>
-              <p className="text-[9px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
-                {userProfile?.fitness_goal === 'strength' ? 'Силовой тренинг' : userProfile?.fitness_goal === 'fat_loss' ? 'Сушка и рельеф' : 'Набор массы'} • Gemini AI
+        <header className="sticky top-0 z-40 px-3.5 py-2.5 flex items-center justify-between safe-header bg-[var(--neu-surface)] border-b border-[var(--neu-border)] shadow-sm">
+          {/* Left Brand block */}
+          <div className="flex items-center space-x-2.5 min-w-0">
+            <div className="relative shrink-0">
+              <img 
+                src="/static/app-icon.png" 
+                alt="GymTracker" 
+                className="w-8 h-8 rounded-xl object-cover border border-white/10 shadow-sm" 
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#fc4c02] ring-2 ring-[var(--neu-surface)]" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center space-x-1">
+                <h1 className="text-sm font-black tracking-tight text-slate-800 dark:text-white uppercase font-sans">
+                  GymTracker
+                </h1>
+                <span className="text-[10px] text-[#fc4c02] font-black">PRO</span>
+              </div>
+              <p className="text-[8.5px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider truncate">
+                {userProfile?.fitness_goal === 'strength' ? 'Силовой тренинг' : userProfile?.fitness_goal === 'fat_loss' ? 'Сушка & Рельеф' : 'Набор массы'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-1.5">
-            <NeuThemeToggle theme={theme} onToggle={toggleTheme} />
+          {/* Right Action block: only 2 compact, high-contrast pills */}
+          <div className="flex items-center space-x-1.5 shrink-0">
+            {activeWorkout ? (
+              <button 
+                onClick={() => { setIsMinimized(false); setActiveTab('workout'); }}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-[#fc4c02] text-white font-black text-xs shadow-md shadow-[#fc4c02]/30 active:scale-95 transition"
+              >
+                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                <span className="tracking-wide">В зале ▶</span>
+              </button>
+            ) : null}
 
-            {/* Gamification Rank & Points Pill */}
+            {/* Gamification Rank & FitPoints Pill */}
             <button
               type="button"
               onClick={() => setShowGamificationModal(true)}
-              className="text-xs px-2 py-1 rounded-full neu-btn flex items-center space-x-1 font-mono transition active:scale-95 text-[var(--neu-text-primary)]"
+              className="px-2.5 py-1 rounded-full neu-btn flex items-center space-x-1.5 font-mono transition active:scale-95 text-[var(--neu-text-primary)]"
               title="Ранг атлета и система опыта"
             >
               <span>{getTierDetails(userProfile?.tier).icon}</span>
               <span className="text-[11px] font-black text-slate-800 dark:text-white">
                 {userProfile?.level || 1}
               </span>
-              <span className="text-[10px] text-amber-500 font-bold">
+              <span className="text-[10px] text-[#fc4c02] font-bold">
                 ⚡{userProfile?.fitpoints || 0}
               </span>
             </button>
 
-            {activeWorkout ? (
-              <button 
-                onClick={() => { setIsMinimized(false); setActiveTab('workout'); }}
-                className="flex items-center space-x-2 px-3 py-1 rounded-full neu-btn text-emerald-500 font-bold active:scale-95 transition"
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-500 live-dot"></span>
-                <span className="text-xs">Активна ▶</span>
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setShowAccountModal(true)}
-                  className={`text-xs px-2.5 py-1 rounded-full neu-btn flex items-center space-x-1 font-mono transition active:scale-95 ${
-                    currentUserId.startsWith('tg_')
-                      ? 'text-[var(--neu-text-secondary)]'
-                      : 'bg-amber-500/20 text-amber-600 border-amber-500/40 animate-pulse'
-                  }`}
-                  title="PWA и синхронизация аккаунта"
-                >
-                  <span>{isStandalonePWA() ? '🚀' : currentUserId.startsWith('tg_') ? '📱' : '⚠️'}</span>
-                  <span className="text-[11px] font-bold">
-                    {currentUserId.startsWith('tg_') ? 'PWA' : 'Войти'}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('profile')}
-                  className="text-xs px-2.5 py-1 rounded-full neu-btn flex items-center space-x-1 font-mono transition active:scale-95 text-[var(--neu-text-primary)]"
-                >
-                  <span>{userProfile?.weight || 80} кг</span>
-                  <span className="text-emerald-500">⚙️</span>
-                </button>
-              </>
-            )}
+            {/* Profile & Settings Pill */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('profile')}
+              className="px-2.5 py-1 rounded-full neu-btn flex items-center space-x-1 font-mono transition active:scale-95 text-[var(--neu-text-primary)]"
+              title="Профиль и настройки"
+            >
+              <span className="text-[11px] font-bold">{userProfile?.weight || 80} кг</span>
+              <span className="text-[11px] opacity-75">⚙️</span>
+            </button>
           </div>
         </header>
       )}
@@ -3212,21 +3208,21 @@ function NavButton({ active, onClick, icon, label, badge }) {
       onClick={onClick}
       className={`relative flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all duration-150 active:scale-95 group ${
         active
-          ? 'text-emerald-600 dark:text-emerald-400 font-extrabold bg-emerald-500/12 dark:bg-emerald-500/20'
-          : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
+          ? 'text-[#fc4c02] font-black bg-[#fc4c02]/12'
+          : 'text-zinc-500 hover:text-zinc-200 font-medium'
       }`}
     >
       <div className="relative">
-        <div className={`transition-transform duration-150 ${active ? 'scale-110' : 'group-hover:scale-105'}`}>
+        <div className={`transition-transform duration-150 ${active ? 'scale-110 text-[#fc4c02]' : 'group-hover:scale-105'}`}>
           {icon}
         </div>
         {badge && (
-          <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-emerald-500 animate-pulse ring-2 ring-white dark:ring-gym-900" />
+          <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-[#fc4c02] animate-pulse ring-2 ring-white dark:ring-gym-900" />
         )}
       </div>
-      <span className="text-[10px] mt-0.5 tracking-tight">{label}</span>
+      <span className="text-[10px] mt-0.5 tracking-tight font-bold">{label}</span>
       {active && (
-        <span className="w-1.5 h-1 rounded-full bg-emerald-500 mt-0.5" />
+        <span className="w-1.5 h-1 rounded-full bg-[#fc4c02] mt-0.5 shadow-sm shadow-[#fc4c02]" />
       )}
     </button>
   );
@@ -3923,127 +3919,156 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           <NeuWeeklyNormWidget workouts={workouts} />
         </div>
 
-        <div className="text-center py-2">
-          <h2 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white">
+        <div className="text-center py-1">
+          <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#fc4c02]/10 border border-[#fc4c02]/25 mb-1.5 shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#fc4c02] animate-ping" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#fc4c02] font-mono">
+              Программа прогрессивной перегрузки
+            </span>
+          </div>
+          <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white uppercase font-sans">
             Выберите тренировку
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
-            ИИ подстраивает веса под ваши результаты и чередует упражнения для непрерывного прогресса.
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-xs mx-auto">
+            Автоматическая адаптация рабочих весов и периодизация нагрузки.
           </p>
         </div>
 
-        {/* Variant A vs Variant B Periodization Toggle */}
-        <div className="neu-flat rounded-2xl p-1.5 shadow-lg">
-          <div className="flex space-x-1.5">
+        {/* Strava Segment Control: Variant A vs Variant B */}
+        <div className="bg-[#141518] border border-white/10 rounded-2xl p-1.5 shadow-md">
+          <div className="grid grid-cols-2 gap-1.5">
             <button
               onClick={() => setSelectedVariant('a')}
-              className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 ${
+              className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 cursor-pointer ${
                 selectedVariant === 'a'
-                  ? 'neu-inset bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 font-black shadow-inner'
-                  : 'neu-btn text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold'
+                  ? 'bg-[#fc4c02] text-white font-black shadow-md shadow-[#fc4c02]/25'
+                  : 'bg-transparent text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <span className="flex items-center space-x-1">
+              <div className="flex items-center space-x-1">
                 <span>⚡ Вариант А</span>
-                {recommendedDay?.variant === 'a' && <span className="text-[10px]">⭐</span>}
+                {recommendedDay?.variant === 'a' && <span className="text-[10px]">🔥</span>}
+              </div>
+              <span className={`text-[9px] uppercase tracking-wider mt-0.5 ${selectedVariant === 'a' ? 'text-white/85' : 'text-zinc-500'}`}>
+                Базовый силовой
               </span>
-              <span className="text-[9px] opacity-80 uppercase tracking-wider mt-0.5">Базовый силовой</span>
             </button>
 
             <button
               onClick={() => setSelectedVariant('b')}
-              className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 ${
+              className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 cursor-pointer ${
                 selectedVariant === 'b'
-                  ? 'neu-inset bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 font-black shadow-inner'
-                  : 'neu-btn text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold'
+                  ? 'bg-[#fc4c02] text-white font-black shadow-md shadow-[#fc4c02]/25'
+                  : 'bg-transparent text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <span className="flex items-center space-x-1">
+              <div className="flex items-center space-x-1">
                 <span>🔄 Вариант Б</span>
-                {recommendedDay?.variant === 'b' && <span className="text-[10px]">⭐</span>}
+                {recommendedDay?.variant === 'b' && <span className="text-[10px]">🔥</span>}
+              </div>
+              <span className={`text-[9px] uppercase tracking-wider mt-0.5 ${selectedVariant === 'b' ? 'text-white/85' : 'text-zinc-500'}`}>
+                Смена углов & памп
               </span>
-              <span className="text-[9px] opacity-80 uppercase tracking-wider mt-0.5">Смена углов & памп</span>
             </button>
           </div>
 
-          <div className="text-[11px] text-center pt-2 pb-0.5 font-medium">
+          <div className="mt-1.5 pt-1.5 border-t border-white/5 flex items-center justify-center text-[11px]">
             {recommendedDay?.variant === selectedVariant ? (
-              <span className="text-slate-600 dark:text-slate-300">
-                ✨ Рекомендация тренера: сегодня тренируем <strong className="text-emerald-600 dark:text-emerald-400">{recommendedDay?.title?.split('—')[0]}</strong>
+              <span className="text-zinc-300 font-medium flex items-center space-x-1.5">
+                <span className="text-[#fc4c02]">🔥</span>
+                <span>Сегодня по плану:</span>
+                <strong className="text-white font-black">{recommendedDay?.title?.split('—')[0]}</strong>
               </span>
             ) : (
-              <span className="text-slate-500 dark:text-slate-400">Чередование вариантов развивает мышцы под разными углами и предотвращает застой</span>
+              <span className="text-zinc-400 text-[10.5px]">
+                Чередование вариантов развивает мышцы под разными углами
+              </span>
             )}
           </div>
         </div>
 
-        {/* Big 3 Cards for Push / Pull / Legs of selected variant */}
-        <div className="grid grid-cols-1 gap-3">
+        {/* Workout Day Cards (Strava Segment Style) */}
+        <div className="grid grid-cols-1 gap-3.5">
           {displayDays.map((day) => {
             const isRec = day.is_recommended;
-            const accentBorder = day.type === 'push' ? 'border-rose-400/40 dark:border-rose-500/30' 
-                               : day.type === 'pull' ? 'border-sky-400/40 dark:border-sky-500/30' 
-                               : 'border-amber-400/40 dark:border-amber-500/30';
-            const accentGlow = day.type === 'push' ? 'bg-gradient-to-br from-rose-500/5 via-transparent to-transparent dark:from-rose-950/20'
-                             : day.type === 'pull' ? 'bg-gradient-to-br from-sky-500/5 via-transparent to-transparent dark:from-sky-950/20'
-                             : 'bg-gradient-to-br from-amber-500/5 via-transparent to-transparent dark:from-amber-950/20';
+            const cardBorder = isRec 
+              ? 'border-[#fc4c02]/40 ring-1 ring-[#fc4c02]/20' 
+              : 'border-white/10';
 
             return (
               <div
                 key={`${day.type}_${day.variant}`}
-                className={`neu-flat ${accentGlow} border ${accentBorder} rounded-3xl p-5 shadow-lg transition-all relative overflow-hidden`}
+                className={`bg-[#18191d] border ${cardBorder} rounded-3xl p-4.5 shadow-xl transition-all relative overflow-hidden`}
               >
                 {isRec && (
-                  <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-black px-3.5 py-1 rounded-bl-2xl uppercase tracking-wider shadow-sm">
-                    ⭐ Рекомендуется сегодня
+                  <div className="absolute top-0 right-0 bg-[#fc4c02] text-white text-[10px] font-black px-3.5 py-1 rounded-bl-2xl uppercase tracking-wider shadow-md shadow-[#fc4c02]/30 flex items-center space-x-1">
+                    <span>🔥</span>
+                    <span>Рекомендуется сегодня</span>
                   </div>
                 )}
 
+                {/* Card Title & Muscle Focus */}
                 <div className="mb-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">
-                      {day.focus}
-                    </span>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-[#fc4c02] font-mono">
+                    {day.focus}
                   </div>
-                  <h3 className="text-xl font-black text-slate-800 dark:text-white mt-0.5">{day.title}</h3>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white mt-0.5 tracking-tight font-sans">
+                    {day.title}
+                  </h3>
                 </div>
 
-                {/* Exercises Preview with pre-calculated weights & progression badges */}
-                <div className="neu-inset rounded-2xl p-3 my-3 space-y-2 border border-slate-300/40 dark:border-white/5">
-                  {day.exercises.map((ex, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs font-mono">
-                      <div className="flex items-center space-x-1.5 truncate max-w-[65%]">
-                        <span className="text-slate-400 text-[10px]">{i + 1}.</span>
-                        <span className="text-slate-800 dark:text-slate-100 font-semibold truncate">{ex.name.split('(')[0].trim()}</span>
-                      </div>
-                      <div className="flex items-center space-x-2 whitespace-nowrap">
-                        {ex.progression_badge && (
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-black ${
-                            ex.progression_status === 'INCREASE' 
-                              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30' 
-                              : 'bg-slate-200/80 dark:bg-gym-800 text-slate-600 dark:text-slate-400'
-                          }`}>
-                            {ex.progression_badge}
+                {/* Exercises List (Strava Segment Style - Clean, readable, no ugly truncation) */}
+                <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5 my-3 space-y-1 divide-y divide-white/[0.04]">
+                  {day.exercises.map((ex, i) => {
+                    const cleanName = ex.name.split('(')[0].trim();
+                    const isOverload = ex.progression_status === 'INCREASE';
+                    return (
+                      <div key={i} className="flex items-center justify-between py-1.5 first:pt-0.5 last:pb-0.5">
+                        {/* Left: Index badge + Name + Overload tag */}
+                        <div className="flex items-center space-x-2.5 min-w-0 pr-2 flex-1">
+                          <span className="w-5 h-5 rounded-md bg-zinc-800/80 border border-white/10 flex items-center justify-center text-[10px] font-mono font-bold text-zinc-400 shrink-0">
+                            {String(i + 1).padStart(2, '0')}
                           </span>
-                        )}
-                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                          {ex.target_sets}×{ex.target_reps} • <strong className="text-slate-900 dark:text-white">{ex.recommended_weight} кг</strong>
-                        </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[12.5px] font-bold text-slate-900 dark:text-white leading-snug truncate" title={cleanName}>
+                              {cleanName}
+                            </div>
+                            {isOverload && (
+                              <div className="flex items-center space-x-1 mt-0.5">
+                                <span className="text-[9px] font-black font-mono text-emerald-400 px-1 py-0.2 bg-emerald-500/15 border border-emerald-500/30 rounded">
+                                  ↗ {ex.progression_badge || '+2.5 кг'}
+                                </span>
+                                <span className="text-[9px] text-zinc-400 font-medium">прогрессия веса</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right: Sets x Reps & Weight Pill */}
+                        <div className="flex items-center space-x-1.5 shrink-0 font-mono text-right">
+                          <span className="text-[11px] text-zinc-400 font-medium">
+                            {ex.target_sets}×{ex.target_reps}
+                          </span>
+                          <span className="text-[11px] font-black text-white px-2 py-0.5 rounded-lg bg-zinc-800/90 border border-white/10 shadow-sm">
+                            {ex.recommended_weight} кг
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
+                {/* Primary Start Action (Strava CTA) */}
                 <button
                   onClick={() => handleStartDay(day.type, day.variant)}
-                  className={`w-full py-3.5 rounded-2xl font-black text-sm uppercase tracking-wide transition flex items-center justify-center space-x-2 shadow active:scale-98 ${
+                  className={`w-full py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-lg active:scale-98 cursor-pointer ${
                     isRec 
-                      ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20' 
-                      : 'neu-btn text-slate-800 dark:text-white hover:text-slate-950 font-black'
+                      ? 'bg-[#fc4c02] hover:bg-[#e04302] text-white shadow-[#fc4c02]/25' 
+                      : 'bg-zinc-800 hover:bg-zinc-700 text-white border border-white/10'
                   }`}
                 >
-                  <Icons.Plus />
-                  <span>ВЫБРАТЬ {day.type.toUpperCase()} ({day.variant.toUpperCase()}) И НАЧАТЬ</span>
+                  <Icons.Play className="w-3.5 h-3.5 fill-current" />
+                  <span>НАЧАТЬ ТРЕНИРОВКУ {day.type.toUpperCase()} ({day.variant.toUpperCase()})</span>
                 </button>
               </div>
             );

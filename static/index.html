@@ -7,7 +7,7 @@
 
   <!-- PWA Meta Tags -->
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#090c10">
+  <meta name="theme-color" content="#0f1013">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="GymTracker">
@@ -142,7 +142,7 @@
     /* ⚡ MODERN ATHLETIC DESIGN SYSTEM (Fitbod / NTC / Strava) */
     /* ==================================================== */
 
-    /* 🌙 ATHLETIC DARK PALETTE (Fitbod & Nike Training Club Obsidian) */
+    /* 🌙 STRAVA ATHLETIC DARK PALETTE */
     :root,
     :root.dark,
     :root.theme-neu-dark,
@@ -151,41 +151,47 @@
     body.dark,
     body.theme-neu-dark,
     body {
-      --neu-base: #090c10;
-      --neu-surface: #121620;
-      --neu-surface-card: #182030;
-      --neu-inset-bg: #0c0f16;
-      --neu-shadow-dark: rgba(0, 0, 0, 0.45);
+      --neu-base: #0f1013;
+      --neu-surface: #18191d;
+      --neu-surface-card: #202127;
+      --neu-inset-bg: #121316;
+      --neu-shadow-dark: rgba(0, 0, 0, 0.55);
       --neu-shadow-light: rgba(255, 255, 255, 0.04);
       --neu-border: rgba(255, 255, 255, 0.08);
       --neu-border-subtle: rgba(255, 255, 255, 0.04);
-      --neu-text-primary: #f8fafc;
+      --neu-text-primary: #ffffff;
       --neu-text-secondary: #cbd5e1;
       --neu-text-muted: #94a3b8;
+      --strava-orange: #fc4c02;
+      --strava-orange-hover: #e04302;
+      --strava-orange-glow: rgba(252, 76, 2, 0.3);
       --neu-accent-emerald: #10b981;
       --neu-accent-cyan: #38bdf8;
       --neu-accent-amber: #f59e0b;
-      --neu-lcd-bg: #0f131a;
+      --neu-lcd-bg: #111215;
       --neu-lcd-text: #34d399;
-      --neu-dark-pill: #0e1219;
-      --neu-dock-bg: rgba(12, 16, 24, 0.90);
+      --neu-dark-pill: #15161a;
+      --neu-dock-bg: rgba(18, 19, 23, 0.88);
     }
 
-    /* ☀️ ATHLETIC LIGHT PALETTE (Nike Training Club / Apple Fitness Clean Ceramic) */
+    /* ☀️ STRAVA ATHLETIC LIGHT PALETTE */
     :root.theme-neu-light,
     html.theme-neu-light,
     body.theme-neu-light {
-      --neu-base: #f8fafc;
+      --neu-base: #f8f8fa;
       --neu-surface: #ffffff;
-      --neu-surface-card: #f1f5f9;
-      --neu-inset-bg: #edf2f7;
+      --neu-surface-card: #f2f3f5;
+      --neu-inset-bg: #ebedf0;
       --neu-shadow-dark: rgba(15, 23, 42, 0.06);
       --neu-shadow-light: rgba(255, 255, 255, 0.9);
       --neu-border: rgba(226, 232, 240, 0.9);
       --neu-border-subtle: rgba(226, 232, 240, 0.6);
-      --neu-text-primary: #0f172a;
-      --neu-text-secondary: #334155;
-      --neu-text-muted: #64748b;
+      --neu-text-primary: #121214;
+      --neu-text-secondary: #3f3f46;
+      --neu-text-muted: #71717a;
+      --strava-orange: #fc4c02;
+      --strava-orange-hover: #e04302;
+      --strava-orange-glow: rgba(252, 76, 2, 0.25);
       --neu-accent-emerald: #059669;
       --neu-accent-cyan: #0284c7;
       --neu-accent-amber: #d97706;
@@ -331,6 +337,10 @@
     .neu-dark-pill *,
     .neu-dial,
     .neu-dial *,
+    .btn-strava,
+    .btn-strava *,
+    button[class*="bg-[#fc4c02]"],
+    button[class*="bg-[#fc4c02]"] *,
     button.bg-sky-500,
     button.bg-sky-500 *,
     button.bg-emerald-500,
