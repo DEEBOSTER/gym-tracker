@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" class="theme-soft-neu">
+<html lang="ru" class="dark theme-neu-dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -7,7 +7,7 @@
 
   <!-- PWA Meta Tags -->
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#dde2e8">
+  <meta name="theme-color" content="#090c10">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="GymTracker">
@@ -139,150 +139,134 @@
     }
 
     /* ==================================================== */
-    /* 🎨 DUAL-THEME NEUMORPHIC SOFT UI SYSTEM (Clay Design) */
+    /* ⚡ MODERN ATHLETIC DESIGN SYSTEM (Fitbod / NTC / Strava) */
     /* ==================================================== */
 
-    /* ☀️ LIGHT NEUMORPHIC PALETTE */
+    /* 🌙 ATHLETIC DARK PALETTE (Fitbod & Nike Training Club Obsidian) */
     :root,
-    html.theme-neu-light,
-    body.theme-neu-light,
-    body.theme-soft-neu {
-      --neu-base: #dde2e8;
-      --neu-surface: #dde2e8;
-      --neu-surface-card: #e5ebf2;
-      --neu-inset-bg: #d2d8e2;
-      --neu-shadow-dark: #b4beca;
-      --neu-shadow-light: #ffffff;
-      --neu-border: rgba(255, 255, 255, 0.75);
-      --neu-border-subtle: rgba(180, 190, 202, 0.45);
-      --neu-text-primary: #1a202c;
-      --neu-text-secondary: #475569;
-      --neu-text-muted: #64748b;
-      --neu-lcd-bg: #abb39e;
-      --neu-lcd-text: #1e2417;
-      --neu-dark-pill: #1f2329;
-      --neu-dock-bg: #dde2e8;
-    }
-
-    /* 🌙 DARK NEUMORPHIC PALETTE (Same design, rich tactile dark styling) */
     :root.dark,
     :root.theme-neu-dark,
     html.dark,
     html.theme-neu-dark,
     body.dark,
     body.theme-neu-dark,
-    html.dark body,
-    html.theme-neu-dark body {
-      --neu-base: #14171c;
-      --neu-surface: #1a1e24;
-      --neu-surface-card: #20242c;
-      --neu-inset-bg: #101216;
-      --neu-shadow-dark: #090a0d;
-      --neu-shadow-light: #262b34;
+    body {
+      --neu-base: #090c10;
+      --neu-surface: #121620;
+      --neu-surface-card: #182030;
+      --neu-inset-bg: #0c0f16;
+      --neu-shadow-dark: rgba(0, 0, 0, 0.45);
+      --neu-shadow-light: rgba(255, 255, 255, 0.04);
       --neu-border: rgba(255, 255, 255, 0.08);
       --neu-border-subtle: rgba(255, 255, 255, 0.04);
       --neu-text-primary: #f8fafc;
       --neu-text-secondary: #cbd5e1;
       --neu-text-muted: #94a3b8;
-      --neu-lcd-bg: #18221c;
-      --neu-lcd-text: #4ade80;
-      --neu-dark-pill: #0e1013;
-      --neu-dock-bg: #1a1e24;
+      --neu-accent-emerald: #10b981;
+      --neu-accent-cyan: #38bdf8;
+      --neu-accent-amber: #f59e0b;
+      --neu-lcd-bg: #0f131a;
+      --neu-lcd-text: #34d399;
+      --neu-dark-pill: #0e1219;
+      --neu-dock-bg: rgba(12, 16, 24, 0.90);
+    }
+
+    /* ☀️ ATHLETIC LIGHT PALETTE (Nike Training Club / Apple Fitness Clean Ceramic) */
+    :root.theme-neu-light,
+    html.theme-neu-light,
+    body.theme-neu-light {
+      --neu-base: #f8fafc;
+      --neu-surface: #ffffff;
+      --neu-surface-card: #f1f5f9;
+      --neu-inset-bg: #edf2f7;
+      --neu-shadow-dark: rgba(15, 23, 42, 0.06);
+      --neu-shadow-light: rgba(255, 255, 255, 0.9);
+      --neu-border: rgba(226, 232, 240, 0.9);
+      --neu-border-subtle: rgba(226, 232, 240, 0.6);
+      --neu-text-primary: #0f172a;
+      --neu-text-secondary: #334155;
+      --neu-text-muted: #64748b;
+      --neu-accent-emerald: #059669;
+      --neu-accent-cyan: #0284c7;
+      --neu-accent-amber: #d97706;
+      --neu-lcd-bg: #e2e8f0;
+      --neu-lcd-text: #0f172a;
+      --neu-dark-pill: #1e293b;
+      --neu-dock-bg: rgba(255, 255, 255, 0.92);
     }
 
     /* Base Body & App Container */
-    body.theme-neu-light,
-    body.theme-neu-dark,
-    body.theme-soft-neu {
+    body {
       background-color: var(--neu-base) !important;
       color: var(--neu-text-primary) !important;
     }
-    body.theme-neu-light #root > div,
-    body.theme-neu-dark #root > div,
-    body.theme-soft-neu #root > div {
+    #root > div {
       background-color: var(--neu-base) !important;
       color: var(--neu-text-primary) !important;
     }
 
     /* Header */
-    body.theme-neu-light header,
-    body.theme-neu-dark header,
-    body.theme-soft-neu header {
+    header {
       background-color: var(--neu-surface) !important;
       border-bottom: 1px solid var(--neu-border) !important;
-      box-shadow: 0 4px 12px var(--neu-shadow-dark) !important;
+      box-shadow: 0 4px 16px var(--neu-shadow-dark) !important;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
     }
 
-    /* Core Neumorphic Primitives */
+    /* Core Athletic Primitives */
     .neu-flat {
       background-color: var(--neu-surface) !important;
-      box-shadow: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light) !important;
       border: 1px solid var(--neu-border) !important;
+      box-shadow: 0 4px 20px -2px var(--neu-shadow-dark) !important;
     }
     .neu-flat-sm {
       background-color: var(--neu-surface) !important;
-      box-shadow: 3px 3px 8px var(--neu-shadow-dark), -3px -3px 8px var(--neu-shadow-light) !important;
       border: 1px solid var(--neu-border) !important;
+      box-shadow: 0 2px 8px -1px var(--neu-shadow-dark) !important;
     }
     .neu-inset {
-      background-color: var(--neu-inset-bg);
-      box-shadow: inset 3px 3px 6px var(--neu-shadow-dark), inset -3px -3px 6px var(--neu-shadow-light) !important;
+      background-color: var(--neu-inset-bg) !important;
       border: 1px solid var(--neu-border-subtle) !important;
     }
     .neu-btn {
       background-color: var(--neu-surface) !important;
-      box-shadow: 4px 4px 10px var(--neu-shadow-dark), -4px -4px 10px var(--neu-shadow-light) !important;
       border: 1px solid var(--neu-border) !important;
+      box-shadow: 0 2px 6px -1px var(--neu-shadow-dark) !important;
       transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .neu-btn:active {
-      box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light) !important;
       transform: scale(0.97);
+      opacity: 0.92;
     }
     .neu-dark-pill {
       background-color: var(--neu-dark-pill) !important;
-      border: 1px solid rgba(255, 255, 255, 0.12) !important;
-      box-shadow: 4px 4px 10px var(--neu-shadow-dark), -2px -2px 6px var(--neu-shadow-light) !important;
-      color: #ffffff !important;
+      border: 1px solid var(--neu-border) !important;
+      box-shadow: 0 2px 8px var(--neu-shadow-dark) !important;
+      color: var(--neu-text-primary) !important;
     }
     .neu-lcd {
       background-color: var(--neu-lcd-bg) !important;
       color: var(--neu-lcd-text) !important;
-      box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.35), inset -3px -3px 6px rgba(255, 255, 255, 0.1) !important;
       font-family: 'Share Tech Mono', 'JetBrains Mono', monospace !important;
-      border: 1px solid rgba(0, 0, 0, 0.15) !important;
+      border: 1px solid var(--neu-border) !important;
     }
     .neu-dial {
-      background-color: #14161a !important;
-      color: #ffffff !important;
-      box-shadow: inset 2px 2px 5px rgba(0,0,0,0.7), inset -2px -2px 5px rgba(255,255,255,0.12) !important;
-      border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    }
-    .neu-dial * {
-      color: #ffffff !important;
-    }
-    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .neu-dial,
-    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .neu-dial {
       background-color: var(--neu-inset-bg) !important;
-      color: #0f172a !important;
-      box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light) !important;
-      border: 1px solid var(--neu-border-subtle) !important;
-    }
-    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .neu-dial *,
-    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .neu-dial * {
-      color: #0f172a !important;
+      color: var(--neu-text-primary) !important;
+      border: 1px solid var(--neu-border) !important;
+      box-shadow: 0 2px 8px var(--neu-shadow-dark) !important;
     }
     .neu-toggle {
       background-color: var(--neu-inset-bg) !important;
-      box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light) !important;
       border: 1px solid var(--neu-border-subtle) !important;
     }
     .neu-dock {
       background-color: var(--neu-dock-bg) !important;
-      box-shadow: 0 10px 25px var(--neu-shadow-dark), 0 -2px 10px var(--neu-shadow-light) !important;
+      box-shadow: 0 12px 36px var(--neu-shadow-dark) !important;
       border: 1px solid var(--neu-border) !important;
-      backdrop-filter: blur(16px) !important;
-      -webkit-backdrop-filter: blur(16px) !important;
+      backdrop-filter: blur(24px) !important;
+      -webkit-backdrop-filter: blur(24px) !important;
     }
 
     /* 🏗️ Automated Card & Input Styling across entire app */
@@ -291,22 +275,21 @@
     [class*="bg-gym-850"]:not(.neu-dock):not(.neu-dark-pill):not(.neu-btn) {
       background-color: var(--neu-surface) !important;
       border-color: var(--neu-border) !important;
-      box-shadow: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light) !important;
+      box-shadow: 0 4px 20px -2px var(--neu-shadow-dark) !important;
     }
 
-    /* Inner sub-containers (formerly dark slabs) -> Now smooth recessed clay pockets */
+    /* Inner sub-containers (smooth athletic pockets) */
     [class*="bg-gym-950"]:not(.neu-dark-pill):not(.neu-dock):not(input):not(button) {
       background-color: var(--neu-inset-bg) !important;
       border-color: var(--neu-border-subtle) !important;
-      box-shadow: inset 2px 2px 5px var(--neu-shadow-dark), inset -2px -2px 5px var(--neu-shadow-light) !important;
     }
 
     /* Tactile buttons inside containers */
     button[class*="bg-gym-800"]:not(.neu-btn):not([class*="bg-sky-500"]):not([class*="bg-emerald-500"]):not([class*="bg-rose-500"]):not([class*="bg-amber-500"]),
     button[class*="bg-gym-950"]:not(.neu-btn):not([class*="bg-sky-500"]):not([class*="bg-emerald-500"]):not([class*="bg-rose-500"]):not([class*="bg-amber-500"]) {
       background-color: var(--neu-surface) !important;
-      box-shadow: 3px 3px 8px var(--neu-shadow-dark), -3px -3px 8px var(--neu-shadow-light) !important;
       border: 1px solid var(--neu-border) !important;
+      box-shadow: 0 2px 6px var(--neu-shadow-dark) !important;
       color: var(--neu-text-secondary) !important;
     }
 

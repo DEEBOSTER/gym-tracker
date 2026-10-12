@@ -263,89 +263,55 @@ const Icons = {
 };
 
 // ==========================================
-// 🎨 SOFT NEUMORPHIC WIDGETS (Screenshot-inspired)
+// ⚡ MODERN ATHLETIC WIDGETS (Fitbod & NTC Inspired)
 // ==========================================
 
-// 1. Cute Sunshine & Cloud with Rainbow Doodle
-function DoodleSunRainbow() {
+// 1. Athletic Readiness & Recovery Indicator (Fitbod / Whoop Style)
+function AthleticReadinessWidget() {
   return (
-    <svg viewBox="0 0 160 85" className="w-24 h-12 shrink-0 overflow-visible" fill="none">
-      <defs>
-        <linearGradient id="neu-rainbow" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#f87171" stopOpacity="0.45" />
-          <stop offset="25%" stopColor="#fb923c" stopOpacity="0.45" />
-          <stop offset="50%" stopColor="#facc15" stopOpacity="0.45" />
-          <stop offset="75%" stopColor="#4ade80" stopOpacity="0.45" />
-          <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.45" />
-        </linearGradient>
-      </defs>
-      {/* Rainbow Arc */}
-      <path d="M 12 78 Q 80 18 148 78" stroke="url(#neu-rainbow)" strokeWidth="12" strokeLinecap="round" />
-      {/* Sun rays */}
-      <g stroke="#1a1c1e" strokeWidth="2.2" strokeLinecap="round">
-        <line x1="108" y1="24" x2="108" y2="16" />
-        <line x1="94" y1="28" x2="89" y2="23" />
-        <line x1="122" y1="28" x2="127" y2="23" />
-        <line x1="84" y1="38" x2="78" y2="36" />
-        <line x1="132" y1="38" x2="138" y2="36" />
-      </g>
-      {/* Sun circle */}
-      <circle cx="108" cy="42" r="18" fill="#ffeaa7" stroke="#1a1c1e" strokeWidth="2.2" />
-      {/* Sun cute face */}
-      <circle cx="102" cy="41" r="1.5" fill="#1a1c1e" />
-      <circle cx="114" cy="41" r="1.5" fill="#1a1c1e" />
-      <path d="M 105 46 Q 108 49 111 46" stroke="#1a1c1e" strokeWidth="1.5" strokeLinecap="round" />
-      {/* Clouds */}
-      <path d="M 55 78 Q 70 56 92 62 Q 112 50 132 60 Q 152 56 156 78 Z" fill="#dde2e8" stroke="#1a1c1e" strokeWidth="2.2" strokeLinejoin="round" />
-    </svg>
+    <div className="flex items-center space-x-1.5 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-xl shadow-sm">
+      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+      <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-wider uppercase">
+        ⚡ 96% Готов к нагрузке
+      </span>
+    </div>
   );
 }
 
-// 2. Cute Sleeping Cat with Rainbow Yarn Doodle
-function DoodleCatRainbow() {
+// 2. Athletic Muscle Focus & Recovery Widget
+function AthleticMuscleFocusWidget() {
   return (
-    <svg viewBox="0 0 180 85" className="w-28 h-14 shrink-0 overflow-visible" fill="none">
-      <defs>
-        <linearGradient id="neu-rainbow-cat" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#f87171" stopOpacity="0.45" />
-          <stop offset="25%" stopColor="#fb923c" stopOpacity="0.45" />
-          <stop offset="50%" stopColor="#facc15" stopOpacity="0.45" />
-          <stop offset="75%" stopColor="#4ade80" stopOpacity="0.45" />
-          <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.45" />
-        </linearGradient>
-      </defs>
-      {/* Sparkles */}
-      <path d="M 22 18 L 24 13 L 26 18 L 31 20 L 26 22 L 24 27 L 22 22 L 17 20 Z" fill="#1a1c1e" />
-      <path d="M 38 24 L 39 20 L 40 24 L 44 25 L 40 26 L 39 30 L 38 26 L 34 25 Z" fill="#1a1c1e" />
-      {/* Yarn ball with rainbow tail */}
-      <path d="M 6 68 Q 24 62 44 70" stroke="url(#neu-rainbow-cat)" strokeWidth="6" strokeLinecap="round" />
-      <circle cx="26" cy="68" r="11" fill="#dde2e8" stroke="#1a1c1e" strokeWidth="2" />
-      <path d="M 18 65 Q 26 60 34 71 M 21 72 Q 28 66 33 63" stroke="#1a1c1e" strokeWidth="1.5" />
-      {/* Resting cat */}
-      <path d="M 135 50 Q 142 22 155 30 Q 160 40 150 56" fill="#1a1c1e" stroke="#1a1c1e" strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M 58 68 Q 60 46 80 46 Q 96 46 106 50 Q 124 50 138 64 Q 142 70 130 70 L 65 70 Q 58 70 58 68 Z" fill="#dde2e8" stroke="#1a1c1e" strokeWidth="2.2" />
-      <path d="M 70 46 Q 78 43 84 50 Q 78 57 70 52 Z" fill="#1a1c1e" />
-      <path d="M 66 57 Q 70 60 74 57 M 60 60 Q 63 62 66 61" stroke="#1a1c1e" strokeWidth="1.8" strokeLinecap="round" />
-      <ellipse cx="106" cy="70" rx="9" ry="3.5" fill="#dde2e8" stroke="#1a1c1e" strokeWidth="1.8" />
-    </svg>
+    <div className="w-full flex flex-col items-center justify-center p-1 text-center space-y-1.5">
+      <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-teal-400/20 border border-emerald-500/30 flex items-center justify-center text-xl shadow-sm">
+        💪
+      </div>
+      <div>
+        <div className="text-[11px] font-black tracking-tight text-slate-800 dark:text-white uppercase">
+          Силовой сплит
+        </div>
+        <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold font-mono">
+          Анаболизм & Прогресс
+        </div>
+      </div>
+    </div>
   );
 }
 
 // 3. Tactile Day/Night Rocker Switch
 function NeuThemeToggle({ theme, onToggle }) {
-  const isLight = theme === 'neu' || theme === 'light';
+  const isLight = theme === 'light';
   return (
     <button
       type="button"
       onClick={onToggle}
-      className="neu-toggle relative w-16 h-8 rounded-full p-1 transition-all flex items-center justify-between px-2 cursor-pointer active:scale-95 shrink-0"
-      title="Сменить стиль оформления (Светлый / Тёмный)"
+      className="neu-toggle relative w-14 h-7 rounded-full p-1 transition-all flex items-center justify-between px-1.5 cursor-pointer active:scale-95 shrink-0"
+      title="Сменить тему (Тёмная / Светлая)"
     >
-      <span className="text-[11px]">🌙</span>
-      <span className="text-[11px]">☀️</span>
+      <span className="text-[10px]">🌙</span>
+      <span className="text-[10px]">☀️</span>
       <div 
-        className={`absolute top-1 bottom-1 w-6 h-6 rounded-full bg-white dark:bg-slate-700 shadow-md transition-all duration-200 flex items-center justify-center text-[10px] ${
-          isLight ? 'right-1' : 'left-1'
+        className={`absolute top-0.5 bottom-0.5 w-6 h-6 rounded-full bg-white dark:bg-slate-700 shadow-md transition-all duration-200 flex items-center justify-center text-[10px] ${
+          isLight ? 'right-0.5' : 'left-0.5'
         }`}
       >
         {isLight ? '☀️' : '🌙'}
@@ -354,7 +320,7 @@ function NeuThemeToggle({ theme, onToggle }) {
   );
 }
 
-// 4. Hero Clock & Date Card
+// 4. Hero Athletic Clock & Session Header Card
 function NeuHeaderCard({ theme, onToggleTheme, coachDayTitle }) {
   const [timeStr, setTimeStr] = useState('');
   const [dateStr, setDateStr] = useState('');
@@ -370,7 +336,7 @@ function NeuHeaderCard({ theme, onToggleTheme, coachDayTitle }) {
       const dName = days[now.getDay()];
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
-      setDateStr(`${dName} . ${day}/${month}`);
+      setDateStr(`${dName} · ${day}/${month}`);
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
@@ -378,25 +344,26 @@ function NeuHeaderCard({ theme, onToggleTheme, coachDayTitle }) {
   }, []);
 
   return (
-    <div className="neu-flat rounded-3xl p-4 flex items-center justify-between relative overflow-hidden">
+    <div className="neu-flat rounded-3xl p-4 flex items-center justify-between relative overflow-hidden border border-slate-200/50 dark:border-slate-700/50">
       {/* Clock and date pill */}
       <div className="space-y-1.5 z-10">
-        <div className="font-digital text-3xl font-black tracking-wider text-slate-800 dark:text-slate-100 leading-none">
+        <div className="font-mono text-3xl font-black tracking-tight text-slate-800 dark:text-white leading-none">
           {timeStr || '09:29'}
         </div>
         <div className="inline-flex items-center space-x-1.5 neu-inset px-2.5 py-0.5 rounded-xl text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300">
-          <span>{dateStr || 'Пт . 08/10'}</span>
+          <span>{dateStr || 'Пт · 08/10'}</span>
         </div>
         {coachDayTitle && (
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider pt-0.5">
-            {coachDayTitle}
+          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider pt-0.5 flex items-center space-x-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping inline-block" />
+            <span>{coachDayTitle}</span>
           </div>
         )}
       </div>
 
-      {/* Sun Doodle & Rocker Switch */}
-      <div className="flex flex-col items-end space-y-1.5 z-10">
-        <DoodleSunRainbow />
+      {/* Readiness Tag & Rocker Switch */}
+      <div className="flex flex-col items-end space-y-2 z-10">
+        <AthleticReadinessWidget />
         <NeuThemeToggle theme={theme} onToggle={onToggleTheme} />
       </div>
     </div>
@@ -2773,9 +2740,9 @@ function App() {
 
   const [theme, setTheme] = useState(() => {
     try {
-      return localStorage.getItem('gym_tracker_theme') || 'neu';
+      return localStorage.getItem('gym_tracker_theme') || 'dark';
     } catch (e) {
-      return 'neu';
+      return 'dark';
     }
   });
 
@@ -2791,7 +2758,7 @@ function App() {
         document.documentElement.classList.add('theme-neu-light', 'theme-soft-neu');
         document.documentElement.classList.remove('theme-neu-dark', 'dark');
         document.body.classList.add('theme-neu-light', 'theme-soft-neu');
-        document.body.classList.remove('theme-neu-dark');
+        document.body.classList.remove('theme-neu-dark', 'dark');
       }
       localStorage.setItem('gym_tracker_theme', theme);
     } catch (e) {}
@@ -2799,7 +2766,7 @@ function App() {
 
   const toggleTheme = () => {
     triggerHaptic('medium');
-    setTheme(prev => (prev === 'neu' || prev === 'light') ? 'dark' : 'neu');
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
   const currentUserId = getTelegramUser().id;
@@ -3928,12 +3895,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
           {/* 2-Column Widget Grid from screenshot */}
           <div className="grid grid-cols-2 gap-3 items-stretch">
-            {/* Left Column: Resting Cat Doodle Card + Dark Split Menu */}
+            {/* Left Column: Athletic Muscle Split Focus Card + Dark Split Menu */}
             <div className="space-y-3 flex flex-col justify-between">
               <div className="neu-flat rounded-3xl p-3 flex flex-col items-center justify-center text-center">
-                <DoodleCatRainbow />
-                <div className="text-[10px] text-slate-600 dark:text-slate-400 font-bold mt-1 leading-tight">
-                  «Восстановление — залог анаболизма»
+                <AthleticMuscleFocusWidget />
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-1 leading-tight italic">
+                  «Прогрессивная перегрузка — ключ к росту»
                 </div>
               </div>
 
