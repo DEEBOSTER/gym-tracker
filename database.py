@@ -145,3 +145,236 @@ def init_database():
             );
         """)
 
+        # Gamification columns migration for user_profiles
+        gamification_cols = [
+            ("xp", "INTEGER", "0"),
+            ("fitpoints", "INTEGER", "0"),
+            ("tier", "TEXT", "'Bronze'"),
+            ("level", "INTEGER", "1"),
+            ("streak_days", "INTEGER", "0"),
+            ("total_volume_kg", "REAL", "0.0"),
+            ("total_workouts", "INTEGER", "0"),
+            ("total_sets", "INTEGER", "0"),
+            ("personal_records_count", "INTEGER", "0"),
+        ]
+        for col, col_type, default_val in gamification_cols:
+            try:
+                cursor.execute(f"ALTER TABLE user_profiles ADD COLUMN {col} {col_type} DEFAULT {default_val};")
+            except Exception:
+                pass
+
+        # Retroactively calculate and sync gamification progress for all users
+        try:
+            sync_all_users_gamification_stats(conn)
+        except Exception as e:
+            print(f"Warning during gamification sync: {e}")
+
+
+def calculate_user_gamification(conn, user_id: str) -> dict:
+    """
+    Accurately and retroactively computes gamification stats for a user:
+    - Workouts count, total sets, total volume (tonnage)
+    - Personal Records (PRs) over progressive training history
+    - Consecutive streak (gap <= 8.5 days)
+    - XP & FitPoints loyalty points
+    - Athlete Level & Tier (Bronze, Silver, Gold, Platinum, Diamond)
+    """
+    from datetime import datetime
+
+    cursor = conn.cursor()
+
+    # Get all workouts for this user ordered chronologically
+    cursor.execute("""
+        SELECT id, start_time, end_time FROM workouts 
+        WHERE user_id = ? 
+        ORDER BY start_time ASC, id ASC;
+    """, (user_id,))
+    workout_rows = cursor.fetchall()
+    total_workouts = len(workout_rows)
+
+    if total_workouts == 0:
+        base_res = {
+            "user_id": user_id,
+            "xp": 0,
+            "fitpoints": 0,
+            "tier": "Bronze",
+            "level": 1,
+            "streak_days": 0,
+            "total_volume_kg": 0.0,
+            "total_workouts": 0,
+            "total_sets": 0,
+            "personal_records_count": 0,
+            "xp_current_level": 0,
+            "xp_needed_for_level": 150,
+            "xp_to_next_level": 150,
+            "next_level_threshold": 150,
+            "next_tier": "Silver",
+            "xp_to_next_tier": 1000
+        }
+        cursor.execute("""
+            UPDATE user_profiles 
+            SET xp = 0, fitpoints = 0, tier = 'Bronze', level = 1, streak_days = 0,
+                total_volume_kg = 0.0, total_workouts = 0, total_sets = 0, personal_records_count = 0
+            WHERE user_id = ?;
+        """, (user_id,))
+        return base_res
+
+    workout_ids = [w["id"] for w in workout_rows]
+    placeholders = ",".join("?" * len(workout_ids))
+    cursor.execute(f"""
+        SELECT s.workout_id, s.exercise_id, s.weight, s.reps, s.created_at
+        FROM workout_sets s
+        WHERE s.workout_id IN ({placeholders})
+        ORDER BY s.created_at ASC, s.id ASC;
+    """, workout_ids)
+    sets_rows = cursor.fetchall()
+
+    total_sets = len(sets_rows)
+    total_volume_kg = round(sum(float(s["weight"] or 0) * int(s["reps"] or 0) for s in sets_rows), 1)
+
+    # Progressive Personal Records calculation
+    max_weights = {}
+    pr_count = 0
+    for s in sets_rows:
+        ex_id = s["exercise_id"]
+        weight = float(s["weight"] or 0)
+        if weight > 0:
+            if ex_id not in max_weights:
+                max_weights[ex_id] = weight
+                pr_count += 1
+            elif weight > max_weights[ex_id]:
+                max_weights[ex_id] = weight
+                pr_count += 1
+
+    # Streak calculation (gap <= 8.5 days between workouts)
+    dates = []
+    for w in workout_rows:
+        st = str(w["start_time"] or "").strip()
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+            try:
+                dt = datetime.strptime(st, fmt)
+                dates.append(dt)
+                break
+            except Exception:
+                pass
+    dates.sort(reverse=True)
+    streak_days = 0
+    if dates:
+        streak_days = 1
+        for i in range(1, len(dates)):
+            gap = (dates[i - 1] - dates[i]).total_seconds() / 86400.0
+            if 0 <= gap <= 8.5:
+                streak_days += 1
+            elif gap > 8.5:
+                break
+
+    # Gamification Formulas
+    # XP: 100 per workout + 10 per set + 15 per 1,000 kg volume + 25 per PR
+    xp = (total_workouts * 100) + (total_sets * 10) + int(total_volume_kg * 0.015) + (pr_count * 25)
+    # FitPoints: 50 per workout + 5 per 1,000 kg volume + 10 per PR
+    fitpoints = (total_workouts * 50) + int(total_volume_kg * 0.005) + (pr_count * 10)
+
+    # Level calculation: threshold = int(150 * (lvl ** 1.6))
+    level = 1
+    xp_current_level = 0
+    xp_needed_for_level = 150
+    xp_to_next_level = 150
+    next_level_threshold = 150
+
+    while True:
+        next_thresh = int(150 * (level ** 1.6))
+        if xp < next_thresh:
+            prev_thresh = int(150 * ((level - 1) ** 1.6)) if level > 1 else 0
+            xp_current_level = xp - prev_thresh
+            xp_needed_for_level = next_thresh - prev_thresh
+            xp_to_next_level = next_thresh - xp
+            next_level_threshold = next_thresh
+            break
+        level += 1
+        if level >= 100:
+            level = 100
+            xp_current_level = xp
+            xp_needed_for_level = 10000
+            xp_to_next_level = 0
+            next_level_threshold = xp
+            break
+
+    # Tier calculation
+    if xp >= 20000:
+        tier = "Diamond"
+        next_tier = "Legend"
+        xp_to_next_tier = max(0, 50000 - xp)
+    elif xp >= 8000:
+        tier = "Platinum"
+        next_tier = "Diamond"
+        xp_to_next_tier = max(0, 20000 - xp)
+    elif xp >= 3500:
+        tier = "Gold"
+        next_tier = "Platinum"
+        xp_to_next_tier = max(0, 8000 - xp)
+    elif xp >= 1000:
+        tier = "Silver"
+        next_tier = "Gold"
+        xp_to_next_tier = max(0, 3500 - xp)
+    else:
+        tier = "Bronze"
+        next_tier = "Silver"
+        xp_to_next_tier = max(0, 1000 - xp)
+
+    # Persist calculated values to user_profiles
+    cursor.execute("""
+        UPDATE user_profiles 
+        SET xp = ?, fitpoints = ?, tier = ?, level = ?, streak_days = ?,
+            total_volume_kg = ?, total_workouts = ?, total_sets = ?,
+            personal_records_count = ?
+        WHERE user_id = ?;
+    """, (xp, fitpoints, tier, level, streak_days, total_volume_kg, total_workouts, total_sets, pr_count, user_id))
+
+    return {
+        "user_id": user_id,
+        "xp": xp,
+        "fitpoints": fitpoints,
+        "tier": tier,
+        "level": level,
+        "streak_days": streak_days,
+        "total_volume_kg": total_volume_kg,
+        "total_workouts": total_workouts,
+        "total_sets": total_sets,
+        "personal_records_count": pr_count,
+        "xp_current_level": xp_current_level,
+        "xp_needed_for_level": xp_needed_for_level,
+        "xp_to_next_level": xp_to_next_level,
+        "next_level_threshold": next_level_threshold,
+        "next_tier": next_tier,
+        "xp_to_next_tier": xp_to_next_tier
+    }
+
+
+def sync_all_users_gamification_stats(conn):
+    """Retroactively calculates and updates gamification stats for all users in database."""
+    cursor = conn.cursor()
+    # Find all users in user_profiles
+    cursor.execute("SELECT user_id FROM user_profiles;")
+    profile_uids = [r["user_id"] for r in cursor.fetchall()]
+
+    # Find all users in workouts
+    cursor.execute("SELECT DISTINCT user_id FROM workouts WHERE user_id IS NOT NULL;")
+    workout_uids = [r["user_id"] for r in cursor.fetchall()]
+
+    all_uids = list(set(profile_uids + workout_uids))
+
+    for uid in all_uids:
+        # If user is in workouts but not user_profiles, create baseline profile
+        if uid not in profile_uids:
+            clean_uid = uid.replace("tg_", "") if isinstance(uid, str) else str(uid)
+            cursor.execute("""
+                INSERT OR IGNORE INTO user_profiles (
+                    user_id, name, gender, age, height, weight, experience_level,
+                    fitness_goal, injuries, equipment, onboarding_completed, telegram_chat_id
+                ) VALUES (
+                    ?, 'Атлет', 'male', 28, 180.0, 80.0, 'intermediate',
+                    'hypertrophy', '', 'gym', 1, ?
+                );
+            """, (uid, int(clean_uid) if clean_uid.isdigit() else None))
+        calculate_user_gamification(conn, uid)
+

@@ -64,6 +64,10 @@ class WorkoutSummaryResponse(BaseModel):
     is_active: bool
     total_sets: int
     total_volume: float
+    xp_earned: Optional[int] = 0
+    fitpoints_earned: Optional[int] = 0
+    new_prs: Optional[List[dict]] = []
+    user_gamification: Optional[dict] = None
 
 class AnalyticsDataPoint(BaseModel):
     date: str
@@ -93,6 +97,22 @@ class UserProfileModel(BaseModel):
     equipment: Optional[str] = "gym"
     onboarding_completed: Optional[int] = 0
     updated_at: Optional[str] = None
+    # Gamification & Loyalty Progress
+    xp: Optional[int] = 0
+    fitpoints: Optional[int] = 0
+    tier: Optional[str] = "Bronze"
+    level: Optional[int] = 1
+    streak_days: Optional[int] = 0
+    total_volume_kg: Optional[float] = 0.0
+    total_workouts: Optional[int] = 0
+    total_sets: Optional[int] = 0
+    personal_records_count: Optional[int] = 0
+    xp_current_level: Optional[int] = 0
+    xp_needed_for_level: Optional[int] = 150
+    xp_to_next_level: Optional[int] = 150
+    next_level_threshold: Optional[int] = 150
+    next_tier: Optional[str] = "Silver"
+    xp_to_next_tier: Optional[int] = 1000
 
 class UserProfileUpdate(BaseModel):
     name: Optional[str] = None

@@ -38,7 +38,7 @@ def get_current_user_name(
     return "Атлет"
 
 from pydantic import BaseModel
-from database import init_database, get_db
+from database import init_database, get_db, calculate_user_gamification, sync_all_users_gamification_stats
 from init_db import seed_exercises, seed_sample_history_if_empty, seed_real_user_history
 from models import (
     ExerciseResponse, ExerciseCreate,
@@ -490,6 +490,11 @@ def get_user_profile_dict(cursor, user_id: str = "default", user_name: str = "А
         if row:
             d = dict(row)
             d["user_id"] = user_id
+            try:
+                g = calculate_user_gamification(cursor.connection, user_id)
+                d.update(g)
+            except Exception:
+                pass
             return d
 
         # Check if other non-default users exist
@@ -524,6 +529,11 @@ def get_user_profile_dict(cursor, user_id: str = "default", user_name: str = "А
             if migrated_row:
                 d = dict(migrated_row)
                 d["user_id"] = user_id
+                try:
+                    g = calculate_user_gamification(cursor.connection, user_id)
+                    d.update(g)
+                except Exception:
+                    pass
                 return d
 
         # New user: onboarding_completed MUST ALWAYS be 0!
@@ -538,6 +548,11 @@ def get_user_profile_dict(cursor, user_id: str = "default", user_name: str = "А
         if new_row:
             d = dict(new_row)
             d["user_id"] = user_id
+            try:
+                g = calculate_user_gamification(cursor.connection, user_id)
+                d.update(g)
+            except Exception:
+                pass
             return d
     except Exception as e:
         print(f"Error in get_user_profile_dict: {e}")
@@ -553,7 +568,21 @@ def get_user_profile_dict(cursor, user_id: str = "default", user_name: str = "А
         "fitness_goal": "hypertrophy",
         "injuries": "",
         "equipment": "gym",
-        "onboarding_completed": 0
+        "onboarding_completed": 0,
+        "xp": 0,
+        "fitpoints": 0,
+        "tier": "Bronze",
+        "level": 1,
+        "streak_days": 0,
+        "total_volume_kg": 0.0,
+        "total_workouts": 0,
+        "total_sets": 0,
+        "personal_records_count": 0,
+        "xp_current_level": 0,
+        "xp_needed_for_level": 150,
+        "xp_to_next_level": 150,
+        "next_tier": "Silver",
+        "xp_to_next_tier": 1000
     }
 
 def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default"):
@@ -871,7 +900,7 @@ def start_workout(
         )
     return get_active_workout(user_id=user_id, user_name=user_name)
 
-def send_telegram_workout_summary(cursor, workout_id: int, chat_id: Optional[int] = None):
+def send_telegram_workout_summary(cursor, workout_id: int, chat_id: Optional[int] = None, gamification_info: Optional[dict] = None):
     """Sends a rich summary of the completed workout with volume, PRs, and tip to the user's Telegram."""
     try:
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1031,6 +1060,17 @@ def send_telegram_workout_summary(cursor, workout_id: int, chat_id: Optional[int
             for r in records:
                 lines.append(r)
 
+        if gamification_info:
+            lines.append("")
+            lines.append("⚡ *НАГРАДЫ И ПРОГРЕСС:*")
+            xp_e = gamification_info.get("xp_earned", 0)
+            fp_e = gamification_info.get("fitpoints_earned", 0)
+            t_val = gamification_info.get("tier", "Bronze")
+            l_val = gamification_info.get("level", 1)
+            total_xp = gamification_info.get("xp", 0)
+            lines.append(f"• Начислено: *+{xp_e} XP*  |  *+{fp_e} FitPoints*")
+            lines.append(f"• Ранг: *{t_val}* • Уровень *{l_val}* (Всего: *{total_xp}* XP)")
+
         # Smart recovery tip
         title_lower = w_title.lower()
         if "push" in title_lower or "грудь" in title_lower or "жим" in title_lower:
@@ -1109,11 +1149,65 @@ def finish_workout(
         """, (workout_id,))
         stats = cursor.fetchone()
 
+        target_uid = row["user_id"] or user_id
+
+        # Compute personal records broken in this workout
+        cursor.execute("""
+            SELECT s.exercise_id, e.name as ex_name, s.weight, s.reps
+            FROM workout_sets s
+            JOIN exercises e ON s.exercise_id = e.id
+            WHERE s.workout_id = ?
+            ORDER BY s.id ASC;
+        """, (workout_id,))
+        current_sets = cursor.fetchall()
+        new_prs = []
+        seen_ex = set()
+        for s in current_sets:
+            ex_id = s["exercise_id"]
+            ex_name = s["ex_name"]
+            w = float(s["weight"] or 0)
+            if w > 0 and ex_id not in seen_ex:
+                cursor.execute("""
+                    SELECT MAX(ws.weight) as prev_max
+                    FROM workout_sets ws
+                    JOIN workouts w ON ws.workout_id = w.id
+                    WHERE ws.exercise_id = ? AND w.user_id = ? AND ws.workout_id != ?;
+                """, (ex_id, target_uid, workout_id))
+                p_row = cursor.fetchone()
+                prev_max = float(p_row["prev_max"] or 0) if (p_row and p_row["prev_max"] is not None) else 0.0
+
+                curr_max = max(float(x["weight"] or 0) for x in current_sets if x["exercise_id"] == ex_id)
+                if curr_max > prev_max:
+                    seen_ex.add(ex_id)
+                    new_prs.append({
+                        "exercise_id": ex_id,
+                        "exercise_name": ex_name,
+                        "weight": curr_max,
+                        "previous_weight": prev_max,
+                        "delta": round(curr_max - prev_max, 1)
+                    })
+
+        session_sets = stats["total_sets"]
+        session_volume = float(stats["total_volume"])
+        xp_earned = 100 + (session_sets * 10) + int(session_volume * 0.015) + (len(new_prs) * 25)
+        fitpoints_earned = 50 + int(session_volume * 0.005) + (len(new_prs) * 10)
+
+        # Recalculate user gamification stats
+        user_gamification = calculate_user_gamification(conn, target_uid)
+
+        gamification_payload = {
+            "xp_earned": xp_earned,
+            "fitpoints_earned": fitpoints_earned,
+            "xp": user_gamification["xp"],
+            "fitpoints": user_gamification["fitpoints"],
+            "level": user_gamification["level"],
+            "tier": user_gamification["tier"]
+        }
+
         # Send Telegram Summary Report
-        send_telegram_workout_summary(cursor, workout_id, payload.telegram_chat_id)
+        send_telegram_workout_summary(cursor, workout_id, payload.telegram_chat_id, gamification_info=gamification_payload)
 
         # Persist telegram_chat_id if provided
-        target_uid = row["user_id"] or user_id
         if payload.telegram_chat_id and target_uid:
             try:
                 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1131,7 +1225,11 @@ def finish_workout(
             "notes": new_notes,
             "is_active": False,
             "total_sets": stats["total_sets"],
-            "total_volume": float(stats["total_volume"])
+            "total_volume": float(stats["total_volume"]),
+            "xp_earned": xp_earned,
+            "fitpoints_earned": fitpoints_earned,
+            "new_prs": new_prs,
+            "user_gamification": user_gamification
         }
 
 class SwapExerciseRequest(BaseModel):
@@ -1897,6 +1995,30 @@ def update_user_profile(
         ))
         current["updated_at"] = now_str
         return current
+
+@app.get("/api/gamification/summary")
+def get_gamification_summary(
+    user_id: str = Depends(get_current_user_id),
+    user_name: str = Depends(get_current_user_name)
+):
+    with get_db() as conn:
+        profile = get_user_profile_dict(conn.cursor(), user_id=user_id, user_name=user_name)
+        return {
+            "xp": profile.get("xp", 0),
+            "fitpoints": profile.get("fitpoints", 0),
+            "tier": profile.get("tier", "Bronze"),
+            "level": profile.get("level", 1),
+            "streak_days": profile.get("streak_days", 0),
+            "total_volume_kg": profile.get("total_volume_kg", 0.0),
+            "total_workouts": profile.get("total_workouts", 0),
+            "total_sets": profile.get("total_sets", 0),
+            "personal_records_count": profile.get("personal_records_count", 0),
+            "xp_current_level": profile.get("xp_current_level", 0),
+            "xp_needed_for_level": profile.get("xp_needed_for_level", 150),
+            "xp_to_next_level": profile.get("xp_to_next_level", 150),
+            "next_tier": profile.get("next_tier", "Silver"),
+            "xp_to_next_tier": profile.get("xp_to_next_tier", 1000)
+        }
 
 # --- STATIC FILES & PWA ---
 

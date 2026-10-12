@@ -404,6 +404,420 @@ function NeuHeaderCard({ theme, onToggleTheme, coachDayTitle }) {
 }
 
 // ==========================================
+// ⚡ ATHLETIC GAMIFICATION & XP TIERS
+// ==========================================
+function getTierDetails(tier = 'Bronze') {
+  const t = String(tier || 'Bronze').toLowerCase();
+  if (t === 'diamond') {
+    return {
+      name: 'Diamond',
+      label: 'Алмаз',
+      icon: '💎',
+      badgeBg: 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30'
+    };
+  }
+  if (t === 'platinum') {
+    return {
+      name: 'Platinum',
+      label: 'Платина',
+      icon: '⚡',
+      badgeBg: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30'
+    };
+  }
+  if (t === 'gold') {
+    return {
+      name: 'Gold',
+      label: 'Золото',
+      icon: '🥇',
+      badgeBg: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+    };
+  }
+  if (t === 'silver') {
+    return {
+      name: 'Silver',
+      label: 'Серебро',
+      icon: '🥈',
+      badgeBg: 'bg-slate-400/15 text-slate-600 dark:text-slate-300 border-slate-400/30'
+    };
+  }
+  return {
+    name: 'Bronze',
+    label: 'Бронза',
+    icon: '🥉',
+    badgeBg: 'bg-amber-700/15 text-amber-700 dark:text-amber-500 border-amber-700/30'
+  };
+}
+
+function GamificationInfoModal({ isOpen, onClose, profile }) {
+  if (!isOpen) return null;
+
+  const xp = profile?.xp || 0;
+  const fitpoints = profile?.fitpoints || 0;
+  const tier = profile?.tier || 'Bronze';
+  const level = profile?.level || 1;
+  const tierInfo = getTierDetails(tier);
+
+  const tiersList = [
+    { key: 'Bronze', label: 'Бронза', icon: '🥉', xpRange: '0 – 999 XP', perks: 'Базовый статус атлета' },
+    { key: 'Silver', label: 'Серебро', icon: '🥈', xpRange: '1,000 – 3,499 XP', perks: 'Продвинутый уровень, расширенная аналитика' },
+    { key: 'Gold', label: 'Золото', icon: '🥇', xpRange: '3,500 – 7,999 XP', perks: 'Мастер силовых программ' },
+    { key: 'Platinum', label: 'Платина', icon: '⚡', xpRange: '8,000 – 19,999 XP', perks: 'Элитный атлет, максимальный престиж' },
+    { key: 'Diamond', label: 'Алмаз', icon: '💎', xpRange: '20,000+ XP', perks: 'Легендарный статус' },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+      <div className="neu-flat rounded-3xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto space-y-4 border border-slate-200/50 dark:border-slate-700/50">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-200/40 dark:border-slate-700/40">
+          <div className="flex items-center space-x-2">
+            <span className="text-2xl">{tierInfo.icon}</span>
+            <div>
+              <h3 className="font-extrabold text-base text-slate-800 dark:text-white">
+                Система Рангов и XP
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Ваш прогресс в зале конвертируется в очки и ранг
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={onClose}
+            className="w-8 h-8 rounded-full neu-btn flex items-center justify-center text-slate-500 hover:text-slate-800 dark:hover:text-white font-bold"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Current User Standing Card */}
+        <div className="neu-inset rounded-2xl p-3.5 space-y-2 shadow-inner">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Ваш текущий статус</span>
+            <span className={`text-xs font-black px-2.5 py-0.5 rounded-full border ${tierInfo.badgeBg}`}>
+              {tierInfo.icon} {tierInfo.label} • Ур. {level}
+            </span>
+          </div>
+          <div className="flex items-center justify-between font-mono text-sm pt-1">
+            <span className="text-slate-500 text-xs">Общий опыт (XP):</span>
+            <span className="font-black text-slate-800 dark:text-white">{xp} XP</span>
+          </div>
+          <div className="flex items-center justify-between font-mono text-sm">
+            <span className="text-slate-500 text-xs">Баланс FitPoints:</span>
+            <span className="font-black text-amber-500">{fitpoints} FP</span>
+          </div>
+        </div>
+
+        {/* Rules: How to earn XP in Gym */}
+        <div className="space-y-2">
+          <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            Как начисляются очки (XP & FitPoints)
+          </h4>
+          <div className="grid grid-cols-1 gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+            <div className="neu-flat rounded-xl p-2.5 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span>🏋️‍♂️</span>
+                <span className="font-medium">Завершенная тренировка</span>
+              </div>
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">+100 XP / +50 FP</span>
+            </div>
+            <div className="neu-flat rounded-xl p-2.5 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span>🔢</span>
+                <span className="font-medium">Каждый рабочий подход</span>
+              </div>
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">+10 XP</span>
+            </div>
+            <div className="neu-flat rounded-xl p-2.5 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span>⚖️</span>
+                <span className="font-medium">Каждые 1,000 кг объема</span>
+              </div>
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">+15 XP / +5 FP</span>
+            </div>
+            <div className="neu-flat rounded-xl p-2.5 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span>🏆</span>
+                <span className="font-medium">Новый личный рекорд (PR)</span>
+              </div>
+              <span className="font-mono font-bold text-amber-500">+25 XP / +10 FP</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Loyalty Tiers Progression */}
+        <div className="space-y-2">
+          <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            Ступени Рангов
+          </h4>
+          <div className="space-y-1.5">
+            {tiersList.map(t => {
+              const isCurrent = t.key.toLowerCase() === tier.toLowerCase();
+              return (
+                <div 
+                  key={t.key}
+                  className={`rounded-2xl p-2.5 transition-all flex items-center justify-between text-xs ${
+                    isCurrent 
+                      ? 'neu-inset border-2 border-emerald-500/60 bg-emerald-500/10' 
+                      : 'neu-flat'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <span className="text-lg">{t.icon}</span>
+                    <div>
+                      <div className="font-black text-slate-800 dark:text-white flex items-center space-x-1.5">
+                        <span>{t.label}</span>
+                        {isCurrent && (
+                          <span className="text-[9px] bg-emerald-500 text-white font-bold px-1.5 py-0.2 rounded-full">
+                            Ваш ранг
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">{t.perks}</div>
+                    </div>
+                  </div>
+                  <span className="font-mono font-bold text-slate-600 dark:text-slate-400 text-[11px]">
+                    {t.xpRange}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full py-2.5 rounded-2xl neu-btn text-emerald-600 dark:text-emerald-400 font-black text-xs uppercase tracking-wider active:scale-95 transition"
+        >
+          Понятно, к тренировкам!
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function NeuGamificationHUDCard({ profile, onOpenModal }) {
+  const xp = profile?.xp || 0;
+  const fitpoints = profile?.fitpoints || 0;
+  const tier = profile?.tier || 'Bronze';
+  const level = profile?.level || 1;
+  const streak = profile?.streak_days || 0;
+  const totalVolume = profile?.total_volume_kg || 0;
+  const prCount = profile?.personal_records_count || 0;
+  const totalWorkouts = profile?.total_workouts || 0;
+
+  const currentLevelXp = profile?.xp_current_level || 0;
+  const neededLevelXp = profile?.xp_needed_for_level || 150;
+  const nextTier = profile?.next_tier || 'Silver';
+  const toNextTier = profile?.xp_to_next_tier || 1000;
+
+  const tierInfo = getTierDetails(tier);
+  const nextTierInfo = getTierDetails(nextTier);
+
+  const levelPercent = Math.min(100, Math.max(0, Math.round((currentLevelXp / (neededLevelXp || 1)) * 100)));
+  const displayVolume = totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)} т` : `${Math.round(totalVolume)} кг`;
+
+  return (
+    <div 
+      onClick={onOpenModal}
+      className="neu-flat rounded-3xl p-4 cursor-pointer active:scale-[0.99] transition-all hover:shadow-lg relative overflow-hidden group border border-slate-200/50 dark:border-slate-700/50"
+    >
+      {/* Top row: Tier Badge, Level & FitPoints counter */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2">
+          <div className="w-10 h-10 rounded-2xl neu-inset flex items-center justify-center text-xl shadow-inner">
+            {tierInfo.icon}
+          </div>
+          <div>
+            <div className="flex items-center space-x-1.5">
+              <span className={`text-xs font-black px-2 py-0.5 rounded-full border ${tierInfo.badgeBg}`}>
+                {tierInfo.label}
+              </span>
+              <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200 font-mono">
+                Ур. {level}
+              </span>
+            </div>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+              Ранг атлета • {xp} XP
+            </div>
+          </div>
+        </div>
+
+        <div className="neu-inset px-3 py-1.5 rounded-2xl flex items-center space-x-1.5 shadow-inner">
+          <span className="text-amber-500 text-sm">⚡</span>
+          <div className="text-right">
+            <div className="text-xs font-black font-mono text-slate-800 dark:text-slate-100 leading-none">
+              {fitpoints}
+            </div>
+            <div className="text-[8px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">
+              FitPoints
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Level XP Progress Bar */}
+      <div className="space-y-1 mb-3">
+        <div className="flex justify-between items-center text-[10px] font-bold">
+          <span className="text-slate-600 dark:text-slate-400">Прогресс до Уровня {level + 1}</span>
+          <span className="text-emerald-700 dark:text-emerald-400 font-mono font-black">{currentLevelXp} / {neededLevelXp} XP ({levelPercent}%)</span>
+        </div>
+        <div className="w-full h-2 rounded-full neu-inset overflow-hidden p-0.5">
+          <div 
+            className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500 shadow-sm"
+            style={{ width: `${levelPercent}%` }}
+          />
+        </div>
+      </div>
+
+      {/* 4-Stat Metric Strip */}
+      <div className="grid grid-cols-4 gap-2 pt-1 border-t border-slate-200/40 dark:border-slate-700/40">
+        <div className="neu-inset rounded-xl py-1.5 px-1 text-center">
+          <div className="text-[11px] font-black font-mono text-slate-800 dark:text-slate-100">
+            {displayVolume}
+          </div>
+          <div className="text-[8px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+            Тоннаж
+          </div>
+        </div>
+        <div className="neu-inset rounded-xl py-1.5 px-1 text-center">
+          <div className="text-[11px] font-black font-mono text-amber-700 dark:text-amber-400">
+            {prCount}
+          </div>
+          <div className="text-[8px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+            Рекордов
+          </div>
+        </div>
+        <div className="neu-inset rounded-xl py-1.5 px-1 text-center">
+          <div className="text-[11px] font-black font-mono text-emerald-700 dark:text-emerald-400">
+            {streak}
+          </div>
+          <div className="text-[8px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+            Серия (нед)
+          </div>
+        </div>
+        <div className="neu-inset rounded-xl py-1.5 px-1 text-center">
+          <div className="text-[11px] font-black font-mono text-indigo-700 dark:text-indigo-400">
+            {totalWorkouts}
+          </div>
+          <div className="text-[8px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+            Сессий
+          </div>
+        </div>
+      </div>
+
+      {/* Next Tier Milestone footer */}
+      {nextTier && toNextTier > 0 && (
+        <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-600 dark:text-slate-400 font-bold bg-slate-100/50 dark:bg-slate-800/40 rounded-xl px-2.5 py-1">
+          <span className="flex items-center space-x-1">
+            <span>🎯</span>
+            <span>До ранга «{nextTierInfo.label}»:</span>
+          </span>
+          <span className="text-slate-800 dark:text-slate-200 font-mono font-black">
+            +{toNextTier} XP
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WorkoutFinishCelebrationModal({ isOpen, onClose, finishResult }) {
+  if (!isOpen || !finishResult) return null;
+
+  const xpEarned = finishResult.xp_earned || 0;
+  const fpEarned = finishResult.fitpoints_earned || 0;
+  const newPrs = finishResult.new_prs || [];
+  const userGam = finishResult.user_gamification || {};
+  const totalSets = finishResult.total_sets || 0;
+  const totalVolume = Math.round(finishResult.total_volume || 0);
+
+  const tierInfo = getTierDetails(userGam.tier || 'Bronze');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-fade-in">
+      <div className="neu-flat rounded-3xl p-6 w-full max-w-md space-y-4 border border-slate-200/50 dark:border-slate-700/50 text-center">
+        {/* Celebration Header */}
+        <div className="space-y-1">
+          <div className="text-5xl animate-bounce">🎉</div>
+          <h2 className="text-xl font-black text-slate-800 dark:text-white">
+            Тренировка завершена!
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+            Отличная силовая сессия сохранена в ваш архив
+          </p>
+        </div>
+
+        {/* XP & FitPoints Banner */}
+        <div className="grid grid-cols-2 gap-3 py-1">
+          <div className="neu-inset rounded-2xl p-3 flex flex-col items-center justify-center shadow-inner">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Опыт
+            </span>
+            <div className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400 mt-0.5">
+              +{xpEarned} XP
+            </div>
+          </div>
+          <div className="neu-inset rounded-2xl p-3 flex flex-col items-center justify-center shadow-inner">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Баллы
+            </span>
+            <div className="text-2xl font-black font-mono text-amber-500 mt-0.5">
+              +{fpEarned} FP
+            </div>
+          </div>
+        </div>
+
+        {/* New PRs Broken (if any) */}
+        {newPrs.length > 0 && (
+          <div className="space-y-2 text-left bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3">
+            <div className="flex items-center space-x-1.5 text-xs font-black text-amber-700 dark:text-amber-400">
+              <span>🏆</span>
+              <span>НОВЫЙ ЛИЧНЫЙ РЕКОРД (PR)!</span>
+            </div>
+            <div className="space-y-1">
+              {newPrs.map((pr, idx) => (
+                <div key={idx} className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-slate-800 dark:text-white">{pr.exercise_name}</span>
+                  <span className="font-mono font-black text-amber-600 dark:text-amber-400">
+                    {pr.weight} кг {pr.previous_weight > 0 ? `(+${pr.delta} кг)` : '🎉'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Current Rank Status after update */}
+        <div className="neu-inset rounded-2xl p-3 flex items-center justify-between text-xs shadow-inner">
+          <div className="flex items-center space-x-2 text-left">
+            <span className="text-2xl">{tierInfo.icon}</span>
+            <div>
+              <div className="font-extrabold text-slate-800 dark:text-white">
+                {tierInfo.label} • Уровень {userGam.level || 1}
+              </div>
+              <div className="text-[10px] text-slate-500 font-mono">
+                Всего: {userGam.xp || 0} XP
+              </div>
+            </div>
+          </div>
+          <div className="text-right font-mono text-xs">
+            <div className="font-black text-slate-800 dark:text-slate-200">{totalVolume} кг</div>
+            <div className="text-[10px] text-slate-500">{totalSets} подходов</div>
+          </div>
+        </div>
+
+        {/* Bottom CTA */}
+        <button
+          onClick={onClose}
+          className="w-full py-3 rounded-2xl neu-btn bg-emerald-500 text-slate-900 dark:text-white font-black text-sm uppercase tracking-wider active:scale-95 transition shadow-lg"
+        >
+          Супер, продолжить ➔
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
 // 📅 DATE & TIME FORMATTING UTILITIES
 // ==========================================
 const parseSafeDate = (val) => {
@@ -2425,6 +2839,7 @@ function App() {
   const [loading, setLoading] = useState(!initialCachedProfile);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showGamificationModal, setShowGamificationModal] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
 
   const isLocalOnboarded = (initialCachedProfile && initialCachedProfile.onboarding_completed === 1) || 
@@ -2651,6 +3066,22 @@ function App() {
           <div className="flex items-center space-x-1.5">
             <NeuThemeToggle theme={theme} onToggle={toggleTheme} />
 
+            {/* Gamification Rank & Points Pill */}
+            <button
+              type="button"
+              onClick={() => setShowGamificationModal(true)}
+              className="text-xs px-2 py-1 rounded-full neu-btn flex items-center space-x-1 font-mono transition active:scale-95 text-[var(--neu-text-primary)]"
+              title="Ранг атлета и система опыта"
+            >
+              <span>{getTierDetails(userProfile?.tier).icon}</span>
+              <span className="text-[11px] font-black text-slate-800 dark:text-white">
+                {userProfile?.level || 1}
+              </span>
+              <span className="text-[10px] text-amber-500 font-bold">
+                ⚡{userProfile?.fitpoints || 0}
+              </span>
+            </button>
+
             {activeWorkout ? (
               <button 
                 onClick={() => { setIsMinimized(false); setActiveTab('workout'); }}
@@ -2709,6 +3140,7 @@ function App() {
               onToggleTheme={toggleTheme}
               workouts={historyWorkouts}
               onNavigateTab={setActiveTab}
+              onOpenGamification={() => setShowGamificationModal(true)}
             />
           )}
 
@@ -2730,6 +3162,7 @@ function App() {
               theme={theme}
               onToggleTheme={toggleTheme}
               onOpenAccountModal={() => setShowAccountModal(true)}
+              onOpenGamification={() => setShowGamificationModal(true)}
               onUpdateProfile={(updated) => {
                 setUserProfile(updated);
                 try {
@@ -2795,6 +3228,13 @@ function App() {
         userProfile={userProfile} 
         onUserChanged={() => loadAppData(true)} 
       />
+
+      {/* Athlete Gamification & XP Ranks Modal */}
+      <GamificationInfoModal 
+        isOpen={showGamificationModal} 
+        onClose={() => setShowGamificationModal(false)} 
+        profile={userProfile} 
+      />
     </div>
   );
 }
@@ -2828,7 +3268,7 @@ function NavButton({ active, onClick, icon, label, badge }) {
 // ==========================================
 // 🚀 FULLY GUIDED WORKOUT SCREEN (STEP-BY-STEP FLOW)
 // ==========================================
-function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuides = {}, userProfile, onRefresh, onMinimize, isMinimized = false, onMaximize, theme, onToggleTheme, workouts = [], onNavigateTab }) {
+function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuides = {}, userProfile, onRefresh, onMinimize, isMinimized = false, onMaximize, theme, onToggleTheme, workouts = [], onNavigateTab, onOpenGamification }) {
   // Navigation inside the plan
   const [currentPlanIndex, setCurrentPlanIndex] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState('a');
@@ -2842,6 +3282,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [workoutDuration, setWorkoutDuration] = useState(0);
   const [editingSet, setEditingSet] = useState(null);
+  const [finishResultModal, setFinishResultModal] = useState(null);
 
   // Auto-switch variant tab if coach recommends variant B
   useEffect(() => {
@@ -3250,8 +3691,10 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
         })
       });
       if (res.ok) {
+        const finishData = await res.json();
         try { localStorage.removeItem('gym_tracker_active_start_' + activeWorkout.id); } catch (e) {}
-        alert('🎉 Отличная работа! Тренировка сохранена в историю, а сводка отправлена вам в Telegram.');
+        try { playChimeSound(); } catch (e) {}
+        setFinishResultModal(finishData);
         onRefresh();
       }
     } catch (e) {
@@ -3475,6 +3918,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
             theme={theme} 
             onToggleTheme={onToggleTheme} 
             coachDayTitle={recommendedDay ? `План: ${recommendedDay.title.split('—')[0]}` : null}
+          />
+
+          {/* Athletic Gamification HUD Card (XP, FitPoints, Level, Tier, Volume, PRs) */}
+          <NeuGamificationHUDCard 
+            profile={userProfile} 
+            onOpenModal={onOpenGamification} 
           />
 
           {/* 2-Column Widget Grid from screenshot */}
@@ -4381,6 +4830,13 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           onDelete={handleDeleteEditedSet}
         />
       )}
+
+      {/* Workout Complete Celebration Modal with XP, FitPoints, & PRs */}
+      <WorkoutFinishCelebrationModal
+        isOpen={!!finishResultModal}
+        onClose={() => setFinishResultModal(null)}
+        finishResult={finishResultModal}
+      />
     </div>
   );
 }
@@ -7010,7 +7466,7 @@ function ExercisesScreen({ exercises, exerciseGuides = {}, onRefresh }) {
 // ==========================================
 // 👤 USER PROFILE SCREEN ("О СЕБЕ")
 // ==========================================
-function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAccountModal, theme, onToggleTheme }) {
+function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAccountModal, onOpenGamification, theme, onToggleTheme }) {
   const [formData, setFormData] = useState({
     name: 'Атлет',
     gender: 'male',
@@ -7114,6 +7570,40 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
               </p>
             </div>
             <NeuThemeToggle theme={theme} onToggle={onToggleTheme} />
+          </div>
+        </div>
+
+        {/* Athletic Gamification & Rank Card */}
+        <div 
+          onClick={onOpenGamification}
+          className="neu-flat rounded-3xl p-4 cursor-pointer active:scale-95 transition-all space-y-2 border border-slate-200/50 dark:border-slate-700/50 hover:shadow-md"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black text-amber-500 uppercase tracking-wider block">
+              ⚡ Ранг и Достижения Атлета
+            </span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">
+              Подробнее ➔
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2.5">
+              <span className="text-3xl">{getTierDetails(formData?.tier).icon}</span>
+              <div>
+                <div className="font-extrabold text-sm text-slate-800 dark:text-white">
+                  {getTierDetails(formData?.tier).label} • Уровень {formData?.level || 1}
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                  {formData?.xp || 0} XP • ⚡ {formData?.fitpoints || 0} FitPoints
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs font-black font-mono text-emerald-600 dark:text-emerald-400">
+                {formData?.total_volume_kg >= 1000 ? `${(formData.total_volume_kg / 1000).toFixed(1)} т` : `${Math.round(formData?.total_volume_kg || 0)} кг`}
+              </div>
+              <div className="text-[9px] text-slate-400 uppercase font-bold">Тоннаж</div>
+            </div>
           </div>
         </div>
 
