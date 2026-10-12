@@ -642,6 +642,8 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default"):
 
     rec_weight = 20.0
     rec_note = "Начните с разминочного сета"
+    progression_status = "START"
+    progression_badge = "Стартовый"
     pr_weight = 0.0
     pr_e1rm = 0.0
     total_sessions = 0
