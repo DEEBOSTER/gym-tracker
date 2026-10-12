@@ -1543,6 +1543,7 @@ function getAdaptiveRestInfo(exerciseName = '', setType = 'normal', reps = 10, u
 // ==========================================
 // 💡 DYNAMIC NEXT SET WEIGHT ADVISOR
 // ==========================================
+// ==========================================
 function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = null) {
   if (!currentPlanEx) return null;
 
@@ -1557,6 +1558,8 @@ function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = n
   const maxReps = parts.length > 1 ? (parseInt(parts[1], 10) || minReps) : minReps;
 
   const baseRecWeight = parseFloat(currentPlanEx.recommended_weight) || 20;
+  const allTimePr = parseFloat(currentPlanEx.pr_weight) || 0;
+  const prE1rm = parseFloat(currentPlanEx.pr_e1rm) || 0;
 
   // Filter working sets
   const workingSets = currentSets.filter(s => (s.set_type || 'normal') !== 'warmup');
@@ -1581,13 +1584,24 @@ function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = n
 
   // If no working sets done yet (about to do Set 1)
   if (workingSets.length === 0) {
+    const startE1rm = Math.round(baseRecWeight * (1.0 + maxReps / 30.0) * 10) / 10;
+    let startMsg = `Подход 1 из ${targetSets}: расчетный рабочий вес ${baseRecWeight} кг на ${targetRepsStr} повт. (расчетный 1ПМ: ~${startE1rm} кг).`;
+    if (currentPlanEx.recommendation_note) {
+      startMsg = `${currentPlanEx.recommendation_note} ${startMsg}`;
+    }
+    if (allTimePr > 0) {
+      startMsg += ` 🏆 Ваш рекорд: ${allTimePr} кг.`;
+    }
+
     return {
       status: 'START',
       badge: 'СТАРТОВЫЙ ВЕС 🎯',
-      badgeColor: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+      badgeColor: 'bg-[#fc4c02]/15 text-[#fc4c02] border-[#fc4c02]/30',
       recWeight: baseRecWeight,
       recReps: maxReps,
-      message: `Подход 1 из ${targetSets}: начните с расчетного веса ${baseRecWeight} кг на ${targetRepsStr} повторений. Оцените запас сил по RPE перед повышением.`,
+      recRest: isBarbellOrLegs ? 120 : isDumbbellOrSmall ? 60 : 90,
+      e1rm: startE1rm,
+      message: startMsg,
       canApply: false
     };
   }
@@ -1598,8 +1612,12 @@ function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = n
   const lastReps = parseInt(lastSet.reps, 10) || minReps;
   const lastType = lastSet.set_type || 'normal';
 
+  // Calculate current set e1RM (Epley formula)
+  const currentSetE1rm = Math.round(lastWeight * (1.0 + lastReps / 30.0) * 10) / 10;
+
   let recWeight = lastWeight;
   let recReps = maxReps;
+  let recRest = isBarbellOrLegs ? 120 : isDumbbellOrSmall ? 60 : 90;
   let badge = 'ДЕРЖАТЬ ВЕС 💪';
   let badgeColor = 'bg-sky-500/20 text-sky-400 border-sky-500/30';
   let message = '';
@@ -1612,9 +1630,13 @@ function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = n
     recWeight = Math.round((lastWeight + addStep) * 10) / 10;
     recReps = maxReps;
     status = 'INCREASE';
+    recRest += 15;
     badge = `ПОВЫСИТЬ ВЕС (+${addStep} кг) 🚀`;
-    badgeColor = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 ring-1 ring-emerald-400';
-    message = `Отличный запас сил! В прошлом подходе выжато ${lastReps} повт. (цель ${targetRepsStr}). На подход ${nextSetNum} поставьте ${recWeight} кг, чтобы оставаться в зоне мышечного роста.`;
+    badgeColor = 'bg-[#fc4c02]/20 text-[#fc4c02] border-[#fc4c02]/40 ring-1 ring-[#fc4c02]/40 font-black';
+    message = `Высокий запас сил (RIR ~3)! Выжато ${lastReps} повт. с весом ${lastWeight} кг (расчетный 1ПМ: ${currentSetE1rm} кг). На подход ${nextSetNum} поставьте ${recWeight} кг для пикового стимула гипертрофии.`;
+    if (allTimePr > 0 && recWeight > allTimePr) {
+      message += ` 🔥 Вы идете на новый рекорд (текущий PR: ${allTimePr} кг)!`;
+    }
   }
   // 2. SEVERE UNDERSHOT OR FAILURE (e.g. Target 8-10, failed at 5 or 6 reps)
   else if (lastReps < minReps || (lastType === 'failure' && lastReps <= minReps)) {
@@ -1623,23 +1645,24 @@ function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = n
     recWeight = Math.max(isDumbbellOrSmall ? 2 : 10, Math.round((lastWeight - dropStep) * 10) / 10);
     recReps = minReps;
     status = 'DECREASE';
+    recRest += 30; // Extra rest to replenish ATP/PCr
     badge = `СНИЗИТЬ ВЕС (-${dropStep} кг) ⚖️`;
-    badgeColor = 'bg-amber-500/20 text-amber-400 border-amber-500/30 ring-1 ring-amber-400';
-    message = `Раннее закисление: ${lastReps} повт. (ниже целевых ${targetRepsStr}). Сбросьте до ${recWeight} кг на подход ${nextSetNum}, чтобы сохранить чистую технику и набрать объем.`;
+    badgeColor = 'bg-amber-500/20 text-amber-400 border-amber-500/30 ring-1 ring-amber-400 font-black';
+    message = `Раннее мышечное утомление: ${lastReps} повт. (ниже ${targetRepsStr}). Сбросьте до ${recWeight} кг на подход ${nextSetNum}, чтобы сохранить чистоту биомеханики и набрать качественный тренировочный объем. Отдохните подольше (+30 сек).`;
   }
   // 3. HIT TOP OF RANGE (e.g. Target 8-10, did 10 clean reps)
   else if (lastReps === maxReps) {
     status = 'TOP_HIT';
     badge = 'ТОЧНОЕ ПОПАДАНИЕ 🎯';
-    badgeColor = 'bg-teal-500/20 text-teal-300 border-teal-500/30';
+    badgeColor = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-black';
     if (isFinalSet) {
       recWeight = lastWeight;
       recReps = maxReps;
-      message = `Идеальные ${lastReps} повт.! Заключительный ${nextSetNum}-й подход: выжмите максимум на ${recWeight} кг с фиксацией в пиковой точке.`;
+      message = `Идеальные ${lastReps} повт.! Заключительный ${nextSetNum}-й подход: выжмите максимум на ${recWeight} кг с контролем негативной фазы (2–3 сек).`;
     } else {
       recWeight = lastWeight;
       recReps = maxReps;
-      message = `Точно в цель (${lastWeight} кг × ${lastReps})! Оставьте ${lastWeight} кг на подход ${nextSetNum}. Если чувствуете кураж — накиньте +${weightStep} кг на персональный рекорд.`;
+      message = `Точно в цель (${lastWeight} кг × ${lastReps}, 1ПМ ~${currentSetE1rm} кг). Оставьте ${lastWeight} кг на подход ${nextSetNum}. Если чувствуете мощный драйв — накиньте +${weightStep} кг.`;
     }
   }
   // 4. SOLID WORK ZONE (e.g. Target 8-10, did 8 or 9 reps)
@@ -1649,11 +1672,11 @@ function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = n
     badgeColor = 'bg-sky-500/20 text-sky-400 border-sky-500/30';
     recWeight = lastWeight;
     recReps = lastReps;
-    message = `Хороший рабочий сет (${lastWeight} кг × ${lastReps} повт.). Оставляем ${recWeight} кг на подход ${nextSetNum}. Фокус на контроле негативной фазы (2–3 сек).`;
+    message = `Отличный рабочий сет (${lastWeight} кг × ${lastReps} повт.). Оставляем ${recWeight} кг на подход ${nextSetNum}. Контролируйте пиковое сокращение в верхней точке.`;
   }
 
   if (isFinalSet) {
-    message += ' 🔥 Заключительный подход упражнения!';
+    message += ' 🔥 Финальный подход упражнения!';
   }
 
   return {
@@ -1662,6 +1685,8 @@ function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = n
     badgeColor,
     recWeight,
     recReps,
+    recRest,
+    e1rm: currentSetE1rm,
     message,
     canApply: recWeight !== lastWeight
   };
@@ -4098,16 +4123,16 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
   return (
     <div className="space-y-3 pb-2 select-none">
-      {/* 1. Responsive 2-Tier Workout Header (100% mobile fit, no overflow) */}
-      <div className="bg-gym-900 border border-gym-800 rounded-2xl p-3 shadow-lg space-y-2.5">
+      {/* 1. Responsive 2-Tier Workout Header (Strava Athletic Style) */}
+      <div className="bg-[#18191d] border border-white/10 rounded-2xl p-3 shadow-xl space-y-2.5">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center space-x-2 min-w-0">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 live-dot shrink-0"></span>
-            <h2 className="text-sm font-extrabold text-white tracking-tight truncate">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#fc4c02] live-dot shrink-0"></span>
+            <h2 className="text-sm font-black text-white tracking-tight truncate">
               {activeWorkout.title}
             </h2>
           </div>
-          <span className="text-xs font-mono font-black text-emerald-400 bg-gym-950/80 border border-gym-800 px-2.5 py-1 rounded-xl shrink-0 shadow-inner">
+          <span className="text-xs font-mono font-black text-[#fc4c02] bg-[#121316] border border-white/10 px-2.5 py-1 rounded-xl shrink-0">
             ⏱ {formatTime(workoutDuration)}
           </span>
         </div>
@@ -4118,7 +4143,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
               type="button"
               onClick={onMinimize}
               title="Свернуть тренировку в фоновый режим"
-              className="w-full text-center text-xs font-bold text-slate-300 hover:text-white bg-gym-800 hover:bg-gym-700 py-2 px-1 rounded-xl border border-gym-700 active:scale-95 transition flex items-center justify-center space-x-1"
+              className="w-full text-center text-xs font-bold text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 py-2 px-1 rounded-xl border border-white/10 active:scale-95 transition flex items-center justify-center space-x-1"
             >
               <span>▾</span>
               <span>Свернуть</span>
@@ -4139,7 +4164,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
             type="button"
             onClick={handleFinishWorkout}
             title="Завершить тренировку и сохранить в историю"
-            className="w-full text-center text-xs font-black text-emerald-300 hover:text-white bg-emerald-500/20 hover:bg-emerald-500/30 py-2 px-1 rounded-xl border border-emerald-500/50 shadow-sm active:scale-95 transition flex items-center justify-center space-x-1"
+            className="w-full text-center text-xs font-black text-white bg-[#fc4c02] hover:bg-[#e04402] py-2 px-1 rounded-xl border border-[#fc4c02]/50 shadow-md shadow-[#fc4c02]/25 active:scale-95 transition flex items-center justify-center space-x-1"
           >
             <span>✓</span>
             <span>Завершить</span>
@@ -4160,10 +4185,10 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                 onClick={() => setCurrentPlanIndex(idx)}
                 className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${
                   complete
-                    ? 'bg-emerald-400'
+                    ? 'bg-[#fc4c02]'
                     : isCurrent
-                    ? 'bg-sky-400 ring-2 ring-sky-400/40'
-                    : 'bg-gym-800'
+                    ? 'bg-white ring-2 ring-white/30'
+                    : 'bg-white/10'
                 }`}
                 title={`${idx + 1}. ${p.name}`}
               />
@@ -4171,9 +4196,9 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           })}
         </div>
 
-        <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+        <div className="flex items-center justify-between text-[11px] text-zinc-400 font-mono">
           <span>Упр {currentPlanIndex + 1} из {plannedList.length}</span>
-          <span className="text-emerald-400 font-bold">
+          <span className="text-[#fc4c02] font-black">
             {isCurrentExCompleted ? '✓ Упражнение выполнено' : (
               setType === 'warmup' ? '🔥 Разминочный сет (W)' : `Подход ${currentSetNum} из ${totalTargetSets}`
             )}
@@ -4181,25 +4206,25 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
         </div>
       </div>
 
-      {/* 3. Rest Timer (Background-accurate, Adaptive badges, Presets & Extensions) */}
+      {/* 3. Rest Timer (Strava Athletic Style) */}
       {restActive && (
-        <div className="bg-gym-950/95 border border-sky-500/40 rounded-3xl p-3.5 shadow-xl animate-in fade-in space-y-3">
+        <div className="bg-[#18191d] border border-[#fc4c02]/40 rounded-3xl p-4 shadow-2xl animate-in fade-in space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-gym-950 flex flex-col items-center justify-center font-mono font-black shadow-lg shadow-sky-500/20">
+              <div className="w-12 h-12 rounded-2xl bg-[#fc4c02] text-white flex flex-col items-center justify-center font-mono font-black shadow-lg shadow-[#fc4c02]/30">
                 <span className="text-sm leading-none">{formatTime(restSecondsLeft)}</span>
-                <span className="text-[8px] opacity-75 font-sans uppercase font-bold mt-0.5">отдых</span>
+                <span className="text-[8px] opacity-80 font-sans uppercase font-bold mt-0.5">отдых</span>
               </div>
               <div className="space-y-0.5">
                 <div className="flex items-center space-x-1.5 flex-wrap">
                   <span className="text-xs font-black text-white">Таймер отдыха</span>
                   {restBadge && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#fc4c02]/20 text-[#fc4c02] border border-[#fc4c02]/30">
                       {restBadge}
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-300 font-medium leading-tight">
+                <p className="text-[11px] text-zinc-300 font-medium leading-tight">
                   {restReason || 'Дышите глубоко и восстанавливайте силы'}
                 </p>
               </div>
@@ -4219,11 +4244,11 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                     cancelBotRestPush();
                   }
                 }}
-                title={botPushEnabled ? 'Звуковой пуш Telegram включен (звонит даже при выключенном экране)' : 'Звуковой пуш Telegram выключен'}
+                title={botPushEnabled ? 'Звуковой пуш Telegram включен' : 'Звуковой пуш Telegram выключен'}
                 className={`px-2 py-1 rounded-xl flex items-center space-x-1 text-[10px] font-bold transition border ${
                   botPushEnabled 
-                    ? 'bg-sky-500/20 border-sky-400/50 text-sky-200 shadow-sm' 
-                    : 'bg-gym-900 border-gym-700 text-slate-500'
+                    ? 'bg-[#fc4c02]/15 border-[#fc4c02]/40 text-[#fc4c02] shadow-sm' 
+                    : 'bg-white/5 border-white/10 text-zinc-500'
                 }`}
               >
                 <span>{botPushEnabled ? '📲 Звук в TG' : '🔕 Без TG'}</span>
@@ -4239,8 +4264,8 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                 title={soundEnabled ? 'Звук в приложении включен' : 'Звук выключен'}
                 className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs transition border ${
                   soundEnabled 
-                    ? 'bg-sky-500/20 border-sky-500/40 text-sky-300' 
-                    : 'bg-gym-900 border-gym-700 text-slate-500'
+                    ? 'bg-[#fc4c02]/15 border-[#fc4c02]/40 text-[#fc4c02]' 
+                    : 'bg-white/5 border-white/10 text-zinc-500'
                 }`}
               >
                 {soundEnabled ? '🔔' : '🔕'}
@@ -4248,7 +4273,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
               <button
                 onClick={cancelRestTimer}
-                className="text-[11px] font-bold bg-gym-900 hover:bg-gym-800 text-slate-300 px-2.5 py-1.5 rounded-xl border border-gym-700 active:scale-95 transition"
+                className="text-[11px] font-bold bg-white/5 hover:bg-white/10 text-zinc-300 px-2.5 py-1.5 rounded-xl border border-white/10 active:scale-95 transition"
               >
                 Пропустить
               </button>
@@ -4256,9 +4281,9 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           </div>
 
           {/* Visual Progress Bar */}
-          <div className="w-full bg-gym-900 h-1.5 rounded-full overflow-hidden border border-gym-800">
+          <div className="w-full bg-black/40 h-1.5 rounded-full overflow-hidden border border-white/5">
             <div 
-              className="bg-gradient-to-r from-sky-400 to-emerald-400 h-full transition-all duration-500 ease-linear rounded-full"
+              className="bg-[#fc4c02] h-full transition-all duration-500 ease-linear rounded-full shadow-[0_0_8px_rgba(252,76,2,0.8)]"
               style={{
                 width: `${Math.min(100, Math.max(0, restPreset > 0 ? (restSecondsLeft / restPreset) * 100 : 0))}%`
               }}
@@ -4266,7 +4291,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           </div>
 
           {/* Quick presets & Time adjustments */}
-          <div className="flex items-center justify-between gap-1 pt-1 border-t border-gym-800/80 text-[11px]">
+          <div className="flex items-center justify-between gap-1 pt-1 border-t border-white/5 text-[11px]">
             <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar py-0.5 max-w-[65%]">
               {[45, 60, 90, 120, 150, 180].map((s) => (
                 <button
@@ -4275,8 +4300,8 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                   onClick={() => setFixedRestTime(s)}
                   className={`px-1.5 py-0.5 rounded-lg font-mono text-[10px] font-bold border shrink-0 transition ${
                     Math.abs(restSecondsLeft - s) < 3
-                      ? 'bg-sky-500 text-gym-950 border-sky-400 font-black'
-                      : 'bg-gym-900 text-slate-400 border-gym-800 hover:text-white'
+                      ? 'bg-[#fc4c02] text-white border-[#fc4c02] font-black shadow-sm shadow-[#fc4c02]/30'
+                      : 'bg-[#121316] text-zinc-400 border-white/10 hover:text-white'
                   }`}
                 >
                   {s >= 60 ? `${s / 60}м` : `${s}с`}
@@ -4288,14 +4313,14 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
               <button
                 type="button"
                 onClick={() => adjustRestTime(-15)}
-                className="bg-gym-900 hover:bg-gym-800 text-slate-300 border border-gym-800 px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold active:scale-95 transition"
+                className="bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold active:scale-95 transition"
               >
                 -15с
               </button>
               <button
                 type="button"
                 onClick={() => adjustRestTime(30)}
-                className="bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-lg font-mono text-[10px] font-black active:scale-95 transition"
+                className="bg-[#fc4c02]/20 hover:bg-[#fc4c02]/30 text-[#fc4c02] border border-[#fc4c02]/30 px-2 py-0.5 rounded-lg font-mono text-[10px] font-black active:scale-95 transition"
               >
                 +30с
               </button>
@@ -4304,9 +4329,9 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
         </div>
       )}
 
-      {/* 4. CURRENT EXERCISE CARD (Airy, Modern, Uncluttered) */}
+      {/* 4. CURRENT EXERCISE CARD (Strava Athletic Style) */}
       {currentPlanEx && (
-        <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 shadow-xl space-y-3.5">
+        <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 shadow-xl space-y-3.5">
           {/* Header: Title + Actions */}
           <div className="flex items-start justify-between gap-2">
             <div className="space-y-1">
@@ -4314,13 +4339,13 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                 {currentPlanEx.name}
               </h3>
               <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                <span className="text-xs font-mono font-bold text-emerald-400">
+                <span className="text-xs font-mono font-bold text-[#fc4c02]">
                   🎯 {currentPlanEx.recommended_weight} кг · {currentPlanEx.target_sets}×{currentPlanEx.target_reps}
                 </span>
                 {currentPlanEx.progression_badge && (
                   <span className={`text-[10px] font-black px-1.5 py-0.2 rounded uppercase ${
                     currentPlanEx.progression_status === 'INCREASE'
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      ? 'bg-[#fc4c02]/20 text-[#fc4c02] border border-[#fc4c02]/40'
                       : currentPlanEx.progression_status === 'MAINTAIN'
                       ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
                       : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
@@ -4336,7 +4361,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                 type="button"
                 onClick={() => setShowWarmupModal(true)}
                 title="Разминочная лестница (пирамида подходов)"
-                className="text-xs text-amber-400 hover:text-white bg-amber-500/15 hover:bg-amber-500/25 px-2.5 py-1.5 rounded-xl border border-amber-500/40 flex items-center space-x-1 font-bold active:scale-95 transition shadow-sm"
+                className="text-xs text-amber-300 hover:text-white bg-amber-500/15 hover:bg-amber-500/25 px-2.5 py-1.5 rounded-xl border border-amber-500/40 flex items-center space-x-1 font-bold active:scale-95 transition shadow-sm"
               >
                 <span>🪜 Разминка</span>
               </button>
@@ -4344,9 +4369,9 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
               <button
                 type="button"
                 onClick={() => setShowVideoModal(true)}
-                className="text-xs text-sky-400 hover:text-white bg-sky-500/15 hover:bg-sky-500/25 px-2.5 py-1.5 rounded-xl border border-sky-500/40 flex items-center space-x-1 font-bold active:scale-95 transition shadow-sm"
+                className="text-xs text-white hover:text-white bg-white/5 hover:bg-white/10 px-2.5 py-1.5 rounded-xl border border-white/10 flex items-center space-x-1 font-bold active:scale-95 transition shadow-sm"
               >
-                <svg className="w-3.5 h-3.5 text-sky-400" viewBox="0 0 24 24" fill="currentColor">
+                <svg className="w-3.5 h-3.5 text-[#fc4c02]" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M8 5v14l11-7z"/>
                 </svg>
                 <span>Техника</span>
@@ -4356,7 +4381,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                 type="button"
                 onClick={() => setShowSwapModal(true)}
                 title="Заменить упражнение"
-                className="w-8 h-8 rounded-xl bg-gym-800 hover:bg-gym-700 text-slate-300 hover:text-white flex items-center justify-center border border-gym-700 active:scale-95 transition text-xs"
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center border border-white/10 active:scale-95 transition text-xs"
               >
                 🔄
               </button>
@@ -4368,26 +4393,26 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
             <div>
               <button
                 onClick={() => setShowCoachTip(prev => !prev)}
-                className="text-[11px] text-slate-400 hover:text-slate-200 flex items-center space-x-1 transition active:scale-95"
+                className="text-[11px] text-zinc-400 hover:text-zinc-200 flex items-center space-x-1 transition active:scale-95"
               >
                 <span>💡 Подсказка и прошлая тренировка</span>
                 <span className="text-[9px]">{showCoachTip ? '▲' : '▼'}</span>
               </button>
 
               {showCoachTip && (
-                <div className="mt-2 bg-gym-950/80 border border-gym-800 rounded-2xl p-3 text-xs space-y-1.5 animate-in fade-in">
+                <div className="mt-2 bg-[#121316] border border-white/5 rounded-2xl p-3 text-xs space-y-1.5 animate-in fade-in">
                   {currentPlanEx.recommendation_note && (
-                    <p className="text-emerald-300 font-medium leading-relaxed">
+                    <p className="text-[#fc4c02] font-semibold leading-relaxed">
                       {currentPlanEx.recommendation_note}
                     </p>
                   )}
                   {currentPlanEx.last_sets_summary?.length > 0 && (
-                    <p className="text-slate-400 text-[11px]">
+                    <p className="text-zinc-400 text-[11px]">
                       Прошлая тренировка: <strong className="text-white font-mono">{currentPlanEx.last_sets_summary.join(', ')}</strong>
                     </p>
                   )}
                   {currentPlanEx.tip && (
-                    <p className="text-slate-400 text-[11px] italic">
+                    <p className="text-zinc-400 text-[11px] italic">
                       💡 {currentPlanEx.tip}
                     </p>
                   )}
@@ -4398,12 +4423,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
           {/* IF COMPLETED */}
           {isCurrentExCompleted ? (
-            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-center space-y-2.5">
-              <p className="text-emerald-400 font-black text-sm">✓ Все {totalTargetSets} подхода выполнены!</p>
+            <div className="bg-[#fc4c02]/10 border border-[#fc4c02]/30 rounded-2xl p-4 text-center space-y-2.5">
+              <p className="text-[#fc4c02] font-black text-sm">✓ Все {totalTargetSets} подхода выполнены!</p>
               {currentPlanIndex < plannedList.length - 1 ? (
                 <button
                   onClick={() => setCurrentPlanIndex(prev => prev + 1)}
-                  className="w-full py-3.5 bg-emerald-500 text-gym-950 font-black text-sm rounded-xl shadow-lg flex items-center justify-center space-x-1 active:scale-95 transition"
+                  className="w-full py-3.5 bg-[#fc4c02] hover:bg-[#e04402] text-white font-black text-sm rounded-xl shadow-lg shadow-[#fc4c02]/25 flex items-center justify-center space-x-1 active:scale-95 transition"
                 >
                   <span>СЛЕДУЮЩЕЕ УПРАЖНЕНИЕ</span>
                   <Icons.Next />
@@ -4411,7 +4436,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
               ) : (
                 <button
                   onClick={handleFinishWorkout}
-                  className="w-full py-3.5 bg-emerald-500 text-gym-950 font-black text-sm rounded-xl shadow-lg active:scale-95 transition"
+                  className="w-full py-3.5 bg-[#fc4c02] hover:bg-[#e04402] text-white font-black text-sm rounded-xl shadow-lg shadow-[#fc4c02]/25 active:scale-95 transition"
                 >
                   🎉 ВСЯ ПРОГРАММА ВЫПОЛНЕНА! ЗАВЕРШИТЬ
                 </button>
@@ -4420,14 +4445,14 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           ) : (
             <>
               {/* Set Type Pill Selector */}
-              <div className="bg-gym-950/90 border border-gym-800 p-1 rounded-2xl flex items-center space-x-1">
+              <div className="bg-[#121316] border border-white/5 p-1 rounded-2xl flex items-center space-x-1">
                 <button
                   type="button"
                   onClick={() => { setSetType('normal'); triggerHaptic('light'); }}
                   className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 ${
                     setType === 'normal'
-                      ? 'bg-emerald-500 text-gym-950 shadow-sm'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-[#fc4c02] text-white font-black shadow-md shadow-[#fc4c02]/25'
+                      : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   <span>Рабочий</span>
@@ -4442,8 +4467,8 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                   }}
                   className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 ${
                     setType === 'warmup'
-                      ? 'bg-amber-500 text-gym-950 shadow-sm'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-amber-500 text-gym-950 font-black shadow-sm'
+                      : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   <span className="w-3.5 h-3.5 rounded bg-amber-500/20 text-amber-400 font-black text-[9px] flex items-center justify-center">W</span>
@@ -4455,8 +4480,8 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                   onClick={() => { setSetType('drop'); triggerHaptic('light'); }}
                   className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 ${
                     setType === 'drop'
-                      ? 'bg-purple-500 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-purple-500 text-white font-black shadow-sm'
+                      : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   <span className="w-3.5 h-3.5 rounded bg-purple-500/20 text-purple-300 font-black text-[9px] flex items-center justify-center">D</span>
@@ -4468,8 +4493,8 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                   onClick={() => { setSetType('failure'); triggerHaptic('light'); }}
                   className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1 ${
                     setType === 'failure'
-                      ? 'bg-rose-500 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-rose-500 text-white font-black shadow-sm'
+                      : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   <span className="w-3.5 h-3.5 rounded bg-rose-500/20 text-rose-300 font-black text-[9px] flex items-center justify-center">F</span>
@@ -4479,13 +4504,13 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
               {/* Dynamic Next Set Advice Card (AI Coach recommendations based on previous set) */}
               {nextSetAdvice && setType !== 'warmup' && (
-                <div className="bg-gym-950/80 border border-gym-800 rounded-2xl p-3 shadow-md space-y-1.5 animate-in fade-in">
+                <div className="bg-[#121316] border border-white/10 rounded-2xl p-3 shadow-md space-y-1.5 animate-in fade-in">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-1.5">
                       <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border uppercase tracking-wider ${nextSetAdvice.badgeColor}`}>
                         {nextSetAdvice.badge}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className="text-[10px] text-zinc-400 font-mono">
                         Подход {Math.min(currentPlanEx.target_sets, currentWorkingCount + 1)} из {currentPlanEx.target_sets}
                       </span>
                     </div>
@@ -4497,14 +4522,14 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                           setReps(nextSetAdvice.recReps);
                           triggerHaptic('medium');
                         }}
-                        className="text-[10px] font-black bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-2.5 py-1 rounded-xl transition active:scale-95 flex items-center space-x-1 shadow-sm"
+                        className="text-[10px] font-black bg-[#fc4c02]/20 hover:bg-[#fc4c02]/30 text-[#fc4c02] border border-[#fc4c02]/40 px-2.5 py-1 rounded-xl transition active:scale-95 flex items-center space-x-1 shadow-sm"
                       >
                         <span>Применить {nextSetAdvice.recWeight} кг</span>
                         <span>✓</span>
                       </button>
                     )}
                   </div>
-                  <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                  <p className="text-xs text-zinc-200 leading-relaxed font-medium">
                     {nextSetAdvice.message}
                   </p>
                 </div>
@@ -4513,15 +4538,15 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
               {/* Steppers for Weight & Reps */}
               <div className="grid grid-cols-2 gap-2.5">
                 {/* Weight Stepper */}
-                <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3 flex flex-col items-center justify-between">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <div className="bg-[#121316] border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-between">
+                  <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
                     Вес (кг)
                   </span>
 
                   <div className="flex items-center justify-between w-full my-1.5 px-0.5">
                     <button
                       onClick={() => { adjustWeight(-2.5); triggerHaptic('light'); }}
-                      className="w-9 h-9 rounded-xl bg-gym-800 active:bg-gym-700 text-slate-200 font-bold text-xs flex items-center justify-center active:scale-90 transition"
+                      className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 active:scale-90 text-white font-bold text-xs flex items-center justify-center border border-white/10 transition"
                     >
                       -2.5
                     </button>
@@ -4538,28 +4563,28 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
                     <button
                       onClick={() => { adjustWeight(+2.5); triggerHaptic('light'); }}
-                      className="w-9 h-9 rounded-xl bg-emerald-500/20 active:bg-emerald-500/40 text-emerald-400 border border-emerald-500/40 font-bold text-xs flex items-center justify-center active:scale-90 transition"
+                      className="w-9 h-9 rounded-xl bg-[#fc4c02]/20 hover:bg-[#fc4c02]/30 active:scale-90 text-[#fc4c02] border border-[#fc4c02]/40 font-bold text-xs flex items-center justify-center transition"
                     >
                       +2.5
                     </button>
                   </div>
 
                   <div className="flex space-x-1.5 w-full justify-center">
-                    <button onClick={() => { adjustWeight(-5); triggerHaptic('light'); }} className="text-[10px] font-mono text-slate-400 bg-gym-900 px-2 py-0.5 rounded-lg border border-gym-800 active:bg-gym-800">-5</button>
-                    <button onClick={() => { adjustWeight(+5); triggerHaptic('light'); }} className="text-[10px] font-mono text-emerald-400/90 bg-gym-900 px-2 py-0.5 rounded-lg border border-gym-800 active:bg-gym-800">+5</button>
+                    <button onClick={() => { adjustWeight(-5); triggerHaptic('light'); }} className="text-[10px] font-mono text-zinc-400 bg-[#0f1013] px-2 py-0.5 rounded-lg border border-white/5 active:bg-white/10">-5</button>
+                    <button onClick={() => { adjustWeight(+5); triggerHaptic('light'); }} className="text-[10px] font-mono text-[#fc4c02] bg-[#0f1013] px-2 py-0.5 rounded-lg border border-white/5 active:bg-white/10">+5</button>
                   </div>
                 </div>
 
                 {/* Reps Stepper */}
-                <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3 flex flex-col items-center justify-between">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <div className="bg-[#121316] border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-between">
+                  <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
                     Повторения
                   </span>
 
                   <div className="flex items-center justify-between w-full my-1.5 px-0.5">
                     <button
                       onClick={() => { adjustReps(-1); triggerHaptic('light'); }}
-                      className="w-9 h-9 rounded-xl bg-gym-800 active:bg-gym-700 text-slate-200 font-bold text-sm flex items-center justify-center active:scale-90 transition"
+                      className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 active:scale-90 text-white font-bold text-sm flex items-center justify-center border border-white/10 transition"
                     >
                       -1
                     </button>
@@ -4576,7 +4601,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
                     <button
                       onClick={() => { adjustReps(+1); triggerHaptic('light'); }}
-                      className="w-9 h-9 rounded-xl bg-sky-500/20 active:bg-sky-500/40 text-sky-400 border border-sky-500/40 font-bold text-sm flex items-center justify-center active:scale-90 transition"
+                      className="w-9 h-9 rounded-xl bg-[#fc4c02]/20 hover:bg-[#fc4c02]/30 active:scale-90 text-[#fc4c02] border border-[#fc4c02]/40 font-bold text-sm flex items-center justify-center transition"
                     >
                       +1
                     </button>
@@ -4589,8 +4614,8 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                         onClick={() => { setReps(r); triggerHaptic('light'); }}
                         className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border transition ${
                           reps === r
-                            ? 'bg-sky-500 text-gym-950 font-black border-sky-400'
-                            : 'bg-gym-900 text-slate-400 border-gym-800 active:bg-gym-800'
+                            ? 'bg-[#fc4c02] text-white font-black border-[#fc4c02] shadow-sm shadow-[#fc4c02]/25'
+                            : 'bg-[#0f1013] text-zinc-400 border-white/5 active:bg-white/10'
                         }`}
                       >
                         {r}
@@ -4607,14 +4632,14 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                   handleAddSet();
                 }}
                 disabled={isSubmitting}
-                className={`w-full py-4 font-black text-sm rounded-2xl shadow-lg active:scale-[0.98] transition flex items-center justify-center space-x-2 disabled:opacity-50 ${
+                className={`w-full py-4 font-black text-sm rounded-2xl shadow-xl active:scale-[0.98] transition flex items-center justify-center space-x-2 disabled:opacity-50 cursor-pointer ${
                   setType === 'warmup'
                     ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-gym-950 shadow-amber-500/25'
                     : setType === 'drop'
                     ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-purple-500/25'
                     : setType === 'failure'
                     ? 'bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-rose-500/25'
-                    : 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-gym-950 shadow-emerald-500/25'
+                    : 'bg-[#fc4c02] hover:bg-[#e04402] text-white shadow-[#fc4c02]/30'
                 }`}
               >
                 {isSubmitting ? (
@@ -4638,12 +4663,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
           {/* Completed Sets Summary for CURRENT Exercise */}
           {(setsByExercise[currentPlanEx.name] || []).length > 0 && (
-            <div className="pt-2 border-t border-gym-800/80">
-              <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
-                <span className="font-bold text-slate-300">Выполнено:</span>
-                <span className="text-[10px] text-slate-500 font-mono">нажмите для ред. ✏️</span>
+            <div className="pt-2 border-t border-white/5">
+              <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-1.5">
+                <span className="font-bold text-zinc-300">Выполнено:</span>
+                <span className="text-[10px] text-zinc-500 font-mono">нажмите для ред. ✏️</span>
               </div>
-              <div className="flex items-center space-x-1.5 text-[11px] text-slate-400 flex-wrap gap-y-1">
+              <div className="flex items-center space-x-1.5 text-[11px] text-zinc-400 flex-wrap gap-y-1">
                 {(setsByExercise[currentPlanEx.name] || []).map((s, idx) => {
                   const st = s.set_type || 'normal';
                   if (st === 'warmup') {
@@ -4652,12 +4677,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                         key={s.id || idx}
                         type="button"
                         onClick={() => { triggerHaptic('light'); setEditingSet(s); }}
-                        className="bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                        className="bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-mono font-bold text-[10px] px-2.5 py-1 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
                         title="Нажмите, чтобы изменить или удалить"
                       >
                         <span className="text-[9px] bg-amber-500 text-gym-950 font-black px-1 rounded">W</span>
                         <span>{s.weight} кг × {s.reps}</span>
-                        <span className="text-[8px] text-amber-400/80">✏️</span>
+                        <span className="text-[8px] text-amber-400">✏️</span>
                       </button>
                     );
                   }
@@ -4667,12 +4692,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                         key={s.id || idx}
                         type="button"
                         onClick={() => { triggerHaptic('light'); setEditingSet(s); }}
-                        className="bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                        className="bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-300 font-mono font-bold text-[10px] px-2.5 py-1 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
                         title="Нажмите, чтобы изменить или удалить"
                       >
                         <span className="text-[9px] bg-purple-500 text-white font-black px-1 rounded">D</span>
                         <span>{s.weight} кг × {s.reps}</span>
-                        <span className="text-[8px] text-purple-400/80">✏️</span>
+                        <span className="text-[8px] text-purple-400">✏️</span>
                       </button>
                     );
                   }
@@ -4682,12 +4707,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                         key={s.id || idx}
                         type="button"
                         onClick={() => { triggerHaptic('light'); setEditingSet(s); }}
-                        className="bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                        className="bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 font-mono font-bold text-[10px] px-2.5 py-1 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
                         title="Нажмите, чтобы изменить или удалить"
                       >
                         <span className="text-[9px] bg-rose-500 text-white font-black px-1 rounded">F</span>
                         <span>{s.weight} кг × {s.reps}</span>
-                        <span className="text-[8px] text-rose-400/80">✏️</span>
+                        <span className="text-[8px] text-rose-400">✏️</span>
                       </button>
                     );
                   }
@@ -4696,11 +4721,11 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                       key={s.id || idx}
                       type="button"
                       onClick={() => { triggerHaptic('light'); setEditingSet(s); }}
-                      className="bg-gym-950 hover:bg-gym-800 border border-gym-800 hover:border-emerald-500/50 px-2 py-0.5 rounded-lg text-emerald-400 font-mono font-bold text-[10px] flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                      className="bg-white/5 hover:bg-white/10 border border-white/10 px-2.5 py-1 rounded-lg text-white font-mono font-bold text-[10px] flex items-center space-x-1 active:scale-95 transition cursor-pointer"
                       title="Нажмите, чтобы изменить или удалить"
                     >
                       <span>#{s.set_number || idx + 1}: {s.weight} кг × {s.reps}</span>
-                      <span className="text-[8px] text-slate-500">✏️</span>
+                      <span className="text-[8px] text-zinc-400">✏️</span>
                     </button>
                   );
                 })}
@@ -4713,7 +4738,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
             <div className="text-center pt-0.5">
               <button
                 onClick={() => setCurrentPlanIndex(prev => prev + 1)}
-                className="text-[11px] text-slate-500 hover:text-slate-300 transition"
+                className="text-[11px] text-zinc-500 hover:text-zinc-300 transition"
               >
                 Тренажер занят? Пропустить ⏭
               </button>
@@ -4895,8 +4920,8 @@ function AnalyticsScreen({ exercises }) {
     }
 
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
-    gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+    gradient.addColorStop(0, 'rgba(252, 76, 2, 0.40)');
+    gradient.addColorStop(1, 'rgba(252, 76, 2, 0.0)');
 
     chartInstanceRef.current = new Chart(ctx, {
       type: 'line',
@@ -4906,13 +4931,13 @@ function AnalyticsScreen({ exercises }) {
           {
             label: metricLabel,
             data: values,
-            borderColor: '#10b981',
+            borderColor: '#fc4c02',
             backgroundColor: gradient,
             borderWidth: 3,
             fill: true,
             tension: 0.35,
-            pointBackgroundColor: '#10b981',
-            pointBorderColor: '#0c121d',
+            pointBackgroundColor: '#fc4c02',
+            pointBorderColor: '#0f1013',
             pointBorderWidth: 2,
             pointRadius: 5,
             pointHoverRadius: 7,
@@ -4925,10 +4950,10 @@ function AnalyticsScreen({ exercises }) {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#0c121d',
-            titleColor: '#f8fafc',
-            bodyColor: '#34d399',
-            borderColor: '#1e293b',
+            backgroundColor: '#121316',
+            titleColor: '#ffffff',
+            bodyColor: '#fc4c02',
+            borderColor: 'rgba(255, 255, 255, 0.1)',
             borderWidth: 1,
             padding: 10,
             displayColors: false,
@@ -4940,11 +4965,11 @@ function AnalyticsScreen({ exercises }) {
         scales: {
           x: {
             grid: { color: 'rgba(255, 255, 255, 0.05)' },
-            ticks: { color: '#94a3b8', font: { size: 10 } }
+            ticks: { color: '#9ca3af', font: { size: 10 } }
           },
           y: {
             grid: { color: 'rgba(255, 255, 255, 0.05)' },
-            ticks: { color: '#94a3b8', font: { size: 10 } },
+            ticks: { color: '#9ca3af', font: { size: 10 } },
             beginAtZero: false
           }
         }
@@ -4960,14 +4985,14 @@ function AnalyticsScreen({ exercises }) {
 
   return (
     <div className="space-y-4">
-      {/* Exercise Picker Trigger Card */}
-      <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 shadow">
-        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-          Выберите упражнение для анализа
+      {/* Exercise Picker Trigger Card (Strava Segment Selector) */}
+      <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 shadow-xl">
+        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider block mb-1.5 font-mono">
+          Упражнение для анализа
         </label>
         <div
           onClick={() => setShowPickerModal(true)}
-          className="w-full bg-gym-950 border border-gym-700 hover:border-emerald-500/60 rounded-2xl px-4 py-3 flex items-center justify-between cursor-pointer transition active:scale-98"
+          className="w-full bg-[#121316] border border-white/10 hover:border-[#fc4c02]/60 rounded-2xl px-4 py-3 flex items-center justify-between cursor-pointer transition active:scale-98"
         >
           <div className="space-y-0.5 truncate pr-2">
             <span className="font-extrabold text-sm text-white block truncate">
@@ -4977,34 +5002,34 @@ function AnalyticsScreen({ exercises }) {
               {selectedExObj?.category || 'Базовые'}
             </span>
           </div>
-          <div className="text-slate-400 flex items-center space-x-1">
-            <span className="text-xs text-emerald-400 font-bold">Выбрать</span>
+          <div className="text-zinc-400 flex items-center space-x-1">
+            <span className="text-xs text-[#fc4c02] font-black uppercase">Выбрать</span>
             <Icons.ChevronDown />
           </div>
         </div>
 
-        {/* Metric Selector Pills */}
+        {/* Metric Selector Pills (Strava Segments Control) */}
         <div className="grid grid-cols-3 gap-1.5 mt-3">
           <button
             onClick={() => setMetric('max_weight')}
-            className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition ${
-              metric === 'max_weight' ? 'bg-emerald-500 text-gym-950 shadow-sm' : 'bg-gym-950 text-slate-400 hover:text-white'
+            className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer ${
+              metric === 'max_weight' ? 'bg-[#fc4c02] text-white font-black shadow-md shadow-[#fc4c02]/25' : 'bg-[#121316] text-zinc-400 hover:text-white border border-white/5'
             }`}
           >
             Рабочий вес
           </button>
           <button
             onClick={() => setMetric('estimated_1rm')}
-            className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition ${
-              metric === 'estimated_1rm' ? 'bg-emerald-500 text-gym-950 shadow-sm' : 'bg-gym-950 text-slate-400 hover:text-white'
+            className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer ${
+              metric === 'estimated_1rm' ? 'bg-[#fc4c02] text-white font-black shadow-md shadow-[#fc4c02]/25' : 'bg-[#121316] text-zinc-400 hover:text-white border border-white/5'
             }`}
           >
             1ПМ (Макс)
           </button>
           <button
             onClick={() => setMetric('total_volume')}
-            className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition ${
-              metric === 'total_volume' ? 'bg-emerald-500 text-gym-950 shadow-sm' : 'bg-gym-950 text-slate-400 hover:text-white'
+            className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer ${
+              metric === 'total_volume' ? 'bg-[#fc4c02] text-white font-black shadow-md shadow-[#fc4c02]/25' : 'bg-[#121316] text-zinc-400 hover:text-white border border-white/5'
             }`}
           >
             Тоннаж
@@ -5013,28 +5038,28 @@ function AnalyticsScreen({ exercises }) {
       </div>
 
       {/* Chart Canvas Card */}
-      <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 shadow-xl">
+      <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 shadow-xl">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-2">
-            <Icons.TrendingUp />
-            <h3 className="font-extrabold text-sm text-white truncate max-w-[200px]">{selectedExObj?.name}</h3>
+          <div className="flex items-center space-x-2 min-w-0">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#fc4c02]" />
+            <h3 className="font-extrabold text-sm text-white truncate max-w-[220px]">{selectedExObj?.name}</h3>
           </div>
-          <span className="text-[10px] text-slate-400 bg-gym-800 px-2 py-0.5 rounded-full font-mono">
-            {data?.history?.length || 0} тренировок
+          <span className="text-[10px] text-zinc-400 bg-zinc-800/80 border border-white/5 px-2.5 py-0.5 rounded-full font-mono font-bold">
+            {data?.history?.length || 0} сессий
           </span>
         </div>
 
         <div className="h-56 w-full relative">
           {loading && (
-            <div className="absolute inset-0 bg-gym-900/80 flex items-center justify-center z-10">
-              <span className="text-xs text-slate-400">Обновление графика...</span>
+            <div className="absolute inset-0 bg-[#121316]/80 flex items-center justify-center z-10 rounded-2xl backdrop-blur-xs">
+              <span className="text-xs text-[#fc4c02] font-black uppercase tracking-wider font-mono">Обновление графика...</span>
             </div>
           )}
 
           {data?.history?.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center px-4">
-              <p className="text-xs text-slate-400">Пока нет записей для этого упражнения.</p>
-              <p className="text-[11px] text-slate-500 mt-1">Запишите подходы в тренировке.</p>
+              <p className="text-xs text-zinc-400">Пока нет записей для этого упражнения.</p>
+              <p className="text-[11px] text-zinc-500 mt-1">Запишите подходы в тренировке.</p>
             </div>
           ) : (
             <canvas ref={chartCanvasRef}></canvas>
@@ -5042,26 +5067,26 @@ function AnalyticsScreen({ exercises }) {
         </div>
       </div>
 
-      {/* Records Cards */}
+      {/* Records Cards (Strava PR Trophy Style) */}
       {data && (
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-gym-900 border border-gym-800 rounded-2xl p-3.5 flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
-              <Icons.Trophy />
+          <div className="bg-[#18191d] border border-white/10 rounded-2xl p-3.5 flex items-center space-x-3 shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-[#fc4c02]/15 flex items-center justify-center border border-[#fc4c02]/30 text-lg">
+              🏆
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Рекорд веса</p>
-              <p className="text-lg font-black text-amber-400 font-mono">{data.personal_record_weight} кг</p>
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide font-mono">Рекорд веса (PR)</p>
+              <p className="text-lg font-black text-[#fc4c02] font-mono">{data.personal_record_weight} кг</p>
             </div>
           </div>
 
-          <div className="bg-gym-900 border border-gym-800 rounded-2xl p-3.5 flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-400">
+          <div className="bg-[#18191d] border border-white/10 rounded-2xl p-3.5 flex items-center space-x-3 shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center border border-amber-500/30 text-amber-400">
               <Icons.Dumbbell />
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Лучший тоннаж</p>
-              <p className="text-lg font-black text-emerald-400 font-mono">{data.personal_record_volume} кг</p>
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide font-mono">Лучший тоннаж</p>
+              <p className="text-lg font-black text-amber-400 font-mono">{data.personal_record_volume} кг</p>
             </div>
           </div>
         </div>
@@ -6812,25 +6837,25 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
 
   return (
     <div className="space-y-4">
-      {/* 1. STREAK & MOTIVATIONAL STATS CARD */}
-      <div className="neu-flat rounded-3xl p-4 shadow-xl space-y-3">
+      {/* 1. STREAK & MOTIVATIONAL STATS CARD (Strava Athletic Style) */}
+      <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 shadow-xl space-y-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-xl shadow-inner animate-pulse">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#fc4c02]/15 border border-[#fc4c02]/30 flex items-center justify-center text-xl">
               🔥
             </div>
             <div>
-              <div className="flex items-center space-x-1.5">
-                <span className="text-lg font-black text-slate-800 dark:text-white">
+              <div className="flex items-center space-x-2">
+                <span className="text-lg font-black text-white tracking-tight">
                   {stats.streakWorkouts > 0 
                     ? `${stats.streakWorkouts} ${getPluralWorkouts(stats.streakWorkouts)} подряд`
                     : stats.streakWeeks > 0 
                     ? `${stats.streakWeeks} ${getPluralWeeks(stats.streakWeeks)}`
                     : '0 тренировок'}
                 </span>
-                <span className="text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold px-1.5 py-0.5 rounded-full uppercase">Стрик</span>
+                <span className="text-[10px] bg-[#fc4c02]/20 text-[#fc4c02] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Стрик</span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] text-zinc-400">
                 {stats.streakWorkouts > 0 
                   ? `🔥 Серия без пропусков • ${stats.streakWeeks} ${getPluralWeeks(stats.streakWeeks)} в зале`
                   : 'Начните тренировку, чтобы запустить серию'}
@@ -6840,38 +6865,38 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
         </div>
 
         {/* 3 Metrics Grid */}
-        <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-300/40 dark:border-white/5 text-center font-mono">
-          <div className="neu-inset rounded-xl p-2">
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 block uppercase font-bold">За месяц</span>
-            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{stats.monthCount} трен.</span>
+        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5 text-center font-mono">
+          <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5">
+            <span className="text-[10px] text-zinc-500 block uppercase font-bold tracking-wider">За месяц</span>
+            <span className="text-sm font-black text-[#fc4c02]">{stats.monthCount} трен.</span>
           </div>
 
-          <div className="neu-inset rounded-xl p-2">
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 block uppercase font-bold">Тоннаж мес.</span>
-            <span className="text-sm font-black text-sky-600 dark:text-sky-400">
+          <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5">
+            <span className="text-[10px] text-zinc-500 block uppercase font-bold tracking-wider">Тоннаж мес.</span>
+            <span className="text-sm font-black text-white">
               {stats.monthVolume >= 1000 ? `${(stats.monthVolume / 1000).toFixed(1)} т` : `${Math.round(stats.monthVolume)} кг`}
             </span>
           </div>
 
-          <div className="neu-inset rounded-xl p-2">
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 block uppercase font-bold">Ср. сетов</span>
-            <span className="text-sm font-black text-purple-600 dark:text-purple-300">{stats.avgSets}</span>
+          <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5">
+            <span className="text-[10px] text-zinc-500 block uppercase font-bold tracking-wider">Ср. сетов</span>
+            <span className="text-sm font-black text-amber-400">{stats.avgSets}</span>
           </div>
         </div>
       </div>
 
-      {/* 2. INTERACTIVE CALENDAR WIDGET */}
-      <div className="neu-flat rounded-3xl p-4 shadow-xl space-y-3">
+      {/* 2. INTERACTIVE CALENDAR WIDGET (Strava Athletic Style) */}
+      <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 shadow-xl space-y-3">
         {/* Month Header & Controls */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="text-base font-black text-slate-800 dark:text-white">
+            <span className="text-base font-black text-white tracking-tight">
               {monthNames[viewMonth]} {viewYear}
             </span>
             {(viewMonth !== new Date().getMonth() || viewYear !== new Date().getFullYear()) && (
               <button
                 onClick={handleTodayMonth}
-                className="text-[10px] font-bold text-sky-600 dark:text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 px-2 py-0.5 rounded-lg transition"
+                className="text-[10px] font-bold text-[#fc4c02] bg-[#fc4c02]/10 hover:bg-[#fc4c02]/20 border border-[#fc4c02]/30 px-2 py-0.5 rounded-lg transition"
               >
                 Сегодня
               </button>
@@ -6881,14 +6906,14 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
           <div className="flex items-center space-x-1">
             <button
               onClick={handlePrevMonth}
-              className="w-8 h-8 rounded-xl neu-btn active:scale-95 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-sm transition"
+              className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 text-white flex items-center justify-center font-bold text-sm border border-white/10 transition"
               title="Предыдущий месяц"
             >
               ‹
             </button>
             <button
               onClick={handleNextMonth}
-              className="w-8 h-8 rounded-xl neu-btn active:scale-95 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-sm transition"
+              className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 text-white flex items-center justify-center font-bold text-sm border border-white/10 transition"
               title="Следующий месяц"
             >
               ›
@@ -6897,14 +6922,14 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
         </div>
 
         {/* Days of Week Header */}
-        <div className="grid grid-cols-7 gap-1 text-center font-mono text-[11px] font-bold text-slate-500 pb-1">
+        <div className="grid grid-cols-7 gap-1 text-center font-mono text-[11px] font-bold text-zinc-500 pb-1">
           <span>Пн</span>
           <span>Вт</span>
           <span>Ср</span>
           <span>Чт</span>
           <span>Пт</span>
-          <span className="text-amber-500/70">Сб</span>
-          <span className="text-rose-500/70">Вс</span>
+          <span className="text-amber-500/80">Сб</span>
+          <span className="text-rose-500/80">Вс</span>
         </div>
 
         {/* Calendar Grid */}
@@ -6933,15 +6958,15 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                 }}
                 className={`h-9 rounded-xl flex flex-col items-center justify-center relative transition-all active:scale-95 font-mono text-xs ${
                   isSelected
-                    ? 'bg-emerald-500 text-white font-black shadow-md ring-2 ring-emerald-300'
+                    ? 'bg-[#fc4c02] text-white font-black shadow-md shadow-[#fc4c02]/30 ring-2 ring-[#fc4c02]/50'
                     : hasWorkout
-                    ? 'bg-emerald-500/20 dark:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 font-extrabold border border-emerald-500/40 hover:bg-emerald-500/30'
-                    : 'neu-btn text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-                } ${isToday && !isSelected ? 'ring-2 ring-sky-400 font-bold text-sky-700 dark:text-sky-300' : ''}`}
+                    ? 'bg-[#fc4c02]/20 text-white font-extrabold border border-[#fc4c02]/50 hover:bg-[#fc4c02]/30'
+                    : 'bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-white/[0.08]'
+                } ${isToday && !isSelected ? 'ring-2 ring-white/40 font-bold text-white' : ''}`}
               >
                 <span>{dayNum}</span>
                 {hasWorkout && !isSelected && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] -mt-0.5" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#fc4c02] shadow-[0_0_6px_rgba(252,76,2,0.9)] -mt-0.5" />
                 )}
               </button>
             );
@@ -6950,13 +6975,13 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
 
         {/* Date Filter Badge if active */}
         {selectedDate && (
-          <div className="pt-2 border-t border-slate-300/40 dark:border-white/5 flex items-center justify-between text-xs animate-in fade-in">
-            <span className="text-slate-600 dark:text-slate-300">
-              Показаны тренировки за: <strong className="text-emerald-600 dark:text-emerald-400">{formatDate(selectedDate)}</strong> ({filteredWorkouts.length})
+          <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs animate-in fade-in">
+            <span className="text-zinc-300">
+              Показаны тренировки за: <strong className="text-[#fc4c02] font-black">{formatDate(selectedDate)}</strong> ({filteredWorkouts.length})
             </span>
             <button
               onClick={() => setSelectedDate(null)}
-              className="text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white neu-btn px-2 py-0.5 rounded-lg"
+              className="text-[11px] font-bold text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded-lg border border-white/10"
             >
               ✕ Сбросить
             </button>
@@ -6967,19 +6992,19 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
       {/* 3. WORKOUTS LIST WITH EXPANDABLE DETAILED SETS */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+          <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">
             {selectedDate ? `Сессии за ${formatDate(selectedDate)}` : `Все тренировки (${filteredWorkouts.length})`}
           </h3>
           <div className="flex items-center space-x-2">
             {selectedDate && (
-              <button onClick={() => setSelectedDate(null)} className="text-[11px] text-sky-600 dark:text-sky-400 font-bold">
+              <button onClick={() => setSelectedDate(null)} className="text-[11px] text-[#fc4c02] font-bold hover:underline">
                 Показать все
               </button>
             )}
             <button
               type="button"
               onClick={() => setShowAddPastModal(true)}
-              className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2.5 py-1 rounded-xl active:scale-95 transition flex items-center space-x-1"
+              className="text-[11px] font-black text-white bg-[#fc4c02] hover:bg-[#e04402] px-3 py-1.5 rounded-xl active:scale-95 transition flex items-center space-x-1 shadow-md shadow-[#fc4c02]/20"
             >
               <span>+</span>
               <span>Внести вручную</span>
@@ -6988,16 +7013,16 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
         </div>
 
         {filteredWorkouts.length === 0 ? (
-          <div className="neu-flat rounded-3xl p-6 text-center text-slate-500 dark:text-slate-400 text-xs space-y-2">
+          <div className="bg-[#18191d] border border-white/10 rounded-3xl p-6 text-center text-zinc-400 text-xs space-y-2">
             <p className="text-2xl">📋</p>
-            <p className="font-bold text-slate-700 dark:text-slate-200">Тренировок в истории пока нет</p>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+            <p className="font-bold text-white">Тренировок в истории пока нет</p>
+            <p className="text-[11px] text-zinc-400 max-w-xs mx-auto">
               Завершите тренировку в режиме тренировки или внесите вчерашнюю тренировку вручную.
             </p>
             <button
               type="button"
               onClick={() => setShowAddPastModal(true)}
-              className="mt-2 text-xs font-black bg-emerald-500 text-white px-3.5 py-2 rounded-xl shadow-md active:scale-95 transition"
+              className="mt-2 text-xs font-black bg-[#fc4c02] hover:bg-[#e04402] text-white px-4 py-2.5 rounded-xl shadow-md shadow-[#fc4c02]/20 active:scale-95 transition"
             >
               + Внести вчерашнюю тренировку
             </button>
@@ -7025,8 +7050,8 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
             return (
               <div
                 key={wKey}
-                className={`neu-flat rounded-3xl p-4 space-y-3 transition-all ${
-                  isExpanded ? 'border-emerald-500/50 ring-2 ring-emerald-500/30' : ''
+                className={`bg-[#18191d] border rounded-3xl p-4 space-y-3 transition-all ${
+                  isExpanded ? 'border-[#fc4c02]/50 ring-2 ring-[#fc4c02]/20' : 'border-white/10 hover:border-white/20'
                 }`}
               >
                 {/* Header row */}
@@ -7036,20 +7061,20 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                 >
                   <div className="space-y-1 flex-1">
                     <div className="flex items-center space-x-2">
-                      <span className="font-black text-slate-800 dark:text-white text-sm leading-snug">{w.title}</span>
+                      <span className="font-black text-white text-sm leading-snug">{w.title}</span>
                       {w.is_active && (
-                        <span className="text-[9px] font-black bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 px-1.5 py-0.5 rounded-full uppercase live-dot">
+                        <span className="text-[9px] font-black bg-[#fc4c02]/20 text-[#fc4c02] border border-[#fc4c02]/40 px-1.5 py-0.5 rounded-full uppercase live-dot">
                           В процессе
                         </span>
                       )}
                     </div>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 font-mono block">
+                    <span className="text-xs text-zinc-400 font-mono block">
                       {formatDate(w.start_time)} • {parseSafeDate(w.start_time)?.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) || ''}
                     </span>
                   </div>
 
                   <div className="text-right shrink-0">
-                    <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400 flex items-center space-x-1">
+                    <span className="text-[11px] font-bold text-[#fc4c02] flex items-center space-x-1">
                       <span>{isExpanded ? 'Скрыть ▲' : 'Детали ▼'}</span>
                     </span>
                   </div>
@@ -7069,14 +7094,14 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                         : 0);
 
                   return (
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-300/40 dark:border-white/5 text-xs font-mono">
-                      <div className="text-slate-500 dark:text-slate-400 flex items-center space-x-1">
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5 text-xs font-mono">
+                      <div className="text-zinc-400 flex items-center space-x-1">
                         <span>Подходов:</span>
-                        <strong className="text-slate-800 dark:text-white font-black">{cardSets}</strong>
+                        <strong className="text-white font-black">{cardSets}</strong>
                       </div>
-                      <div className="text-slate-500 dark:text-slate-400 text-right flex items-center justify-end space-x-1">
+                      <div className="text-zinc-400 text-right flex items-center justify-end space-x-1">
                         <span>Тоннаж:</span>
-                        <strong className="text-emerald-600 dark:text-emerald-400 font-black">
+                        <strong className="text-[#fc4c02] font-black">
                           {cardVol > 0 ? `${Math.round(cardVol).toLocaleString('ru-RU')} кг` : '0 кг'}
                         </strong>
                       </div>
@@ -7086,25 +7111,25 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
 
                 {/* Expanded sets & exercises breakdown */}
                 {isExpanded && (
-                  <div className="pt-3 border-t border-gym-800 space-y-3 animate-in fade-in duration-200">
+                  <div className="pt-3 border-t border-white/10 space-y-3 animate-in fade-in duration-200">
                     {loadingDetail && !details && effectiveSets.length === 0 ? (
-                      <div className="py-4 text-center text-xs text-slate-400 font-mono animate-pulse">
+                      <div className="py-4 text-center text-xs text-zinc-400 font-mono animate-pulse">
                         Загрузка подходов...
                       </div>
                     ) : (
                       <div className="space-y-3">
                         {w.notes && (
-                          <div className="bg-gym-950 p-2.5 rounded-xl border border-gym-800 text-[11px] text-slate-400">
+                          <div className="bg-[#121316] p-2.5 rounded-xl border border-white/5 text-[11px] text-zinc-300">
                             📝 {w.notes}
                           </div>
                         )}
 
                         {effectiveSets.length === 0 ? (
-                          <div className="bg-gym-950/70 border border-gym-800/80 rounded-2xl p-4 text-center space-y-2.5">
-                            <p className="text-xs text-slate-300 font-semibold">
+                          <div className="bg-[#121316] border border-white/5 rounded-2xl p-4 text-center space-y-2.5">
+                            <p className="text-xs text-zinc-200 font-semibold">
                               Данные о подходах не были записаны или были сброшены сервером.
                             </p>
-                            <p className="text-[11px] text-slate-400">
+                            <p className="text-[11px] text-zinc-400">
                               Вы можете восстановить подходы в 1 клик через вставку отчета из Telegram или заполнив веса.
                             </p>
                             <button
@@ -7113,7 +7138,7 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                                 e.stopPropagation();
                                 setEditingWorkoutForSets(w);
                               }}
-                              className="text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-gym-950 px-4 py-2 rounded-xl shadow-lg active:scale-95 transition"
+                              className="text-xs font-black bg-[#fc4c02] hover:bg-[#e04402] text-white px-4 py-2 rounded-xl shadow-lg shadow-[#fc4c02]/25 active:scale-95 transition"
                             >
                               + Восстановить / внести подходы
                             </button>
@@ -7121,10 +7146,10 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                         ) : (
                           <div className="space-y-2.5">
                           {Object.entries(groupedSets).map(([exName, sList]) => (
-                            <div key={exName} className="neu-inset rounded-2xl p-3 space-y-2">
+                            <div key={exName} className="bg-[#121316] border border-white/5 rounded-2xl p-3 space-y-2">
                               <div className="flex items-center justify-between text-xs">
-                                <span className="font-extrabold text-slate-800 dark:text-white">{exName}</span>
-                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{sList.length} сет.</span>
+                                <span className="font-extrabold text-white">{exName}</span>
+                                <span className="text-[10px] text-zinc-400 font-mono">{sList.length} сет.</span>
                               </div>
 
                               <div className="flex flex-wrap gap-1.5">
@@ -7140,12 +7165,12 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                                         key={s.id || idx}
                                         type="button"
                                         onClick={openEditModal}
-                                        className="bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-700 dark:text-amber-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                                        className="bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-mono font-bold text-[10px] px-2.5 py-1 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
                                         title="Нажмите, чтобы изменить или удалить"
                                       >
                                         <span className="text-[9px] bg-amber-500 text-gym-950 font-black px-1 rounded">W</span>
                                         <span>{s.weight} кг × {s.reps}</span>
-                                        <span className="text-[8px] text-amber-500/80">✏️</span>
+                                        <span className="text-[8px] text-amber-400">✏️</span>
                                       </button>
                                     );
                                   }
@@ -7155,12 +7180,12 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                                         key={s.id || idx}
                                         type="button"
                                         onClick={openEditModal}
-                                        className="bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-700 dark:text-purple-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                                        className="bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-300 font-mono font-bold text-[10px] px-2.5 py-1 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
                                         title="Нажмите, чтобы изменить или удалить"
                                       >
                                         <span className="text-[9px] bg-purple-500 text-white font-black px-1 rounded">D</span>
                                         <span>{s.weight} кг × {s.reps}</span>
-                                        <span className="text-[8px] text-purple-500/80">✏️</span>
+                                        <span className="text-[8px] text-purple-400">✏️</span>
                                       </button>
                                     );
                                   }
@@ -7170,12 +7195,12 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                                         key={s.id || idx}
                                         type="button"
                                         onClick={openEditModal}
-                                        className="bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-700 dark:text-rose-300 font-mono font-bold text-[10px] px-2 py-0.5 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                                        className="bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 font-mono font-bold text-[10px] px-2.5 py-1 rounded-lg flex items-center space-x-1 active:scale-95 transition cursor-pointer"
                                         title="Нажмите, чтобы изменить или удалить"
                                       >
                                         <span className="text-[9px] bg-rose-500 text-white font-black px-1 rounded">F</span>
                                         <span>{s.weight} кг × {s.reps}</span>
-                                        <span className="text-[8px] text-rose-500/80">✏️</span>
+                                        <span className="text-[8px] text-rose-400">✏️</span>
                                       </button>
                                     );
                                   }
@@ -7184,11 +7209,11 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                                       key={s.id || idx}
                                       type="button"
                                       onClick={openEditModal}
-                                      className="neu-btn px-2 py-0.5 rounded-lg text-emerald-700 dark:text-emerald-400 font-mono font-bold text-[10px] flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                                      className="bg-white/5 hover:bg-white/10 border border-white/10 px-2.5 py-1 rounded-lg text-white font-mono font-bold text-[10px] flex items-center space-x-1 active:scale-95 transition cursor-pointer"
                                       title="Нажмите, чтобы изменить или удалить"
                                     >
                                       <span>#{s.set_number || idx + 1}: {s.weight} кг × {s.reps}</span>
-                                      <span className="text-[8px] text-slate-400">✏️</span>
+                                      <span className="text-[8px] text-zinc-400">✏️</span>
                                     </button>
                                   );
                                 })}
@@ -7199,14 +7224,14 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                       )}
 
                       {/* Workout Action Footer: Add Sets & Delete Workout */}
-                      <div className="pt-3 border-t border-slate-300/40 dark:border-white/5 flex items-center justify-between gap-2">
+                      <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-2">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingWorkoutForSets(w);
                           }}
-                          className="text-[11px] font-bold text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 neu-btn px-3 py-1.5 rounded-xl flex items-center space-x-1.5 active:scale-95 transition cursor-pointer"
+                          className="text-[11px] font-bold text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-xl flex items-center space-x-1.5 active:scale-95 transition cursor-pointer"
                         >
                           <span>📝</span>
                           <span>{effectiveSets.length === 0 ? 'Внести подходы' : 'Править подходы'}</span>
@@ -7218,7 +7243,7 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                             e.stopPropagation();
                             setWorkoutToDelete(w);
                           }}
-                          className="text-[11px] font-bold text-rose-500 hover:text-rose-600 neu-btn px-3 py-1.5 rounded-xl flex items-center space-x-1.5 active:scale-95 transition cursor-pointer"
+                          className="text-[11px] font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 px-3 py-1.5 rounded-xl flex items-center space-x-1.5 active:scale-95 transition cursor-pointer"
                           title="Удалить эту тренировку"
                         >
                           <span>🗑️</span>
@@ -7328,10 +7353,10 @@ function ExercisesScreen({ exercises, exerciseGuides = {}, onRefresh }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between px-1">
-        <h2 className="text-sm font-extrabold text-slate-300 uppercase tracking-wider">База упражнений</h2>
+        <h2 className="text-sm font-black text-zinc-300 uppercase tracking-wider">База упражнений</h2>
         <button
           onClick={() => setShowAddModal(true)}
-          className="bg-emerald-500 hover:bg-emerald-400 text-gym-950 font-bold text-xs px-3 py-1.5 rounded-xl flex items-center space-x-1 transition shadow-md shadow-emerald-500/20 active:scale-95"
+          className="bg-[#fc4c02] hover:bg-[#e04402] text-white font-black text-xs px-3.5 py-2 rounded-xl flex items-center space-x-1.5 transition shadow-lg shadow-[#fc4c02]/25 active:scale-95 cursor-pointer"
         >
           <Icons.Plus />
           <span>Добавить</span>
@@ -7345,30 +7370,30 @@ function ExercisesScreen({ exercises, exerciseGuides = {}, onRefresh }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Поиск упражнения или группы мышц..."
-          className="w-full bg-gym-900 border border-gym-800 rounded-2xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition"
+          className="w-full bg-[#18191d] border border-white/10 rounded-2xl px-4 py-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#fc4c02] focus:ring-1 focus:ring-[#fc4c02] transition shadow-sm"
         />
         {search && (
           <button 
             onClick={() => setSearch('')}
-            className="absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs"
+            className="absolute right-3.5 top-3 text-zinc-400 hover:text-white text-xs"
           >
             ✕
           </button>
         )}
       </div>
 
-      <div className="bg-gym-900 border border-gym-800 rounded-3xl divide-y divide-gym-800/80 overflow-hidden shadow">
+      <div className="bg-[#18191d] border border-white/10 rounded-3xl divide-y divide-white/[0.04] overflow-hidden shadow-xl">
         {filteredExercises.length === 0 ? (
-          <div className="p-8 text-center text-slate-400 text-xs">
+          <div className="p-8 text-center text-zinc-400 text-xs">
             Ничего не найдено
           </div>
         ) : (
           filteredExercises.map((ex) => {
             const hasGuide = !!exerciseGuides[ex.name];
             return (
-              <div key={ex.id} className="p-3.5 flex items-center justify-between hover:bg-gym-850 transition">
+              <div key={ex.id} className="p-3.5 flex items-center justify-between hover:bg-white/[0.03] transition">
                 <div className="space-y-1 pr-2">
-                  <span className="font-bold text-sm text-slate-100 block">{ex.name}</span>
+                  <span className="font-bold text-sm text-white block">{ex.name}</span>
                   <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-lg border ${categoryColors[ex.category] || categoryColors['Базовые']}`}>
                     {ex.category}
                   </span>
@@ -7377,9 +7402,9 @@ function ExercisesScreen({ exercises, exerciseGuides = {}, onRefresh }) {
                 {hasGuide && (
                   <button
                     onClick={() => setSelectedGuideEx(ex.name)}
-                    className="shrink-0 text-[11px] text-sky-400 hover:text-white bg-sky-500/15 hover:bg-sky-500/25 px-2.5 py-1.5 rounded-xl border border-sky-500/40 flex items-center space-x-1 font-bold active:scale-95 transition"
+                    className="shrink-0 text-[11px] text-[#fc4c02] hover:text-white bg-[#fc4c02]/10 hover:bg-[#fc4c02] px-3 py-1.5 rounded-xl border border-[#fc4c02]/30 flex items-center space-x-1.5 font-black active:scale-95 transition cursor-pointer"
                   >
-                    <svg className="w-3 h-3 text-sky-400" viewBox="0 0 24 24" fill="currentColor">
+                    <svg className="w-3.5 h-3.5 text-current" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M8 5v14l11-7z"/>
                     </svg>
                     <span>Техника</span>
@@ -7401,27 +7426,27 @@ function ExercisesScreen({ exercises, exerciseGuides = {}, onRefresh }) {
 
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-gym-900 border border-gym-700 rounded-3xl p-5 max-w-xs w-full space-y-4 shadow-2xl">
-            <h3 className="font-extrabold text-base text-white">Новое упражнение</h3>
+          <div className="bg-[#18191d] border border-white/15 rounded-3xl p-5 max-w-xs w-full space-y-4 shadow-2xl">
+            <h3 className="font-black text-base text-white">Новое упражнение</h3>
             <form onSubmit={handleCreate} className="space-y-3">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Название</label>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide block mb-1">Название</label>
                 <input
                   type="text"
                   required
                   placeholder="Например: Жим лежа"
                   value={newExName}
                   onChange={(e) => setNewExName(e.target.value)}
-                  className="w-full bg-gym-950 border border-gym-700 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[#0f1013] border border-white/10 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#fc4c02]"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Категория</label>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide block mb-1">Категория</label>
                 <select
                   value={newExCat}
                   onChange={(e) => setNewExCat(e.target.value)}
-                  className="w-full bg-gym-950 border border-gym-700 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[#0f1013] border border-white/10 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#fc4c02]"
                 >
                   <option value="Грудь">Грудь</option>
                   <option value="Спина">Спина</option>
@@ -7436,13 +7461,13 @@ function ExercisesScreen({ exercises, exerciseGuides = {}, onRefresh }) {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-2.5 bg-gym-800 text-slate-300 font-bold text-xs rounded-xl"
+                  className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 font-bold text-xs rounded-xl"
                 >
                   Отмена
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-emerald-500 text-gym-950 font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-500/20"
+                  className="flex-1 py-2.5 bg-[#fc4c02] hover:bg-[#e04402] text-white font-black text-xs rounded-xl shadow-lg shadow-[#fc4c02]/25"
                 >
                   Создать
                 </button>
@@ -7542,23 +7567,23 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
     <div className="space-y-4 pb-4">
       {/* Title */}
       <div className="px-1">
-        <h2 className="text-sm font-extrabold text-slate-300 uppercase tracking-wider">Профиль спортсмена (О себе)</h2>
-        <p className="text-[11px] text-slate-400 mt-0.5">Данные тела и здоровья используются алгоритмом для адаптации тренировок</p>
+        <h2 className="text-sm font-black text-zinc-300 uppercase tracking-wider">Профиль спортсмена (О себе)</h2>
+        <p className="text-[11px] text-zinc-400 mt-0.5">Данные тела и здоровья используются алгоритмом для адаптации тренировок</p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-3">
-        {/* Section 0: Theme Customization (Soft Neumorphism Light vs Dark) */}
-        <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 space-y-3 shadow-lg">
-          <span className="text-[11px] font-black text-amber-500 uppercase tracking-wider block">
+        {/* Section 0: Theme Customization */}
+        <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 space-y-3 shadow-xl">
+          <span className="text-[11px] font-black text-[#fc4c02] uppercase tracking-wider block">
             🎨 Стиль интерфейса
           </span>
-          <div className="flex items-center justify-between neu-dark-pill rounded-2xl p-3.5">
+          <div className="flex items-center justify-between bg-[#121316] border border-white/5 rounded-2xl p-3.5">
             <div className="space-y-0.5">
               <span className="text-xs font-bold text-white block">
-                {theme === 'neu' || theme === 'light' ? '☀️ Светлый стиль (Soft Clay Light)' : '🌙 Тёмный стиль (Dark Clay UI)'}
+                {theme === 'neu' || theme === 'light' ? '☀️ Светлый стиль (Clean Athletic Light)' : '🌙 Тёмный стиль (Strava Onyx Dark)'}
               </span>
-              <p className="text-[10px] text-slate-300">
-                {theme === 'neu' || theme === 'light' ? 'Светлый тактильный стиль с мягкими тенями' : 'Тёмный тактильный стиль с глубокими тенями'}
+              <p className="text-[10px] text-zinc-400">
+                {theme === 'neu' || theme === 'light' ? 'Светлый чистый атлетический контраст' : 'Тёмный атлетический оникс с акцентами Strava Orange'}
               </p>
             </div>
             <NeuThemeToggle theme={theme} onToggle={onToggleTheme} />
@@ -7568,13 +7593,13 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
         {/* Athletic Gamification & Rank Card */}
         <div 
           onClick={onOpenGamification}
-          className="neu-flat rounded-3xl p-4 cursor-pointer active:scale-95 transition-all space-y-2 border border-slate-200/50 dark:border-slate-700/50 hover:shadow-md"
+          className="bg-[#18191d] border border-white/10 rounded-3xl p-4 cursor-pointer active:scale-95 transition-all space-y-2 hover:border-[#fc4c02]/40 shadow-xl"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black text-amber-500 uppercase tracking-wider block">
+            <span className="text-[11px] font-black text-[#fc4c02] uppercase tracking-wider block">
               ⚡ Ранг и Достижения Атлета
             </span>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">
+            <span className="text-[11px] text-zinc-400 font-bold">
               Подробнее ➔
             </span>
           </div>
@@ -7582,33 +7607,33 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
             <div className="flex items-center space-x-2.5">
               <span className="text-3xl">{getTierDetails(formData?.tier).icon}</span>
               <div>
-                <div className="font-extrabold text-sm text-slate-800 dark:text-white">
+                <div className="font-extrabold text-sm text-white">
                   {getTierDetails(formData?.tier).label} • Уровень {formData?.level || 1}
                 </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                <div className="text-[11px] text-zinc-400 font-mono">
                   {formData?.xp || 0} XP • ⚡ {formData?.fitpoints || 0} FitPoints
                 </div>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-xs font-black font-mono text-emerald-600 dark:text-emerald-400">
+              <div className="text-xs font-black font-mono text-[#fc4c02]">
                 {formData?.total_volume_kg >= 1000 ? `${(formData.total_volume_kg / 1000).toFixed(1)} т` : `${Math.round(formData?.total_volume_kg || 0)} кг`}
               </div>
-              <div className="text-[9px] text-slate-400 uppercase font-bold">Тоннаж</div>
+              <div className="text-[9px] text-zinc-400 uppercase font-bold">Тоннаж</div>
             </div>
           </div>
         </div>
 
         {/* Section 1: Body stats */}
-        <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 space-y-3 shadow-lg">
-          <span className="text-[11px] font-black text-sky-400 uppercase tracking-wider block">
+        <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 space-y-3 shadow-xl">
+          <span className="text-[11px] font-black text-[#fc4c02] uppercase tracking-wider block">
             📏 Физические параметры
           </span>
 
           <div className="grid grid-cols-2 gap-2.5">
             {/* Weight */}
-            <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Вес тела</span>
+            <div className="bg-[#121316] border border-white/5 rounded-2xl p-3 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Вес тела</span>
               <div className="flex items-baseline space-x-1 my-1">
                 <input
                   type="text"
@@ -7618,16 +7643,16 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
                   onFocus={(e) => e.target.select()}
                   onClick={(e) => e.target.select()}
                   onChange={(e) => setFormData({ ...formData, weight: cleanNumericInput(e.target.value, true) })}
-                  className="w-20 bg-transparent text-2xl font-black text-slate-800 dark:text-white focus:outline-none font-mono"
+                  className="w-20 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
                 />
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">кг</span>
+                <span className="text-xs text-zinc-400 font-bold">кг</span>
               </div>
-              <span className="text-[9px] text-slate-400 font-mono">Расчет базовых весов</span>
+              <span className="text-[9px] text-zinc-400 font-mono">Расчет базовых весов</span>
             </div>
 
             {/* Height */}
-            <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Рост</span>
+            <div className="bg-[#121316] border border-white/5 rounded-2xl p-3 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Рост</span>
               <div className="flex items-baseline space-x-1 my-1">
                 <input
                   type="text"
@@ -7637,18 +7662,18 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
                   onFocus={(e) => e.target.select()}
                   onClick={(e) => e.target.select()}
                   onChange={(e) => setFormData({ ...formData, height: cleanNumericInput(e.target.value, false) })}
-                  className="w-20 bg-transparent text-2xl font-black text-slate-800 dark:text-white focus:outline-none font-mono"
+                  className="w-20 bg-transparent text-2xl font-black text-white focus:outline-none font-mono"
                 />
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">см</span>
+                <span className="text-xs text-zinc-400 font-bold">см</span>
               </div>
-              <span className="text-[9px] text-emerald-500 dark:text-emerald-400 font-mono font-bold">ИМТ: {bmi} ({bmiLabel})</span>
+              <span className="text-[9px] text-[#fc4c02] font-mono font-bold">ИМТ: {bmi} ({bmiLabel})</span>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
             {/* Age */}
-            <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Возраст</span>
+            <div className="bg-[#121316] border border-white/5 rounded-2xl p-3">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Возраст</span>
               <div className="flex items-baseline space-x-1">
                 <input
                   type="text"
@@ -7657,23 +7682,23 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
                   onFocus={(e) => e.target.select()}
                   onClick={(e) => e.target.select()}
                   onChange={(e) => setFormData({ ...formData, age: cleanNumericInput(e.target.value, false) })}
-                  className="w-16 bg-transparent text-xl font-black text-slate-800 dark:text-white focus:outline-none font-mono"
+                  className="w-16 bg-transparent text-xl font-black text-white focus:outline-none font-mono"
                 />
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">лет</span>
+                <span className="text-xs text-zinc-400 font-bold">лет</span>
               </div>
             </div>
 
             {/* Gender */}
-            <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Пол</span>
+            <div className="bg-[#121316] border border-white/5 rounded-2xl p-3">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Пол</span>
               <div className="flex space-x-1.5 mt-1">
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, gender: 'male' })}
                   className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 ${
                     formData.gender === 'male' 
-                      ? 'bg-sky-500 text-white font-black shadow-md' 
-                      : 'neu-btn text-slate-600 dark:text-slate-300'
+                      ? 'bg-[#fc4c02] text-white font-black shadow-md shadow-[#fc4c02]/25' 
+                      : 'bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10'
                   }`}
                 >
                   Муж
@@ -7683,8 +7708,8 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
                   onClick={() => setFormData({ ...formData, gender: 'female' })}
                   className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 ${
                     formData.gender === 'female' 
-                      ? 'bg-sky-500 text-white font-black shadow-md' 
-                      : 'neu-btn text-slate-600 dark:text-slate-300'
+                      ? 'bg-[#fc4c02] text-white font-black shadow-md shadow-[#fc4c02]/25' 
+                      : 'bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10'
                   }`}
                 >
                   Жен
@@ -7695,14 +7720,14 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
         </div>
 
         {/* Section 2: Goals & Level */}
-        <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 space-y-3 shadow-lg">
-          <span className="text-[11px] font-black text-emerald-400 uppercase tracking-wider block">
+        <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 space-y-3 shadow-xl">
+          <span className="text-[11px] font-black text-[#fc4c02] uppercase tracking-wider block">
             🎯 Главная цель и уровень
           </span>
 
           {/* Fitness Goal */}
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Цель тренировок</label>
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">Цель тренировок</label>
             <div className="grid grid-cols-3 gap-1.5 text-xs">
               {[
                 { id: 'hypertrophy', label: '🥩 Масса', desc: '8–12 повт.' },
@@ -7715,8 +7740,8 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
                   onClick={() => setFormData({ ...formData, fitness_goal: g.id })}
                   className={`p-2.5 rounded-2xl border flex flex-col items-center justify-center transition active:scale-95 ${
                     formData.fitness_goal === g.id
-                      ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border-emerald-500/50 font-black shadow-sm neu-inset'
-                      : 'neu-btn text-slate-700 dark:text-slate-300 border-transparent hover:border-slate-300'
+                      ? 'bg-[#fc4c02]/20 text-[#fc4c02] border-[#fc4c02]/50 font-black shadow-sm'
+                      : 'bg-white/5 hover:bg-white/10 text-zinc-300 border-white/5 hover:border-white/10'
                   }`}
                 >
                   <span className="text-xs font-bold">{g.label}</span>
@@ -7728,7 +7753,7 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
 
           {/* Experience Level */}
           <div className="space-y-1 pt-1">
-            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Опыт в силовом тренинге</label>
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">Опыт в силовом тренинге</label>
             <div className="grid grid-cols-3 gap-1.5 text-xs">
               {[
                 { id: 'beginner', label: 'Новичок', desc: '< 1 года' },
@@ -7741,8 +7766,8 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
                   onClick={() => setFormData({ ...formData, experience_level: l.id })}
                   className={`p-2 rounded-2xl border flex flex-col items-center justify-center transition active:scale-95 ${
                     formData.experience_level === l.id
-                      ? 'bg-sky-500/20 text-sky-600 dark:text-sky-300 border-sky-500/50 font-black shadow-sm neu-inset'
-                      : 'neu-btn text-slate-700 dark:text-slate-300 border-transparent hover:border-slate-300'
+                      ? 'bg-[#fc4c02]/20 text-[#fc4c02] border-[#fc4c02]/50 font-black shadow-sm'
+                      : 'bg-white/5 hover:bg-white/10 text-zinc-300 border-white/5 hover:border-white/10'
                   }`}
                 >
                   <span className="text-xs font-bold">{l.label}</span>
@@ -7754,11 +7779,11 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
         </div>
 
         {/* Section 3: Joint Safety & Injuries */}
-        <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 space-y-2.5 shadow-lg">
+        <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 space-y-2.5 shadow-xl">
           <span className="text-[11px] font-black text-rose-400 uppercase tracking-wider block">
             🛡️ Суставы и травмы (Ограничения)
           </span>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
+          <p className="text-[11px] text-zinc-400 leading-relaxed">
             Отметьте уязвимые суставы. Тренер автоматически добавит персональные акценты техники и защиты.
           </p>
 
@@ -7773,8 +7798,8 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
                   onClick={() => toggleInjury(inj)}
                   className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 flex items-center space-x-1 ${
                     active
-                      ? 'bg-rose-500/20 text-rose-300 border-rose-400 shadow-sm'
-                      : 'bg-gym-950/70 text-slate-400 border-gym-800 hover:text-white'
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-400/50 shadow-sm'
+                      : 'bg-white/5 hover:bg-white/10 text-zinc-400 border-white/10 hover:text-white'
                   }`}
                 >
                   <span>{active ? '⚠️' : '🛡️'}</span>
@@ -7790,41 +7815,41 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
               placeholder="Дополнительные травмы (например: шея, колено)"
               value={formData.injuries}
               onChange={(e) => setFormData({ ...formData, injuries: e.target.value })}
-              className="w-full bg-gym-950 border border-gym-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition"
+              className="w-full bg-[#121316] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#fc4c02] transition"
             />
           </div>
         </div>
 
         {/* Section 4: Standalone PWA & Account Management */}
-        <div className="bg-gym-900 border border-gym-800 rounded-3xl p-4 space-y-3 shadow-lg">
+        <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 space-y-3 shadow-xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <img src="/static/app-icon.png" alt="GymTracker" className="w-6 h-6 rounded-lg object-cover" />
-              <span className="text-[11px] font-black text-sky-400 uppercase tracking-wider block">
+              <span className="text-[11px] font-black text-[#fc4c02] uppercase tracking-wider block">
                 Автономное веб-приложение (PWA)
               </span>
             </div>
-            <span className="text-[10px] text-slate-500 font-mono">
+            <span className="text-[10px] text-zinc-400 font-mono">
               {isStandalonePWA() ? '🚀 PWA Активно' : isInsideTelegram() ? '✈️ Telegram' : '🌐 Веб'}
             </span>
           </div>
 
-          <p className="text-[11px] text-slate-400 leading-relaxed">
+          <p className="text-[11px] text-zinc-400 leading-relaxed">
             Вы можете запускать GymTracker прямо в <strong>Safari</strong> или <strong>Chrome</strong> и добавить на экран iPhone / Android как отдельное приложение.
           </p>
 
           {/* Personal URL Copy Card */}
-          <div className="bg-gym-950/90 border border-gym-800 rounded-2xl p-3 space-y-2">
+          <div className="bg-[#121316] border border-white/5 rounded-2xl p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Персональная ссылка с вашим аккаунтом</span>
-              <span className="text-[10px] font-mono text-emerald-400 font-bold">{getTelegramUser().id}</span>
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Персональная ссылка с вашим аккаунтом</span>
+              <span className="text-[10px] font-mono text-[#fc4c02] font-bold">{getTelegramUser().id}</span>
             </div>
             <div className="flex items-center space-x-2">
               <input
                 type="text"
                 readOnly
                 value={window.location.origin + '/?tg_id=' + (getTelegramUser().id.startsWith('tg_') ? getTelegramUser().id.replace('tg_', '') : getTelegramUser().id)}
-                className="flex-1 bg-gym-900 border border-gym-800 rounded-xl px-2.5 py-1.5 text-xs font-mono text-slate-300 select-all focus:outline-none"
+                className="flex-1 bg-[#0f1013] border border-white/10 rounded-xl px-2.5 py-1.5 text-xs font-mono text-zinc-300 select-all focus:outline-none"
               />
               <button
                 type="button"
@@ -7841,8 +7866,8 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 active:scale-95 ${
                   linkCopied 
-                    ? 'bg-emerald-500 text-gym-950 font-black' 
-                    : 'bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/40 hover:bg-sky-500/30'
+                    ? 'bg-[#fc4c02] text-white font-black' 
+                    : 'bg-[#fc4c02]/15 text-[#fc4c02] border border-[#fc4c02]/30 hover:bg-[#fc4c02]/25'
                 }`}
               >
                 {linkCopied ? '✓ Скопировано' : '📋 Копировать'}
@@ -7854,7 +7879,7 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
             <button
               type="button"
               onClick={onOpenAccountModal}
-              className="py-2.5 px-3 bg-gym-950 border border-gym-800 hover:border-sky-500/50 rounded-2xl text-xs font-bold text-slate-300 hover:text-white flex items-center justify-center space-x-1.5 transition active:scale-95 shadow-sm"
+              className="py-2.5 px-3 bg-[#121316] border border-white/10 hover:border-white/20 rounded-2xl text-xs font-bold text-zinc-300 hover:text-white flex items-center justify-center space-x-1.5 transition active:scale-95 shadow-sm"
             >
               <span>📲</span>
               <span>Как установить PWA</span>
@@ -7862,7 +7887,7 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
             <button
               type="button"
               onClick={onOpenAccountModal}
-              className="py-2.5 px-3 bg-gym-950 border border-gym-800 hover:border-amber-500/50 rounded-2xl text-xs font-bold text-slate-300 hover:text-white flex items-center justify-center space-x-1.5 transition active:scale-95 shadow-sm"
+              className="py-2.5 px-3 bg-[#121316] border border-white/10 hover:border-white/20 rounded-2xl text-xs font-bold text-zinc-300 hover:text-white flex items-center justify-center space-x-1.5 transition active:scale-95 shadow-sm"
             >
               <span>🔑</span>
               <span>Сменить TG ID</span>
@@ -7874,10 +7899,10 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
         <button
           type="submit"
           disabled={saving}
-          className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 text-gym-950 font-black text-sm rounded-2xl shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition flex items-center justify-center space-x-2"
+          className="w-full py-4 bg-[#fc4c02] hover:bg-[#e04402] text-white font-black text-sm rounded-2xl shadow-xl shadow-[#fc4c02]/25 active:scale-[0.98] transition flex items-center justify-center space-x-2 cursor-pointer"
         >
           {saving ? (
-            <div className="w-5 h-5 border-2 border-gym-950 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
           ) : saveSuccess ? (
             <>
               <Icons.Check />
@@ -7896,18 +7921,18 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
           <button
             type="button"
             onClick={onRestartOnboarding}
-            className="w-full py-3 bg-gym-950/80 hover:bg-gym-850 text-slate-300 font-bold text-xs rounded-2xl border border-gym-800 flex items-center justify-center space-x-2 transition active:scale-95 shadow-sm"
+            className="w-full py-3 bg-white/5 hover:bg-white/10 text-zinc-300 font-bold text-xs rounded-2xl border border-white/10 flex items-center justify-center space-x-2 transition active:scale-95 shadow-sm"
           >
             <span>🔄 Перенастроить вводные данные (Мастер опроса)</span>
           </button>
         )}
 
         {/* Info Box */}
-        <div className="bg-gym-950/60 border border-gym-800/60 rounded-2xl p-3.5 space-y-1.5 text-xs text-slate-400">
-          <p className="font-bold text-slate-300">
+        <div className="bg-[#121316] border border-white/5 rounded-2xl p-3.5 space-y-1.5 text-xs text-zinc-400">
+          <p className="font-bold text-zinc-200">
             🤖 Как профиль адаптирует тренировки:
           </p>
-          <ul className="space-y-1 text-[11px] text-slate-400 list-disc list-inside">
+          <ul className="space-y-1 text-[11px] text-zinc-400 list-disc list-inside">
             <li><strong>Вес тела:</strong> расчет отягощений и % силы.</li>
             <li><strong>Цель:</strong> автоматическая смена целевых повторений (сила: 5–7, масса: 8–12, рельеф: 10–15).</li>
             <li><strong>Суставы:</strong> Gemini Coach предупреждает о безопасных углах прямо в карточке упражнения.</li>

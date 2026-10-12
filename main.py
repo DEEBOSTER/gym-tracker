@@ -642,11 +642,52 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default"):
 
     rec_weight = 20.0
     rec_note = "Начните с разминочного сета"
-    progression_status = "NEW"
-    progression_badge = ""
+    pr_weight = 0.0
+    pr_e1rm = 0.0
+    total_sessions = 0
+    days_ago = None
+    warmup_pyramid = []
 
     if ex_row:
         ex_id = ex_row["id"]
+        # 1. All-time PR weight, Estimated 1RM, and total historical sessions
+        cursor.execute("""
+            SELECT MAX(s.weight) as pr_weight, 
+                   MAX(s.weight * (1.0 + s.reps / 30.0)) as pr_e1rm,
+                   COUNT(DISTINCT s.workout_id) as total_sessions
+            FROM workout_sets s
+            JOIN workouts w ON s.workout_id = w.id
+            WHERE s.exercise_id = ? AND w.user_id = ? AND (s.set_type IS NULL OR s.set_type != 'warmup');
+        """, (ex_id, uid))
+        pr_row = cursor.fetchone()
+        if pr_row:
+            pr_weight = float(pr_row["pr_weight"] or 0.0)
+            pr_e1rm = round(float(pr_row["pr_e1rm"] or 0.0), 1)
+            total_sessions = int(pr_row["total_sessions"] or 0)
+
+        # 2. Days elapsed since last session of this exercise
+        cursor.execute("""
+            SELECT w.start_time 
+            FROM workouts w 
+            JOIN workout_sets s ON s.workout_id = w.id
+            WHERE s.exercise_id = ? AND w.user_id = ?
+            ORDER BY w.id DESC LIMIT 1;
+        """, (ex_id, uid))
+        last_w_row = cursor.fetchone()
+        if last_w_row and last_w_row["start_time"]:
+            try:
+                from datetime import datetime, timezone
+                raw_time = last_w_row["start_time"].replace('Z', '+00:00')
+                if '+' in raw_time or '-' in raw_time[10:]:
+                    last_dt = datetime.fromisoformat(raw_time)
+                else:
+                    last_dt = datetime.fromisoformat(raw_time).replace(tzinfo=timezone.utc)
+                now_dt = datetime.now(timezone.utc)
+                days_ago = max(0, (now_dt - last_dt).days)
+            except Exception:
+                days_ago = None
+
+        # 3. Retrieve sets for progression analysis
         cursor.execute("""
             SELECT s.weight, s.reps, s.workout_id, COALESCE(s.set_type, 'normal') as set_type, s.created_at 
             FROM workout_sets s
@@ -680,7 +721,7 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default"):
             avg_reps = sum(s["reps"] for s in eval_sets) / len(eval_sets)
             last_weight = max_w
 
-            # 3. PROGRESSIVE OVERLOAD ADAPTED TO EXPERIENCE LEVEL:
+            # 4. PROGRESSIVE OVERLOAD ADAPTED TO EXPERIENCE LEVEL:
             if user_level == "beginner":
                 step = 2.5 if max_w >= 50 else 1.25 if max_w >= 10 else 1.0
             elif user_level == "advanced":
@@ -688,23 +729,47 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default"):
             else: # intermediate
                 step = 5.0 if max_w >= 80 else 2.5 if max_w >= 20 else 1.0
 
+            # Plateau detection across last 3 distinct workouts
+            cursor.execute("""
+                SELECT w.id as wid, MAX(s.weight) as max_w, AVG(s.reps) as avg_r
+                FROM workout_sets s
+                JOIN workouts w ON s.workout_id = w.id
+                WHERE s.exercise_id = ? AND w.user_id = ? AND (s.set_type IS NULL OR s.set_type != 'warmup')
+                GROUP BY w.id
+                ORDER BY w.id DESC LIMIT 3;
+            """, (ex_id, uid))
+            recent_sessions = cursor.fetchall()
+
+            is_plateau = len(recent_sessions) >= 3 and len(set(r["max_w"] for r in recent_sessions)) == 1
+
             if avg_reps >= target_max:
                 rec_weight = round(max_w + step, 1)
                 progression_status = "INCREASE"
                 progression_badge = f"+{step} кг Прогрессия"
-                rec_note = f"🚀 Прогрессия веса! Прошлый вес {max_w} кг закрыт ({round(avg_reps, 1)} повт.). Новый целевой вес: {rec_weight} кг!"
+                rec_note = f"🚀 Прогрессия веса! Прошлый вес {max_w} кг закрыт ({round(avg_reps, 1)} повт.). Новый целевой вес: {rec_weight} кг."
             elif avg_reps >= target_min:
                 rec_weight = max_w
                 progression_status = "MAINTAIN"
                 progression_badge = "Закрепление"
-                rec_note = f"🎯 Закрепление: держим {max_w} кг (в прошлый раз {round(avg_reps, 1)} повт.). Цель — закрыть {target_max} во всех подходах!"
+                rec_note = f"🎯 Закрепление: держим {max_w} кг ({round(avg_reps, 1)} повт.). Цель — закрыть {target_max} во всех сетах."
             else:
                 rec_weight = max_w
                 progression_status = "STABILIZE"
                 progression_badge = "Стабилизация"
                 rec_note = f"🛡️ Стабилизация: повторяем {max_w} кг с чистой техникой и контролем."
+
+            # Contextual Recovery & Detraining intelligence
+            if days_ago is not None:
+                if days_ago >= 12:
+                    rec_weight = max(10.0, round(rec_weight * 0.88 / 2.5) * 2.5)
+                    rec_note = f"⚠️ Перерыв {days_ago} дн. Мышцы и связки адаптировались к отдыху. Рекомендуется комфортный вес {rec_weight} кг (-12%) во избежание микронадрывов."
+                elif 2 <= days_ago <= 4:
+                    rec_note += f" ⚡ Идеальное окно суперкомпенсации ({days_ago} дн. отдыха)."
+
+            if is_plateau and progression_status != "INCREASE":
+                rec_note += " 💡 Плато 3 сессии: используйте дроп-сет в финале или измените темп (3 сек опускание)."
         else:
-            # 4. INITIAL WEIGHT CALCULATED FROM USER BODYWEIGHT:
+            # 5. INITIAL WEIGHT CALCULATED FROM USER BODYWEIGHT:
             is_female = profile.get("gender") == "female"
             mult = 0.6 if is_female else 1.0
             name_low = ex_name.lower()
@@ -747,6 +812,20 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default"):
     else:
         rec_weight = round(user_weight * 0.25, 1)
 
+    # 6. Scientific Warmup Pyramid Protocol (Brzycki / Poliquin method)
+    if rec_weight >= 25.0:
+        warmup_pyramid = [
+            {"weight": max(15.0, round((rec_weight * 0.4) / 2.5) * 2.5), "reps": 10, "stage": "Суставная разминка"},
+            {"weight": max(20.0, round((rec_weight * 0.6) / 2.5) * 2.5), "reps": 5, "stage": "Нейромышечная активация"},
+            {"weight": max(22.5, round((rec_weight * 0.8) / 2.5) * 2.5), "reps": 2, "stage": "Подводящий темповый"}
+        ]
+    elif rec_weight >= 12.0:
+        warmup_pyramid = [
+            {"weight": max(6.0, round((rec_weight * 0.5) / 1.0) * 1.0), "reps": 10, "stage": "Легкая разминка"}
+        ]
+
+    estimated_1rm = round(rec_weight * (1.0 + (target_max / 30.0)), 1) if rec_weight > 0 else 0.0
+
     return {
         "name": ex_name,
         "target_sets": target_sets,
@@ -758,7 +837,13 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default"):
         "recommended_weight": rec_weight,
         "progression_status": progression_status,
         "progression_badge": progression_badge,
-        "recommendation_note": rec_note
+        "recommendation_note": rec_note,
+        "pr_weight": pr_weight,
+        "pr_e1rm": pr_e1rm,
+        "estimated_1rm": estimated_1rm,
+        "total_sessions": total_sessions,
+        "days_ago": days_ago,
+        "warmup_pyramid": warmup_pyramid
     }
 
 def enrich_single_plan(plan_template, cursor, profile=None, user_id: str = "default"):
