@@ -1654,6 +1654,16 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
                         />
                       </div>
 
+                      {/* Empty tableware / non-food notification banner */}
+                      {(analysisResult.portion_grams === 0 || analysisResult.detected_dish?.toLowerCase().includes('пуст')) && (
+                        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-xs text-amber-300 flex items-start space-x-2">
+                          <span className="text-base shrink-0">ℹ️</span>
+                          <div className="text-[11px] leading-snug">
+                            Определена <strong>пустая посуда</strong> или нет готового блюда. Если в чашке был напиток, вы можете скорректировать название выше (например, <em>«Кофе американо»</em>) или сфотографировать еду.
+                          </div>
+                        </div>
+                      )}
+
                       {/* Portion Selector with Step Controls */}
                       <div>
                         <div className="flex items-center justify-between text-xs text-zinc-400 mb-1.5">
