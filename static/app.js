@@ -1245,13 +1245,30 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
     } catch (e) {}
   };
 
+  const resetPhotoState = () => {
+    setPhotoPreview(null);
+    setIsScanning(false);
+    setAnalysisResult(null);
+    setCustomDishName('');
+    setPortionGrams(150);
+    setUserHint('');
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+    if (galleryInputRef.current) galleryInputRef.current.value = '';
+  };
+
+  const handleClose = () => {
+    resetPhotoState();
+    onClose();
+  };
+
   useEffect(() => {
     if (isOpen) {
+      resetPhotoState();
       fetchMeals();
       const tg = window.Telegram?.WebApp;
       if (tg?.BackButton) {
         tg.BackButton.show();
-        const handleBack = () => onClose();
+        const handleBack = () => handleClose();
         tg.BackButton.onClick(handleBack);
         return () => {
           tg.BackButton.offClick(handleBack);
@@ -1381,6 +1398,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
       });
 
       if (res.ok) {
+        resetPhotoState();
         if (typeof onMealLogged === 'function') onMealLogged();
         onClose();
       }
@@ -1448,7 +1466,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
   return (
     <div 
       className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-150"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div 
         className="w-full max-w-lg bg-[#18191d] border border-white/10 rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden"
@@ -1464,7 +1482,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center font-bold text-sm transition cursor-pointer"
           >
             ✕
@@ -1622,15 +1640,49 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
                         </div>
                       </div>
                     )}
+                    <div className="absolute top-2 right-2 flex items-center space-x-1.5 z-10">
+                      <button
+                        type="button"
+                        onClick={resetPhotoState}
+                        className="px-2.5 py-1 rounded-xl bg-black/80 hover:bg-black text-white text-xs font-bold border border-white/20 hover:border-white/40 flex items-center space-x-1 cursor-pointer shadow-lg active:scale-95 transition"
+                      >
+                        <span>🔄</span>
+                        <span>Сменить фото</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetPhotoState}
+                        className="w-7 h-7 rounded-xl bg-black/80 hover:bg-rose-600 text-zinc-300 hover:text-white text-xs font-black border border-white/20 flex items-center justify-center cursor-pointer shadow-lg active:scale-95 transition"
+                        title="Удалить фото"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Quick Re-take / New Photo Actions */}
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => {
-                        setPhotoPreview(null);
-                        setAnalysisResult(null);
+                        triggerHaptic('light');
+                        cameraInputRef.current?.click();
                       }}
-                      className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-black/75 backdrop-blur-md text-white text-xs font-bold border border-white/15 hover:bg-black/90 cursor-pointer z-10"
+                      className="py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 font-bold text-xs flex items-center justify-center space-x-1.5 active:scale-95 transition cursor-pointer"
                     >
-                      Переснять
+                      <span>📸</span>
+                      <span>Новое фото</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('light');
+                        galleryInputRef.current?.click();
+                      }}
+                      className="py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 font-bold text-xs flex items-center justify-center space-x-1.5 active:scale-95 transition cursor-pointer"
+                    >
+                      <span>🖼️</span>
+                      <span>Из галереи</span>
                     </button>
                   </div>
 
