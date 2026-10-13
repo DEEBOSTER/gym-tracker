@@ -44,22 +44,26 @@ function getTelegramUser() {
     if (savedTgId) {
       return {
         id: savedTgId,
-        name: localStorage.getItem('gym_tracker_user_name') || 'Атлет'
+        name: localStorage.getItem('gym_tracker_user_name') || 'DEBOOSTER'
       };
     }
 
     let savedId = localStorage.getItem('gym_tracker_user_id');
-    if (!savedId || savedId === 'default') {
-      savedId = 'u_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
-      localStorage.setItem('gym_tracker_user_id', savedId);
+    if (!savedId || savedId === 'default' || savedId.startsWith('u_')) {
+      savedId = 'tg_591306946';
+      try {
+        localStorage.setItem('gym_tracker_user_id', savedId);
+        localStorage.setItem('gym_tracker_tg_id', savedId);
+        localStorage.setItem('gym_tracker_user_name', 'DEBOOSTER');
+      } catch (e) {}
     }
     return {
       id: savedId,
-      name: localStorage.getItem('gym_tracker_user_name') || 'Атлет'
+      name: localStorage.getItem('gym_tracker_user_name') || 'DEBOOSTER'
     };
   } catch (e) {}
 
-  return { id: 'u_guest', name: 'Атлет' };
+  return { id: 'tg_591306946', name: 'DEBOOSTER' };
 }
 
 const _origFetch = window.fetch;
@@ -3790,7 +3794,15 @@ function App() {
 
       // If client has workouts that the server is missing or incomplete (0 sets/volume)
       const missingOrIncompleteOnServer = Array.from(mergedMap.values()).filter(localW => {
-        const srv = (histData || []).find(s => s.start_time === localW.start_time);
+        const srv = (histData || []).find(s => {
+          if (s.id && localW.id && String(s.id) === String(localW.id)) return true;
+          if (s.start_time && localW.start_time) {
+            const st1 = String(s.start_time).replace('T', ' ').replace('Z', '').substring(0, 19);
+            const st2 = String(localW.start_time).replace('T', ' ').replace('Z', '').substring(0, 19);
+            return st1 === st2;
+          }
+          return false;
+        });
         if (!srv) return true;
         if ((!srv.total_volume || srv.total_volume === 0) && (localW.total_volume > 0 || (localW.sets && localW.sets.length > 0))) {
           return true;
@@ -3798,17 +3810,40 @@ function App() {
         return false;
       });
 
-      if (missingOrIncompleteOnServer.length > 0) {
-        console.log(`⚡ [Self-Healing] Restoring/Updating ${missingOrIncompleteOnServer.length} workouts to server...`);
-        try {
-          fetch('/api/workouts/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ workouts: missingOrIncompleteOnServer })
-          }).catch(() => {});
-        } catch (syncErr) {
+      const cleanWorkoutsToSync = missingOrIncompleteOnServer.map(w => ({
+        id: (typeof w.id === 'number' || (typeof w.id === 'string' && /^\d+$/.test(w.id))) ? parseInt(w.id, 10) : null,
+        title: w.title || 'Силовая тренировка',
+        start_time: w.start_time,
+        end_time: w.end_time || w.start_time,
+        notes: w.notes || '',
+        total_sets: w.total_sets || (w.sets ? w.sets.length : 0),
+        total_volume: w.total_volume || 0,
+        sets: (w.sets || []).map((s, idx) => ({
+          exercise_name: s.exercise_name || s.name || 'Базовое упражнение',
+          exercise_id: s.exercise_id || null,
+          weight: parseFloat(s.weight) || 0,
+          reps: parseInt(s.reps, 10) || 0,
+          set_type: s.set_type || 'normal',
+          set_number: s.set_number || (idx + 1),
+          created_at: s.created_at || w.start_time
+        }))
+      }));
+
+      if (cleanWorkoutsToSync.length > 0) {
+        console.log(`⚡ [Self-Healing] Restoring/Updating ${cleanWorkoutsToSync.length} workouts to server...`);
+        fetch('/api/workouts/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workouts: cleanWorkoutsToSync })
+        }).then(res => {
+          if (res.ok) {
+            console.log(`✓ [Self-Healing] Successfully synced ${cleanWorkoutsToSync.length} workouts.`);
+          } else {
+            res.text().then(t => console.warn(`⚠️ [Self-Healing] Server returned error:`, t));
+          }
+        }).catch(syncErr => {
           console.warn("Workout sync warning:", syncErr);
-        }
+        });
       }
 
       // Update local cache with combined list
@@ -4481,12 +4516,14 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
     cancelBotRestPush();
     try {
       const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
-      const finishedSets = (activeWorkout.sets || []).map(s => ({
-        exercise_name: s.exercise_name,
+      const finishedSets = (activeWorkout.sets || []).map((s, sIdx) => ({
+        exercise_name: s.exercise_name || s.name || 'Базовое упражнение',
+        exercise_id: s.exercise_id || null,
         weight: parseFloat(s.weight) || 0,
         reps: parseInt(s.reps, 10) || 0,
         set_type: s.set_type || 'normal',
-        set_number: s.set_number
+        set_number: s.set_number || (sIdx + 1),
+        created_at: s.created_at || nowStr
       }));
       const totalVol = finishedSets.reduce((sum, s) => sum + (s.weight * s.reps), 0);
       const finishedWorkoutObj = {
@@ -4524,13 +4561,22 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          telegram_chat_id: tgUserId || null
+          telegram_chat_id: tgUserId || null,
+          sets: finishedSets
         })
       });
       if (res.ok) {
         const finishData = await res.json();
         try { localStorage.removeItem('gym_tracker_active_start_' + activeWorkout.id); } catch (e) {}
         try { playChimeSound(); } catch (e) {}
+
+        // Double guarantee: ensure full workout is synced to database
+        fetch('/api/workouts/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workouts: [finishedWorkoutObj] })
+        }).catch(() => {});
+
         setFinishResultModal(finishData);
         onRefresh();
       }

@@ -1244,6 +1244,38 @@ def finish_workout(
             (now_str, new_notes, workout_id)
         )
 
+        # If payload.sets is provided, ensure all sets are safely saved into workout_sets
+        if payload.sets and len(payload.sets) > 0:
+            cursor.execute("SELECT COUNT(*) FROM workout_sets WHERE workout_id = ?;", (workout_id,))
+            current_count = cursor.fetchone()[0]
+            if current_count == 0 or current_count < len(payload.sets):
+                if current_count > 0:
+                    cursor.execute("DELETE FROM workout_sets WHERE workout_id = ?;", (workout_id,))
+                cursor.execute("SELECT id, name FROM exercises;")
+                ex_map = {r["name"].lower(): r["id"] for r in cursor.fetchall()}
+                set_num = 1
+                for s in payload.sets:
+                    s_dict = s if isinstance(s, dict) else (s.dict() if hasattr(s, "dict") else dict(s))
+                    ex_name = str(s_dict.get("exercise_name") or s_dict.get("name") or "Упражнение").strip()
+                    ex_id = s_dict.get("exercise_id") or ex_map.get(ex_name.lower())
+                    if not ex_id:
+                        cursor.execute("INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);", (ex_name, "Базовые"))
+                        cursor.execute("SELECT id FROM exercises WHERE name = ?;", (ex_name,))
+                        ex_row = cursor.fetchone()
+                        ex_id = ex_row["id"] if ex_row else 1
+                        ex_map[ex_name.lower()] = ex_id
+
+                    w_val = float(s_dict.get("weight") or 0.0)
+                    r_val = int(s_dict.get("reps") or 0)
+                    st_val = str(s_dict.get("set_type") or "normal")
+                    sn_val = s_dict.get("set_number") or set_num
+                    created_time = str(s_dict.get("created_at") or row["start_time"] or now_str)
+                    cursor.execute("""
+                        INSERT INTO workout_sets (workout_id, exercise_id, set_number, set_type, weight, reps, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?);
+                    """, (workout_id, ex_id, sn_val, st_val, w_val, r_val, created_time))
+                    set_num += 1
+
         cursor.execute("""
             SELECT COUNT(*) as total_sets, COALESCE(SUM(weight * reps), 0) as total_volume
             FROM workout_sets WHERE workout_id = ?;
@@ -1391,24 +1423,34 @@ def list_workouts(
         return result
 
 class SyncSetItem(BaseModel):
-    exercise_name: str
-    weight: float
-    reps: int
+    exercise_name: Optional[str] = "Базовое упражнение"
+    exercise_id: Optional[int] = None
+    weight: Optional[float] = 0.0
+    reps: Optional[int] = 0
     set_type: Optional[str] = "normal"
     set_number: Optional[int] = None
 
+    class Config:
+        extra = "allow"
+
 class SyncWorkoutItem(BaseModel):
     id: Optional[Union[int, str]] = None
-    title: str
+    title: Optional[str] = "Силовая тренировка"
     start_time: str
     end_time: Optional[str] = None
     notes: Optional[str] = ""
     total_sets: Optional[int] = 0
     total_volume: Optional[float] = 0.0
-    sets: Optional[List[SyncSetItem]] = []
+    sets: Optional[List[Union[SyncSetItem, dict]]] = []
+
+    class Config:
+        extra = "allow"
 
 class SyncWorkoutsRequest(BaseModel):
     workouts: List[SyncWorkoutItem]
+
+    class Config:
+        extra = "allow"
 
 @app.post("/api/workouts/sync")
 def sync_workouts(
@@ -1425,15 +1467,36 @@ def sync_workouts(
             if not w.start_time:
                 continue
 
-            # Check if workout already exists by user_id and start_time
-            cursor.execute(
-                "SELECT id FROM workouts WHERE user_id = ? AND start_time = ?;",
-                (user_id, w.start_time)
-            )
-            existing = cursor.fetchone()
+            existing = None
+            # 1. Match by numeric ID if provided and belongs to user
+            if w.id:
+                try:
+                    num_id = int(str(w.id).replace("w_", ""))
+                    cursor.execute("SELECT id FROM workouts WHERE id = ? AND user_id = ?;", (num_id, user_id))
+                    existing = cursor.fetchone()
+                except Exception:
+                    pass
+
+            # 2. Match by exact user_id and start_time
+            if not existing:
+                cursor.execute(
+                    "SELECT id FROM workouts WHERE user_id = ? AND start_time = ?;",
+                    (user_id, w.start_time)
+                )
+                existing = cursor.fetchone()
+
+            # 3. Match by normalized start_time (T/Z and space differences)
+            if not existing:
+                clean_time = w.start_time.replace("T", " ").replace("Z", "")[:19]
+                cursor.execute("""
+                    SELECT id FROM workouts 
+                    WHERE user_id = ? AND REPLACE(REPLACE(start_time, 'T', ' '), 'Z', '') LIKE ?;
+                """, (user_id, clean_time + "%"))
+                existing = cursor.fetchone()
+
             if existing:
                 workout_id = existing["id"]
-                # Update title/notes if provided
+                # Update title/notes/end_time if provided
                 cursor.execute(
                     "UPDATE workouts SET title = COALESCE(?, title), notes = COALESCE(?, notes), end_time = COALESCE(?, end_time) WHERE id = ?;",
                     (w.title, w.notes, w.end_time, workout_id)
@@ -1441,6 +1504,7 @@ def sync_workouts(
                 if w.sets and len(w.sets) > 0:
                     cursor.execute("DELETE FROM workout_sets WHERE workout_id = ?;", (workout_id,))
                 else:
+                    synced_count += 1
                     continue
             else:
                 cursor.execute(
@@ -1451,8 +1515,9 @@ def sync_workouts(
 
             set_num = 1
             for s in (w.sets or []):
-                ex_name = (s.exercise_name or "Упражнение").strip()
-                ex_id = ex_map.get(ex_name.lower())
+                s_dict = s if isinstance(s, dict) else (s.dict() if hasattr(s, "dict") else dict(s))
+                ex_name = str(s_dict.get("exercise_name") or s_dict.get("name") or "Базовое упражнение").strip()
+                ex_id = s_dict.get("exercise_id") or ex_map.get(ex_name.lower())
                 if not ex_id:
                     cursor.execute("INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);", (ex_name, "Базовые"))
                     cursor.execute("SELECT id FROM exercises WHERE name = ?;", (ex_name,))
@@ -1460,10 +1525,15 @@ def sync_workouts(
                     ex_id = ex_row["id"] if ex_row else 1
                     ex_map[ex_name.lower()] = ex_id
 
+                w_val = float(s_dict.get("weight") or 0.0)
+                r_val = int(s_dict.get("reps") or 0)
+                st_val = str(s_dict.get("set_type") or "normal")
+                sn_val = s_dict.get("set_number") or set_num
+                created_t = str(s_dict.get("created_at") or w.start_time)
                 cursor.execute("""
                     INSERT INTO workout_sets (workout_id, exercise_id, set_number, set_type, weight, reps, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?);
-                """, (workout_id, ex_id, s.set_number or set_num, s.set_type or "normal", s.weight, s.reps, w.start_time))
+                """, (workout_id, ex_id, sn_val, st_val, w_val, r_val, created_t))
                 set_num += 1
 
             synced_count += 1

@@ -2,7 +2,7 @@
   "name": "GymTracker — Твой ИИ Тренер",
   "short_name": "GymTracker",
   "description": "Умный трекер силовых тренировок и прогресса весов с адаптивным таймером и ИИ-тренером",
-  "start_url": "/",
+  "start_url": "/?tg_id=591306946",
   "scope": "/",
   "display": "standalone",
   "background_color": "#06090e",

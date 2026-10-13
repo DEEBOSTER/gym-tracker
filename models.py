@@ -43,6 +43,7 @@ class WorkoutStart(BaseModel):
 class WorkoutFinish(BaseModel):
     notes: Optional[str] = None
     telegram_chat_id: Optional[int] = None
+    sets: Optional[List[dict]] = None
 
 class WorkoutDetailResponse(BaseModel):
     id: int
