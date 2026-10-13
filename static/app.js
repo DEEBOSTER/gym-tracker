@@ -1194,10 +1194,39 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
   const [isScanning, setIsScanning] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [customDishName, setCustomDishName] = useState('');
-  const [portionGrams, setPortionGrams] = useState(250);
+  const [portionGrams, setPortionGrams] = useState(150);
+  const [userHint, setUserHint] = useState('');
   const [todayMeals, setTodayMeals] = useState([]);
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
+
+  const compressImage = (dataUrl) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1024;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  };
 
   const fetchMeals = async () => {
     try {
@@ -1237,17 +1266,19 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
     triggerHaptic('medium');
     const reader = new FileReader();
     reader.onload = async (ev) => {
-      const dataUrl = ev.target.result;
-      setPhotoPreview(dataUrl);
+      const rawDataUrl = ev.target.result;
+      setPhotoPreview(rawDataUrl);
       setIsScanning(true);
 
       try {
+        const compressedDataUrl = await compressImage(rawDataUrl);
         const res = await fetch('/api/nutrition/analyze-photo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            image_data: dataUrl,
-            filename: file.name
+            image_data: compressedDataUrl,
+            filename: file.name,
+            hint: userHint
           })
         });
 
@@ -1255,12 +1286,12 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
           const result = await res.json();
           setAnalysisResult(result);
           setCustomDishName(result.detected_dish || 'Блюдо');
-          setPortionGrams(result.portion_grams || 250);
+          setPortionGrams(Math.round(result.portion_grams) || 150);
         } else {
           // Graceful fallback if server error
           const fallback = {
             detected_dish: 'Спортивное блюдо',
-            portion_grams: 250,
+            portion_grams: 150,
             confidence: 0.85,
             total: { calories: 350, protein: 30, fat: 10, carbs: 35 },
             per_100g: { calories: 140, protein: 12, fat: 4, carbs: 14 },
@@ -1268,13 +1299,13 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
           };
           setAnalysisResult(fallback);
           setCustomDishName(fallback.detected_dish);
-          setPortionGrams(250);
+          setPortionGrams(150);
         }
       } catch (err) {
         console.error('Scan error:', err);
         const fallback = {
           detected_dish: 'Спортивное блюдо',
-          portion_grams: 250,
+          portion_grams: 150,
           confidence: 0.85,
           total: { calories: 350, protein: 30, fat: 10, carbs: 35 },
           per_100g: { calories: 140, protein: 12, fat: 4, carbs: 14 },
@@ -1282,9 +1313,9 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
         };
         setAnalysisResult(fallback);
         setCustomDishName(fallback.detected_dish);
-        setPortionGrams(250);
+        setPortionGrams(150);
       } finally {
-        setTimeout(() => setIsScanning(false), 800);
+        setTimeout(() => setIsScanning(false), 500);
       }
     };
     reader.readAsDataURL(file);
@@ -1405,10 +1436,10 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
   ];
 
   const currentMult = portionGrams / 100.0;
-  const currentCalcKcal = analysisResult ? Math.round((analysisResult.per_100g?.calories || (analysisResult.total.calories / 2.5)) * currentMult) : 0;
-  const currentCalcP = analysisResult ? Math.round((analysisResult.per_100g?.protein || (analysisResult.total.protein / 2.5)) * currentMult * 10) / 10 : 0;
-  const currentCalcF = analysisResult ? Math.round((analysisResult.per_100g?.fat || (analysisResult.total.fat / 2.5)) * currentMult * 10) / 10 : 0;
-  const currentCalcC = analysisResult ? Math.round((analysisResult.per_100g?.carbs || (analysisResult.total.carbs / 2.5)) * currentMult * 10) / 10 : 0;
+  const currentCalcKcal = analysisResult ? Math.round((parseFloat(analysisResult.per_100g?.calories) || (parseFloat(analysisResult.total?.calories) / ((analysisResult.portion_grams || 100) / 100))) * currentMult) : 0;
+  const currentCalcP = analysisResult ? Math.round((parseFloat(analysisResult.per_100g?.protein) || (parseFloat(analysisResult.total?.protein) / ((analysisResult.portion_grams || 100) / 100))) * currentMult * 10) / 10 : 0;
+  const currentCalcF = analysisResult ? Math.round((parseFloat(analysisResult.per_100g?.fat) || (parseFloat(analysisResult.total?.fat) / ((analysisResult.portion_grams || 100) / 100))) * currentMult * 10) / 10 : 0;
+  const currentCalcC = analysisResult ? Math.round((parseFloat(analysisResult.per_100g?.carbs) || (parseFloat(analysisResult.total?.carbs) / ((analysisResult.portion_grams || 100) / 100))) * currentMult * 10) / 10 : 0;
 
   return (
     <div 
@@ -1545,6 +1576,24 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
                         <span>Галерея</span>
                       </button>
                     </div>
+
+                    {/* Optional User Hint Input */}
+                    <div 
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full bg-[#121316] border border-white/5 rounded-2xl p-2.5 text-left space-y-1 mt-1"
+                    >
+                      <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider flex items-center justify-between">
+                        <span>✏️ Подсказка (необязательно)</span>
+                        <span className="text-[9px] text-emerald-400 font-mono">для ИИ</span>
+                      </div>
+                      <input 
+                        type="text" 
+                        value={userHint} 
+                        onChange={(e) => setUserHint(e.target.value)} 
+                        placeholder="например: половинка огурца, без сахара..." 
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500" 
+                      />
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -1557,7 +1606,17 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
                       className="w-full h-full object-cover" 
                     />
                     {isScanning && (
-                      <div className="animate-scan-laser absolute left-0 right-0 h-1 bg-emerald-400 shadow-[0_0_12px_#10b981]" />
+                      <div className="absolute inset-0 bg-black/75 backdrop-blur-xs flex flex-col items-center justify-center space-y-2.5 z-20 animate-in fade-in duration-200">
+                        <div className="w-10 h-10 border-3 border-emerald-400 border-t-transparent rounded-full animate-spin shadow-lg shadow-emerald-500/20" />
+                        <div className="text-center px-4">
+                          <div className="text-xs font-black text-emerald-400 uppercase tracking-wider animate-pulse">
+                            Gemini Vision ИИ анализирует фото...
+                          </div>
+                          <div className="text-[10px] text-zinc-400 mt-0.5">
+                            Определяем продукт, вес порции и КБЖУ
+                          </div>
+                        </div>
+                      </div>
                     )}
                     <button
                       type="button"
@@ -1565,7 +1624,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
                         setPhotoPreview(null);
                         setAnalysisResult(null);
                       }}
-                      className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-white text-xs font-bold border border-white/15 cursor-pointer"
+                      className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-black/75 backdrop-blur-md text-white text-xs font-bold border border-white/15 hover:bg-black/90 cursor-pointer z-10"
                     >
                       Переснять
                     </button>
@@ -1573,10 +1632,19 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
 
                   {/* Recognition Result */}
                   {analysisResult && (
-                    <div className="bg-[#121316] border border-emerald-500/30 rounded-2xl p-3.5 space-y-3">
+                    <div className="bg-[#121316] border border-emerald-500/30 rounded-2xl p-3.5 space-y-3 shadow-lg">
                       <div>
-                        <div className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider font-mono">
-                          Распознанное блюдо:
+                        <div className="flex items-center justify-between pb-0.5">
+                          <div className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider font-mono">
+                            Распознанное блюдо:
+                          </div>
+                          {analysisResult.source === 'gemini_vision' && (
+                            <span className="text-[9.5px] font-mono font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center space-x-1">
+                              <span>⚡ Gemini Vision ИИ</span>
+                              <span>·</span>
+                              <span>{Math.round((analysisResult.confidence || 0.96) * 100)}%</span>
+                            </span>
+                          )}
                         </div>
                         <input
                           type="text"
@@ -1586,21 +1654,42 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
                         />
                       </div>
 
-                      {/* Portion Selector */}
+                      {/* Portion Selector with Step Controls */}
                       <div>
-                        <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
+                        <div className="flex items-center justify-between text-xs text-zinc-400 mb-1.5">
                           <span>Вес порции:</span>
-                          <strong className="text-white font-mono">{portionGrams} г</strong>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              type="button"
+                              onClick={() => { triggerHaptic('light'); setPortionGrams(g => Math.max(10, g - 25)); }}
+                              className="w-6 h-6 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center text-xs cursor-pointer active:scale-90"
+                            >
+                              -
+                            </button>
+                            <strong className="text-white font-mono text-sm">{portionGrams} г</strong>
+                            <button
+                              type="button"
+                              onClick={() => { triggerHaptic('light'); setPortionGrams(g => g + 25); }}
+                              className="w-6 h-6 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center text-xs cursor-pointer active:scale-90"
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
                         <div className="grid grid-cols-4 gap-1.5">
-                          {[150, 250, 350, 450].map((g) => (
+                          {[
+                            Math.max(20, Math.round(portionGrams * 0.5)),
+                            portionGrams,
+                            Math.round(portionGrams * 1.5),
+                            Math.round(portionGrams * 2)
+                          ].filter((v, i, a) => a.indexOf(v) === i).slice(0, 4).map((g) => (
                             <button
                               key={g}
                               type="button"
                               onClick={() => { triggerHaptic('light'); setPortionGrams(g); }}
                               className={`py-1.5 rounded-xl font-mono text-xs font-bold transition active:scale-95 cursor-pointer ${
                                 portionGrams === g
-                                  ? 'bg-emerald-500 text-white font-black'
+                                  ? 'bg-emerald-500 text-white font-black shadow'
                                   : 'bg-white/5 hover:bg-white/10 text-zinc-300'
                               }`}
                             >
