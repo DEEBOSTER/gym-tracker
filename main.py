@@ -20,6 +20,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import urllib.parse
 import urllib.request
+import urllib.error
+import time
 
 def get_current_user_id(
     x_telegram_user_id: Optional[str] = Header(None)
@@ -2213,6 +2215,17 @@ class PhotoAnalysisRequest(BaseModel):
 
 FITNESS_FOOD_DATABASE = [
     {
+        "id": "tuna_canned",
+        "name": "Тунец консервированный в собственном соку",
+        "keywords": ["тунец", "тунц", "тунце", "консерв", "рыбн", "рыба", "tuna"],
+        "serving_default_g": 130,
+        "cal_per_100g": 116,
+        "protein_per_100g": 26.0,
+        "fat_per_100g": 1.0,
+        "carbs_per_100g": 0.0,
+        "category": "Рыба и морепродукты"
+    },
+    {
         "id": "cucumber_fresh",
         "name": "Огурец свежий",
         "keywords": ["огур", "огурец", "cucumber"],
@@ -2539,29 +2552,32 @@ def analyze_food_image_with_gemini(image_data: str, hint: str = "", client_api_k
             mime_type = header.split(":")[1].split(";")[0]
 
     prompt = (
-        "Ты профессиональный спортивный диетолог и нутрициолог. "
+        "Ты профессиональный спортивный диетолог и нутрициолог с идеальным компьютерным зрением. "
         "Внимательно изучи прикрепленное фото еды или продукта. "
-        "Определи, что именно находится на переднем плане или на тарелке/в чашке.\n"
+        "Определи, что именно находится на переднем плане или на тарелке/в банке/в чашке.\n"
         f"{'Пользователь добавил уточнение: ' + hint if hint else ''}\n"
+        "Особое внимание:\n"
+        "- Обращай пристальное внимание на текст, этикетки и надписи на упаковках, банках и контейнерах (например: консервированный тунец, рыбные консервы, йогурт, творог, соус, пачка протеина). Используй надписи и визуальный вид содержимого для максимально точной идентификации!\n"
+        "- Если открыта консервная банка с рыбой или мясом (например, тунец) — точно идентифицируй как 'Консервированный тунец' (или тунец в собственном соку / в масле).\n"
         "Правила:\n"
         "1. Точное название блюда, продукта или напитка на русском языке.\n"
-        "   - Если это продукт/блюдо (огурец, гречка, творог, стейк, яблоко) — укажи конкретное название.\n"
+        "   - Если это продукт/блюдо (тунец консервированный, куриное филе, огурец, гречка, творог, стейк, яблоко) — укажи конкретное название.\n"
         "   - Если в чашке/стакане напиток (кофе, чай, вода, сок, протеиновый шейк) — определи тип напитка (например: 'Кофе американо', 'Чай черный', 'Вода питьевая', 'Капучино').\n"
         "   - Если на фото пустая посуда без еды и без напитка (пустая кружка, пустая тарелка) — укажи 'Пустая кружка / нет еды' и 0 ккал.\n"
-        "2. Реалистично оцени вес порции на фото в граммах (например: половинка огурца ~50-80г, целый огурец ~120-150г, порция горячего ~250-350г, напиток в чашке ~200-300г/мл).\n"
+        "2. Реалистично оцени вес порции на фото в граммах (например: стандартная банка тунца ~130-185г, половинка огурца ~50-80г, порция горячего ~250-350г, напиток в чашке ~200-300г/мл).\n"
         "3. Рассчитай пищевую ценность: калории (ккал), белки (г), жиры (г), углеводы (г) на 100 грамм продукта и суммарно на всю порцию на фото.\n"
         "4. Предложи 2-4 похожих или альтернативных продукта/блюда/напитка с примерными КБЖУ.\n"
         "Ответь СТРОГО в формате JSON без markdown кодовых блоков (без ```json):\n"
         "{\n"
         '  "detected_dish": "Название",\n'
-        '  "category": "Овощи",\n'
-        '  "confidence": 0.95,\n'
-        '  "portion_grams": 100,\n'
-        '  "per_100g": {"calories": 15, "protein": 0.8, "fat": 0.1, "carbs": 2.8},\n'
-        '  "total": {"calories": 15, "protein": 0.8, "fat": 0.1, "carbs": 2.8},\n'
-        '  "breakdown": ["Компонент 1"],\n'
+        '  "category": "Рыба и морепродукты",\n'
+        '  "confidence": 0.98,\n'
+        '  "portion_grams": 130,\n'
+        '  "per_100g": {"calories": 116, "protein": 26.0, "fat": 1.0, "carbs": 0.0},\n'
+        '  "total": {"calories": 151, "protein": 33.8, "fat": 1.3, "carbs": 0.0},\n'
+        '  "breakdown": ["Тунец консервированный"],\n'
         '  "alternatives": [\n'
-        '    {"name": "Альтернатива", "portion_grams": 100, "calories": 20, "protein": 1.0, "fat": 0.2, "carbs": 3.5}\n'
+        '    {"name": "Куриная грудка отварная", "portion_grams": 150, "calories": 248, "protein": 46.5, "fat": 5.4, "carbs": 0.0}\n'
         '  ]\n'
         "}"
     )
@@ -2586,35 +2602,42 @@ def analyze_food_image_with_gemini(image_data: str, hint: str = "", client_api_k
         }
     }
 
-    # Resilient model cascade: fast and stable gemini-3.5-flash first, then lite models
-    models = ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-flash-lite-latest", "gemini-3.8-flash"]
+    # Resilient model cascade: fast gemini-3-flash-preview first, then stable flash models
+    models = ["gemini-3-flash-preview", "gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.8-flash"]
     req_body = json.dumps(payload).encode("utf-8")
 
     for model in models:
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-            req = urllib.request.Request(
-                url,
-                data=req_body,
-                headers={"Content-Type": "application/json"}
-            )
-            with urllib.request.urlopen(req, timeout=12) as res:
-                if res.status == 200:
-                    raw_data = json.loads(res.read().decode("utf-8"))
-                    text = raw_data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                    text = text.strip()
-                    if text.startswith("```json"):
-                        text = text[7:]
-                    if text.startswith("```"):
-                        text = text[3:]
-                    if text.endswith("```"):
-                        text = text[:-3]
-                    parsed = json.loads(text.strip())
-                    if "detected_dish" in parsed:
-                        return parsed
-        except Exception as e:
-            print(f"[Vision AI] Model {model} attempt error: {e}", file=sys.stderr)
-            continue
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        req = urllib.request.Request(
+            url,
+            data=req_body,
+            headers={"Content-Type": "application/json"}
+        )
+        for attempt in range(2):
+            try:
+                with urllib.request.urlopen(req, timeout=25) as res:
+                    if res.status == 200:
+                        raw_data = json.loads(res.read().decode("utf-8"))
+                        text = raw_data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        text = text.strip()
+                        if text.startswith("```json"):
+                            text = text[7:]
+                        if text.startswith("```"):
+                            text = text[3:]
+                        if text.endswith("```"):
+                            text = text[:-3]
+                        parsed = json.loads(text.strip())
+                        if "detected_dish" in parsed:
+                            return parsed
+            except urllib.error.HTTPError as he:
+                if he.code == 503 and attempt == 0:
+                    time.sleep(1.0)
+                    continue
+                print(f"[Vision AI] Model {model} HTTP {he.code}: {he}", file=sys.stderr)
+                break
+            except Exception as e:
+                print(f"[Vision AI] Model {model} attempt error: {e}", file=sys.stderr)
+                break
 
     return None
 
@@ -2686,7 +2709,66 @@ def analyze_meal_photo(
             break
 
     if not matched_food:
-        matched_food = FITNESS_FOOD_DATABASE[0]
+        dish_title = hint if hint else ("Блюдо с фото (уточните)" if payload.image_data else "Не определено")
+        return {
+            "status": "success",
+            "source": "manual_prompt",
+            "detected_dish": dish_title,
+            "category": "Основное",
+            "confidence": 0.5,
+            "portion_grams": 150,
+            "per_100g": {
+                "calories": 130,
+                "protein": 15.0,
+                "fat": 5.0,
+                "carbs": 6.0
+            },
+            "total": {
+                "calories": 195,
+                "protein": 22.5,
+                "fat": 7.5,
+                "carbs": 9.0
+            },
+            "breakdown": [dish_title],
+            "alternatives": [
+                {
+                    "id": "tuna_alt",
+                    "name": "Тунец консервированный (130г)",
+                    "portion_grams": 130,
+                    "calories": 151,
+                    "protein": 33.8,
+                    "fat": 1.3,
+                    "carbs": 0.0
+                },
+                {
+                    "id": "chicken_alt",
+                    "name": "Куриное филе с рисом (250г)",
+                    "portion_grams": 250,
+                    "calories": 312,
+                    "protein": 36.2,
+                    "fat": 4.5,
+                    "carbs": 37.5
+                },
+                {
+                    "id": "cottage_alt",
+                    "name": "Творог 5% (150г)",
+                    "portion_grams": 150,
+                    "calories": 182,
+                    "protein": 25.5,
+                    "fat": 7.5,
+                    "carbs": 4.5
+                },
+                {
+                    "id": "eggs_alt",
+                    "name": "Яйца вареные (2 шт)",
+                    "portion_grams": 110,
+                    "calories": 155,
+                    "protein": 12.6,
+                    "fat": 10.6,
+                    "carbs": 1.1
+                }
+            ]
+        }
 
     serving_g = matched_food["serving_default_g"]
     mult = serving_g / 100.0

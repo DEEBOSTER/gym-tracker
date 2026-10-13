@@ -1208,7 +1208,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
-        const maxDim = 1024;
+        const maxDim = 800;
         let w = img.width;
         let h = img.height;
         if (w > maxDim || h > maxDim) {
@@ -1225,7 +1225,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
         canvas.height = h;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
+        resolve(canvas.toDataURL('image/jpeg', 0.78));
       };
       img.onerror = () => resolve(dataUrl);
       img.src = dataUrl;
