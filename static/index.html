@@ -494,6 +494,42 @@
     .live-dot {
       animation: pulse-ring 2s infinite ease-in-out;
     }
+
+    /* Water Liquid Wave Animation */
+    @keyframes liquidWaveMove {
+      0% { transform: translateX(0); }
+      50% { transform: translateX(-25%); }
+      100% { transform: translateX(0); }
+    }
+    .animate-liquid-wave {
+      animation: liquidWaveMove 3.5s ease-in-out infinite;
+    }
+
+    /* Rising Water Bubbles */
+    @keyframes bubbleRiseUp {
+      0% { transform: translateY(120%) scale(0.6); opacity: 0; }
+      40% { opacity: 0.75; }
+      100% { transform: translateY(-30%) scale(1.1); opacity: 0; }
+    }
+    .bubble-float-1 {
+      animation: bubbleRiseUp 2.8s ease-in infinite;
+    }
+    .bubble-float-2 {
+      animation: bubbleRiseUp 3.9s ease-in infinite 1.1s;
+    }
+    .bubble-float-3 {
+      animation: bubbleRiseUp 3.3s ease-in infinite 2.2s;
+    }
+
+    /* AI Photo Food Scanner Laser Line */
+    @keyframes scanLaserSweep {
+      0% { top: 0%; opacity: 0.8; }
+      50% { top: 92%; opacity: 1; }
+      100% { top: 0%; opacity: 0.8; }
+    }
+    .animate-scan-laser {
+      animation: scanLaserSweep 2.2s ease-in-out infinite;
+    }
   </style>
 </head>
 <body class="theme-neu-light theme-soft-neu text-slate-800 antialiased selection:bg-emerald-500 selection:text-white">
@@ -531,6 +567,6 @@
   </script>
 
   <!-- React App -->
-  <script type="text/babel" src="/static/app.js?v=40"></script>
+  <script type="text/babel" src="/static/app.js?v=41"></script>
 </body>
 </html>

@@ -866,8 +866,10 @@ const formatTime = (seconds) => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
-// 5. Water / Hydration Retro LCD Widget
-function NeuWaterWidget() {
+// ==========================================
+// 💧 ATHLETIC LIQUID WATER WIDGET (SMOOTH FLUID FILLING)
+// ==========================================
+function AthleticLiquidWaterWidget({ userProfile }) {
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
   const [waterMl, setWaterMl] = useState(() => {
     try {
@@ -881,20 +883,21 @@ function NeuWaterWidget() {
     }
   });
 
-  const [showPresets, setShowPresets] = useState(false);
-  const targetMl = 2000;
-  const glassSize = 250;
-  const glasses = Math.round(waterMl / glassSize);
-  const targetGlasses = 8;
+  const weight = parseFloat(userProfile?.weight || 78);
+  const targetMl = useMemo(() => {
+    return Math.max(2000, Math.round((weight * 35) / 250) * 250);
+  }, [weight]);
+
   const progressPct = Math.min(100, Math.round((waterMl / targetMl) * 100));
+  const isGoalReached = waterMl >= targetMl;
 
   const updateWater = (deltaMl) => {
     triggerHaptic('light');
     setWaterMl(prev => {
-      const next = Math.max(0, Math.min(5000, prev + deltaMl));
+      const next = Math.max(0, Math.min(6000, prev + deltaMl));
       try {
         localStorage.setItem('gym_tracker_water_ml_' + today, String(next));
-        localStorage.setItem('gym_tracker_water_' + today, String(Math.round(next / glassSize)));
+        localStorage.setItem('gym_tracker_water_' + today, String(Math.round(next / 250)));
       } catch (e) {}
       return next;
     });
@@ -907,90 +910,755 @@ function NeuWaterWidget() {
       localStorage.setItem('gym_tracker_water_ml_' + today, '0');
       localStorage.setItem('gym_tracker_water_' + today, '0');
     } catch (e) {}
-    setShowPresets(false);
   };
 
   return (
-    <div className="neu-flat rounded-3xl p-3 flex flex-col justify-between space-y-2 h-full relative">
-      {/* Retro LCD screen */}
-      <div 
-        onClick={() => setShowPresets(prev => !prev)}
-        className="neu-lcd rounded-2xl p-2 flex items-center justify-between text-slate-900 cursor-pointer select-none relative overflow-hidden group shadow-inner"
-        title="Нажмите для быстрых объемов воды"
-      >
-        {/* Subtle Water Level Background Fill */}
-        <div 
-          className="absolute bottom-0 left-0 right-0 bg-sky-500/20 pointer-events-none transition-all duration-500"
-          style={{ height: `${progressPct}%` }}
-        />
+    <div className="bg-[#18191d] border border-cyan-500/20 hover:border-cyan-500/40 rounded-3xl p-3 flex flex-col justify-between items-center text-center relative overflow-hidden shadow-xl select-none group transition-all h-full">
+      {/* Top Header */}
+      <div className="w-full flex items-center justify-between pb-1 z-10">
+        <div className="flex items-center space-x-1.5">
+          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+          <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 font-mono">
+            Вода
+          </span>
+        </div>
+        <span className="text-[9.5px] font-mono font-bold text-zinc-400">
+          Цель: {targetMl} мл
+        </span>
+      </div>
 
+      {/* Stylized Shaker / Bottle with Smooth Liquid Filling */}
+      <div 
+        onClick={() => updateWater(250)}
+        className="w-full max-w-[110px] h-36 rounded-2xl bg-[#0b121c]/90 border-2 border-cyan-400/40 relative overflow-hidden shadow-[inset_0_2px_12px_rgba(0,0,0,0.8)] cursor-pointer active:scale-[0.97] transition-all flex flex-col justify-end group my-1"
+        title="Нажмите на бутылку, чтобы добавить +250 мл"
+      >
+        {/* Measurement tick marks on right edge */}
+        <div className="absolute top-2 right-1.5 bottom-2 flex flex-col justify-between items-end pointer-events-none z-20 text-[7.5px] font-mono font-bold text-cyan-200/50">
+          <span>{targetMl}</span>
+          <span>{Math.round(targetMl * 0.75)}</span>
+          <span>{Math.round(targetMl * 0.5)}</span>
+          <span>{Math.round(targetMl * 0.25)}</span>
+        </div>
+
+        {/* The Liquid Layer that fills smoothly */}
+        <div 
+          className="absolute bottom-0 left-0 right-0 pointer-events-none transition-all duration-700 ease-out"
+          style={{
+            height: `${Math.min(100, Math.max(waterMl > 0 ? 10 : 0, progressPct))}%`,
+            background: 'linear-gradient(180deg, #38bdf8 0%, #0284c7 45%, #0369a1 100%)',
+            boxShadow: '0 0 20px rgba(56,189,248,0.45)'
+          }}
+        >
+          {/* Continuous Animated Wave at top */}
+          {waterMl > 0 && (
+            <div className="absolute -top-2.5 left-0 right-0 h-3 overflow-hidden pointer-events-none opacity-90">
+              <svg 
+                className="w-[200%] h-full text-[#38bdf8] fill-current animate-liquid-wave"
+                viewBox="0 0 1200 120" 
+                preserveAspectRatio="none"
+              >
+                <path d="M0,0 C150,90 350,-40 500,50 C650,140 900,10 1200,40 L1200,120 L0,120 Z" />
+              </svg>
+            </div>
+          )}
+
+          {/* Rising bubbles */}
+          {waterMl > 0 && (
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-white/40 absolute left-[25%] bottom-1 bubble-float-1" />
+              <span className="w-2 h-2 rounded-full bg-white/30 absolute left-[65%] bottom-1 bubble-float-2" />
+              <span className="w-1 h-1 rounded-full bg-white/50 absolute left-[45%] bottom-1 bubble-float-3" />
+            </div>
+          )}
+        </div>
+
+        {/* Center volume overlay */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 px-1">
+          <span className="text-lg font-black font-mono text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+            {waterMl}
+          </span>
+          <span className="text-[8.5px] font-mono font-bold text-cyan-200 uppercase tracking-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+            мл · {progressPct}%
+          </span>
+          {isGoalReached && (
+            <span className="text-[8px] font-black bg-emerald-500 text-gym-950 px-1.5 py-0.2 rounded-full uppercase tracking-tighter shadow mt-0.5 animate-bounce">
+              ✓ Закрыто
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Quick Increment Controls */}
+      <div className="w-full pt-1 z-10 flex items-center justify-between gap-1">
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); updateWater(-glassSize); }}
-          className="w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs active:scale-90 select-none hover:bg-black/10 dark:hover:bg-white/10 transition z-10 shrink-0"
+          onClick={(e) => { e.stopPropagation(); updateWater(-250); }}
+          className="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center font-black text-xs border border-white/10 active:scale-90 transition shrink-0 cursor-pointer"
           title="-250 мл"
         >
           –
         </button>
 
-        <div className="flex flex-col items-center z-10 px-0.5 truncate">
-          <div className="flex items-center space-x-1 truncate">
-            <span className="text-sm">🥛</span>
-            <span className="font-digital text-sm font-black text-slate-900 dark:text-slate-100">
-              {waterMl}
-            </span>
-            <span className="text-[8px] font-mono font-bold opacity-75">мл</span>
-          </div>
-          <span className="text-[7.5px] uppercase tracking-tighter font-black opacity-70 mt-0.5 whitespace-nowrap">
-            {glasses} / {targetGlasses} ст. ({progressPct}%)
-          </span>
-        </div>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); updateWater(250); }}
+          className="flex-1 py-1.5 px-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-300 font-mono font-black text-[11px] active:scale-95 transition shadow-sm flex items-center justify-center space-x-1 cursor-pointer"
+          title="+250 мл"
+        >
+          <span>💧</span>
+          <span>+250</span>
+        </button>
 
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); updateWater(glassSize); }}
-          className="w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs active:scale-90 select-none hover:bg-black/10 dark:hover:bg-white/10 transition z-10 shrink-0"
-          title="+250 мл"
+          onClick={(e) => { e.stopPropagation(); updateWater(500); }}
+          className="py-1.5 px-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 font-mono font-bold text-[10px] active:scale-95 transition shrink-0 cursor-pointer"
+          title="+500 мл (шейкер)"
         >
-          +
+          +500
         </button>
       </div>
+    </div>
+  );
+}
 
-      {/* Quick Status / Quick Actions */}
-      {showPresets ? (
-        <div className="space-y-1 z-20">
-          <div className="grid grid-cols-3 gap-1">
-            <button
-              type="button"
-              onClick={() => { updateWater(250); setShowPresets(false); }}
-              className="py-1 px-1 rounded-xl text-[9px] font-bold neu-btn text-sky-600 dark:text-sky-400 active:scale-95"
-            >
-              +250
-            </button>
-            <button
-              type="button"
-              onClick={() => { updateWater(500); setShowPresets(false); }}
-              className="py-1 px-1 rounded-xl text-[9px] font-bold neu-btn text-sky-600 dark:text-sky-400 active:scale-95"
-            >
-              +500
-            </button>
-            <button
-              type="button"
-              onClick={resetWater}
-              className="py-1 px-1 rounded-xl text-[9px] font-bold neu-btn text-rose-500 active:scale-95"
-            >
-              Сброс
-            </button>
+// ==========================================
+// 🥗 ATHLETIC NUTRITION & KBJU WIDGET
+// ==========================================
+function AthleticNutritionWidget({ userProfile, onOpenScanner, refreshTrigger }) {
+  const [nutrition, setNutrition] = useState(() => {
+    const weight = parseFloat(userProfile?.weight || 78);
+    const goal = userProfile?.fitness_goal || 'hypertrophy';
+    let cal = 2400;
+    let p = Math.round(weight * 2.0);
+    let f = Math.round(weight * 1.0);
+    if (goal === 'fat_loss') { cal = 1950; p = Math.round(weight * 2.2); f = Math.round(weight * 0.8); }
+    else if (goal === 'strength') { cal = 2650; p = Math.round(weight * 1.9); f = Math.round(weight * 1.0); }
+    const c = Math.round((cal - (p * 4 + f * 9)) / 4);
+
+    return {
+      targets: { target_calories: cal, target_protein: p, target_fat: f, target_carbs: c },
+      consumed: { calories: 0, protein: 0, fat: 0, carbs: 0 },
+      meals: []
+    };
+  });
+
+  const loadNutrition = async () => {
+    try {
+      const u = getTelegramUser();
+      const uId = u?.id || 'default';
+      const res = await fetch('/api/nutrition/today', {
+        headers: { 'x-telegram-user-id': uId }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNutrition(data);
+      }
+    } catch (e) {
+      console.warn('Nutrition load warning:', e);
+    }
+  };
+
+  useEffect(() => {
+    loadNutrition();
+  }, [refreshTrigger, userProfile?.weight, userProfile?.fitness_goal]);
+
+  const targets = nutrition.targets || { target_calories: 2400, target_protein: 160, target_fat: 70, target_carbs: 260 };
+  const consumed = nutrition.consumed || { calories: 0, protein: 0, fat: 0, carbs: 0 };
+  const calPct = Math.min(100, Math.round((consumed.calories / targets.target_calories) * 100));
+  const remainingKcal = Math.max(0, targets.target_calories - consumed.calories);
+
+  return (
+    <div className="bg-[#18191d] border border-emerald-500/20 hover:border-emerald-500/40 rounded-3xl p-3 flex flex-col justify-between shadow-xl select-none transition-all h-full relative overflow-hidden group">
+      {/* Top Header */}
+      <div>
+        <div className="flex items-center justify-between pb-1">
+          <div className="flex items-center space-x-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 font-mono">
+              КБЖУ дня
+            </span>
+          </div>
+          <span className="text-[9.5px] font-mono font-bold text-zinc-400">
+            {nutrition.meals?.length || 0} приемов
+          </span>
+        </div>
+
+        {/* Calories Progress Bar */}
+        <div className="mt-1">
+          <div className="flex items-baseline justify-between">
+            <span className="text-base font-black font-mono text-white">
+              {Math.round(consumed.calories)}
+              <span className="text-[10px] text-zinc-400 font-normal"> / {targets.target_calories} ккал</span>
+            </span>
+            <span className="text-[10px] font-mono font-bold text-[#fc4c02]">
+              {calPct}%
+            </span>
+          </div>
+          <div className="w-full bg-black/50 h-1.5 rounded-full overflow-hidden border border-white/5 mt-1">
+            <div 
+              className="bg-[#fc4c02] h-full rounded-full transition-all duration-500"
+              style={{ width: `${calPct}%` }}
+            />
+          </div>
+          <div className="text-[8.5px] text-zinc-400 mt-0.5">
+            Осталось: <strong className="text-zinc-200 font-mono">{remainingKcal}</strong> ккал
           </div>
         </div>
-      ) : (
-        <div className="flex items-center justify-between text-[9px] font-mono font-bold text-slate-500 dark:text-slate-400 px-0.5">
-          <span className="truncate">Вода:</span>
-          <strong className={`${waterMl >= targetMl ? 'text-emerald-500 font-extrabold' : 'text-slate-800 dark:text-slate-100'} whitespace-nowrap`}>
-            {waterMl >= targetMl ? '✓ Норма!' : `${waterMl} / ${targetMl} мл`}
-          </strong>
+
+        {/* 3 Macro Lines (Б / Ж / У) */}
+        <div className="mt-2 space-y-1.5 bg-[#121316] border border-white/5 rounded-xl p-2">
+          {/* Protein */}
+          <div>
+            <div className="flex items-center justify-between text-[9px] font-mono">
+              <span className="font-bold text-emerald-400 flex items-center space-x-1">
+                <span>🥩</span>
+                <span>Белки</span>
+              </span>
+              <span className="text-zinc-300 font-bold">{Math.round(consumed.protein)}/{targets.target_protein}г</span>
+            </div>
+            <div className="w-full bg-black/40 h-1 rounded-full overflow-hidden mt-0.5">
+              <div 
+                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, Math.round((consumed.protein / targets.target_protein) * 100))}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Fat */}
+          <div>
+            <div className="flex items-center justify-between text-[9px] font-mono">
+              <span className="font-bold text-amber-400 flex items-center space-x-1">
+                <span>🥑</span>
+                <span>Жиры</span>
+              </span>
+              <span className="text-zinc-300 font-bold">{Math.round(consumed.fat)}/{targets.target_fat}г</span>
+            </div>
+            <div className="w-full bg-black/40 h-1 rounded-full overflow-hidden mt-0.5">
+              <div 
+                className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, Math.round((consumed.fat / targets.target_fat) * 100))}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Carbs */}
+          <div>
+            <div className="flex items-center justify-between text-[9px] font-mono">
+              <span className="font-bold text-sky-400 flex items-center space-x-1">
+                <span>🍚</span>
+                <span>Углеводы</span>
+              </span>
+              <span className="text-zinc-300 font-bold">{Math.round(consumed.carbs)}/{targets.target_carbs}г</span>
+            </div>
+            <div className="w-full bg-black/40 h-1 rounded-full overflow-hidden mt-0.5">
+              <div 
+                className="bg-sky-500 h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, Math.round((consumed.carbs / targets.target_carbs) * 100))}%` }}
+              />
+            </div>
+          </div>
         </div>
-      )}
+      </div>
+
+      {/* Primary Action Button: Photo Scanner */}
+      <button
+        type="button"
+        onClick={() => {
+          triggerHaptic('light');
+          onOpenScanner();
+        }}
+        className="w-full mt-2 py-2 px-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-xs shadow-md shadow-emerald-500/25 flex items-center justify-center space-x-1.5 active:scale-95 transition cursor-pointer"
+      >
+        <span className="text-sm">📸</span>
+        <span className="truncate">Сканировать еду</span>
+      </button>
+    </div>
+  );
+}
+
+// ==========================================
+// 📸 FOOD PHOTO ANALYSIS & KBJU MODAL
+// ==========================================
+function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) {
+  const [activeTab, setActiveTab] = useState('photo'); // 'photo' | 'history' | 'quick'
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [customDishName, setCustomDishName] = useState('');
+  const [portionGrams, setPortionGrams] = useState(250);
+  const [todayMeals, setTodayMeals] = useState([]);
+  const fileInputRef = useRef(null);
+
+  const fetchMeals = async () => {
+    try {
+      const u = getTelegramUser();
+      const res = await fetch('/api/nutrition/today', {
+        headers: { 'x-telegram-user-id': u?.id || 'default' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTodayMeals(data.meals || []);
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchMeals();
+      const tg = window.Telegram?.WebApp;
+      if (tg?.BackButton) {
+        tg.BackButton.show();
+        const handleBack = () => onClose();
+        tg.BackButton.onClick(handleBack);
+        return () => {
+          tg.BackButton.offClick(handleBack);
+          tg.BackButton.hide();
+        };
+      }
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    triggerHaptic('medium');
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const dataUrl = ev.target.result;
+      setPhotoPreview(dataUrl);
+      setIsScanning(true);
+
+      try {
+        const res = await fetch('/api/nutrition/analyze-photo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image_data: dataUrl,
+            filename: file.name
+          })
+        });
+
+        if (res.ok) {
+          const result = await res.json();
+          setAnalysisResult(result);
+          setCustomDishName(result.detected_dish);
+          setPortionGrams(result.portion_grams || 250);
+        }
+      } catch (err) {
+        console.error('Scan error:', err);
+      } finally {
+        setTimeout(() => setIsScanning(false), 900);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSelectAlternative = (alt) => {
+    triggerHaptic('light');
+    setCustomDishName(alt.name);
+    setPortionGrams(alt.portion_grams || 250);
+    if (analysisResult) {
+      setAnalysisResult({
+        ...analysisResult,
+        detected_dish: alt.name,
+        total: {
+          calories: alt.calories,
+          protein: alt.protein,
+          fat: alt.fat,
+          carbs: alt.carbs
+        }
+      });
+    }
+  };
+
+  const handleSaveMeal = async () => {
+    if (!analysisResult) return;
+    triggerHaptic('success');
+
+    const per100 = analysisResult.per_100g || {
+      calories: analysisResult.total.calories / (portionGrams / 100),
+      protein: analysisResult.total.protein / (portionGrams / 100),
+      fat: analysisResult.total.fat / (portionGrams / 100),
+      carbs: analysisResult.total.carbs / (portionGrams / 100),
+    };
+
+    const mult = portionGrams / 100.0;
+    const finalKcal = Math.round(per100.calories * mult);
+    const finalP = Math.round(per100.protein * mult * 10) / 10;
+    const finalF = Math.round(per100.fat * mult * 10) / 10;
+    const finalC = Math.round(per100.carbs * mult * 10) / 10;
+
+    try {
+      const u = getTelegramUser();
+      const res = await fetch('/api/nutrition/meals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-telegram-user-id': u?.id || 'default'
+        },
+        body: JSON.stringify({
+          meal_name: customDishName || analysisResult.detected_dish,
+          calories: finalKcal,
+          protein: finalP,
+          fat: finalF,
+          carbs: finalC,
+          portion_grams: portionGrams,
+          image_url: photoPreview || ''
+        })
+      });
+
+      if (res.ok) {
+        if (typeof onMealLogged === 'function') onMealLogged();
+        onClose();
+      }
+    } catch (e) {
+      alert('Ошибка при сохранении блюда');
+    }
+  };
+
+  const handleDeleteMeal = async (mealId) => {
+    if (!confirm('Удалить эту запись приема пищи?')) return;
+    try {
+      const u = getTelegramUser();
+      const res = await fetch(`/api/nutrition/meals/${mealId}`, {
+        method: 'DELETE',
+        headers: { 'x-telegram-user-id': u?.id || 'default' }
+      });
+      if (res.ok) {
+        setTodayMeals(prev => prev.filter(m => m.id !== mealId));
+        if (typeof onMealLogged === 'function') onMealLogged();
+      }
+    } catch (e) {}
+  };
+
+  const handleQuickAdd = async (food) => {
+    triggerHaptic('success');
+    try {
+      const u = getTelegramUser();
+      const res = await fetch('/api/nutrition/meals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-telegram-user-id': u?.id || 'default'
+        },
+        body: JSON.stringify({
+          meal_name: food.name,
+          calories: food.calories,
+          protein: food.protein,
+          fat: food.fat,
+          carbs: food.carbs,
+          portion_grams: food.portion_grams
+        })
+      });
+      if (res.ok) {
+        if (typeof onMealLogged === 'function') onMealLogged();
+        onClose();
+      }
+    } catch (e) {}
+  };
+
+  const QUICK_FOODS = [
+    { name: 'Куриное филе с рисом', portion_grams: 300, calories: 375, protein: 43.5, fat: 5.4, carbs: 45.0, icon: '🍗' },
+    { name: 'Гречка с говядиной', portion_grams: 300, calories: 420, protein: 39.0, fat: 11.4, carbs: 43.5, icon: '🥩' },
+    { name: 'Овсянка с бананом', portion_grams: 300, calories: 360, protein: 28.5, fat: 6.6, carbs: 52.5, icon: '🥣' },
+    { name: 'Творог 5% с ягодами', portion_grams: 200, calories: 270, protein: 32.0, fat: 9.0, carbs: 16.0, icon: '🧀' },
+    { name: 'Стейк из лосося с овощами', portion_grams: 280, calories: 434, protein: 39.2, fat: 26.6, carbs: 11.2, icon: '🐟' },
+    { name: 'Сывороточный протеин', portion_grams: 350, calories: 228, protein: 30.8, fat: 4.2, carbs: 15.8, icon: '🥤' }
+  ];
+
+  const currentMult = portionGrams / 100.0;
+  const currentCalcKcal = analysisResult ? Math.round((analysisResult.per_100g?.calories || (analysisResult.total.calories / 2.5)) * currentMult) : 0;
+  const currentCalcP = analysisResult ? Math.round((analysisResult.per_100g?.protein || (analysisResult.total.protein / 2.5)) * currentMult * 10) / 10 : 0;
+  const currentCalcF = analysisResult ? Math.round((analysisResult.per_100g?.fat || (analysisResult.total.fat / 2.5)) * currentMult * 10) / 10 : 0;
+  const currentCalcC = analysisResult ? Math.round((analysisResult.per_100g?.carbs || (analysisResult.total.carbs / 2.5)) * currentMult * 10) / 10 : 0;
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div 
+        className="w-full max-w-lg bg-[#18191d] border border-white/10 rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#121316]">
+          <div className="flex items-center space-x-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+            <h3 className="text-base font-black text-white">
+              Анализатор питания & БЖУ
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center font-bold text-sm transition cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Tab Controls */}
+        <div className="grid grid-cols-3 gap-1 p-2 bg-[#121316] border-b border-white/5 text-xs">
+          <button
+            type="button"
+            onClick={() => setActiveTab('photo')}
+            className={`py-2 px-2 rounded-xl font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
+              activeTab === 'photo'
+                ? 'bg-emerald-500 text-white font-black shadow-md'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <span>📸</span>
+            <span>По фото</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('quick')}
+            className={`py-2 px-2 rounded-xl font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
+              activeTab === 'quick'
+                ? 'bg-emerald-500 text-white font-black shadow-md'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <span>⚡</span>
+            <span>Быстро</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('history')}
+            className={`py-2 px-2 rounded-xl font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
+              activeTab === 'history'
+                ? 'bg-emerald-500 text-white font-black shadow-md'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <span>📋</span>
+            <span>Съедено ({todayMeals.length})</span>
+          </button>
+        </div>
+
+        {/* Body Content */}
+        <div className="p-4 overflow-y-auto space-y-4">
+          {activeTab === 'photo' && (
+            <div className="space-y-4">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                accept="image/*" 
+                capture="environment" 
+                className="hidden" 
+                onChange={handleFileChange} 
+              />
+
+              {!photoPreview ? (
+                /* Camera Upload Trigger Box */
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-emerald-500/40 hover:border-emerald-500/80 rounded-3xl p-6 flex flex-col items-center justify-center text-center cursor-pointer bg-emerald-500/5 hover:bg-emerald-500/10 transition-all space-y-2 group"
+                >
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                    📸
+                  </div>
+                  <div>
+                    <div className="text-sm font-black text-white">
+                      Сфотографируйте блюдо
+                    </div>
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      Или выберите фото тарелки из галереи телефона
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-[11px] font-black uppercase tracking-wider shadow-sm mt-1">
+                    Сделать фото
+                  </span>
+                </div>
+              ) : (
+                /* Image Preview with Scanning Animation */
+                <div className="space-y-3">
+                  <div className="relative w-full h-48 rounded-2xl overflow-hidden border border-white/10 bg-black">
+                    <img 
+                      src={photoPreview} 
+                      alt="Food" 
+                      className="w-full h-full object-cover" 
+                    />
+                    {isScanning && (
+                      <div className="animate-scan-laser absolute left-0 right-0 h-1 bg-emerald-400 shadow-[0_0_12px_#10b981]" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhotoPreview(null);
+                        setAnalysisResult(null);
+                      }}
+                      className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-white text-xs font-bold border border-white/15 cursor-pointer"
+                    >
+                      Переснять
+                    </button>
+                  </div>
+
+                  {/* Recognition Result */}
+                  {analysisResult && (
+                    <div className="bg-[#121316] border border-emerald-500/30 rounded-2xl p-3.5 space-y-3">
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider font-mono">
+                          Распознанное блюдо:
+                        </div>
+                        <input
+                          type="text"
+                          value={customDishName}
+                          onChange={(e) => setCustomDishName(e.target.value)}
+                          className="w-full bg-transparent text-base font-black text-white border-b border-white/10 pb-1 mt-0.5 focus:outline-none focus:border-emerald-400"
+                        />
+                      </div>
+
+                      {/* Portion Selector */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
+                          <span>Вес порции:</span>
+                          <strong className="text-white font-mono">{portionGrams} г</strong>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {[150, 250, 350, 450].map((g) => (
+                            <button
+                              key={g}
+                              type="button"
+                              onClick={() => { triggerHaptic('light'); setPortionGrams(g); }}
+                              className={`py-1.5 rounded-xl font-mono text-xs font-bold transition active:scale-95 cursor-pointer ${
+                                portionGrams === g
+                                  ? 'bg-emerald-500 text-white font-black'
+                                  : 'bg-white/5 hover:bg-white/10 text-zinc-300'
+                              }`}
+                            >
+                              {g} г
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Calculated Macros Cards */}
+                      <div className="grid grid-cols-4 gap-2 pt-1 text-center font-mono">
+                        <div className="bg-black/40 border border-white/5 p-2 rounded-xl">
+                          <div className="text-[9px] text-[#fc4c02] font-bold uppercase">Калории</div>
+                          <div className="text-sm font-black text-white mt-0.5">{currentCalcKcal}</div>
+                        </div>
+                        <div className="bg-black/40 border border-white/5 p-2 rounded-xl">
+                          <div className="text-[9px] text-emerald-400 font-bold uppercase">Белки</div>
+                          <div className="text-sm font-black text-white mt-0.5">{currentCalcP}г</div>
+                        </div>
+                        <div className="bg-black/40 border border-white/5 p-2 rounded-xl">
+                          <div className="text-[9px] text-amber-400 font-bold uppercase">Жиры</div>
+                          <div className="text-sm font-black text-white mt-0.5">{currentCalcF}г</div>
+                        </div>
+                        <div className="bg-black/40 border border-white/5 p-2 rounded-xl">
+                          <div className="text-[9px] text-sky-400 font-bold uppercase">Углеводы</div>
+                          <div className="text-sm font-black text-white mt-0.5">{currentCalcC}г</div>
+                        </div>
+                      </div>
+
+                      {/* Alternatives */}
+                      {analysisResult.alternatives?.length > 0 && (
+                        <div>
+                          <div className="text-[10px] text-zinc-400 mb-1">
+                            Ошиблись? Выберите из похожих блюд:
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {analysisResult.alternatives.map((alt) => (
+                              <button
+                                key={alt.id}
+                                type="button"
+                                onClick={() => handleSelectAlternative(alt)}
+                                className="text-[10px] bg-white/5 hover:bg-white/10 text-zinc-300 px-2 py-1 rounded-lg border border-white/10 active:scale-95 transition cursor-pointer"
+                              >
+                                {alt.name.split('(')[0]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Save Button */}
+                      <button
+                        type="button"
+                        onClick={handleSaveMeal}
+                        className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/30 active:scale-98 transition flex items-center justify-center space-x-1.5 cursor-pointer"
+                      >
+                        <span>✓</span>
+                        <span>Записать в дневник питания</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'quick' && (
+            <div className="space-y-3">
+              <div className="text-xs text-zinc-400">
+                Выберите популярное спортивное блюдо для мгновенной записи:
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {QUICK_FOODS.map((food, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => handleQuickAdd(food)}
+                    className="bg-[#121316] border border-white/5 hover:border-emerald-500/50 p-3 rounded-2xl flex items-center justify-between cursor-pointer active:scale-98 transition"
+                  >
+                    <div className="flex items-center space-x-2.5 min-w-0 pr-2">
+                      <span className="text-2xl shrink-0">{food.icon}</span>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-white truncate">{food.name}</div>
+                        <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                          {food.portion_grams}г · Б: {food.protein}г · Ж: {food.fat}г · У: {food.carbs}г
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-black font-mono text-[#fc4c02] shrink-0">
+                      {food.calories} ккал
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'history' && (
+            <div className="space-y-2">
+              {todayMeals.length === 0 ? (
+                <div className="py-8 text-center text-zinc-500 text-xs">
+                  Сегодня пока нет записей приемов пищи.
+                </div>
+              ) : (
+                todayMeals.map((meal) => (
+                  <div
+                    key={meal.id}
+                    className="bg-[#121316] border border-white/5 p-3 rounded-2xl flex items-center justify-between"
+                  >
+                    <div className="min-w-0 pr-2 flex-1">
+                      <div className="text-xs font-black text-white truncate">{meal.meal_name}</div>
+                      <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                        {meal.portion_grams}г · {meal.calories} ккал (Б:{meal.protein}г · Ж:{meal.fat}г · У:{meal.carbs}г)
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteMeal(meal.id)}
+                      className="text-zinc-500 hover:text-rose-400 p-1.5 text-xs transition cursor-pointer"
+                      title="Удалить"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -3266,6 +3934,8 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   });
   const [workoutViewMode, setWorkoutViewMode] = useState('visual'); // 'visual' | 'list'
   const [previewGuideEx, setPreviewGuideEx] = useState(null);
+  const [showNutritionModal, setShowNutritionModal] = useState(false);
+  const [nutritionRefreshKey, setNutritionRefreshKey] = useState(0);
   const [showSwapModal, setShowSwapModal] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [showCoachTip, setShowCoachTip] = useState(false);
@@ -3923,30 +4593,19 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
             onOpenModal={onOpenGamification} 
           />
 
-          {/* 2-Column Widget Grid from screenshot */}
+          {/* 2-Column Athletic Nutrition & Liquid Hydration Grid */}
           <div className="grid grid-cols-2 gap-3 items-stretch">
-            {/* Left Column: Athletic Muscle Split Focus Card + Dark Split Menu */}
-            <div className="space-y-3 flex flex-col justify-between">
-              <div className="neu-flat rounded-3xl p-3 flex flex-col items-center justify-center text-center">
-                <AthleticMuscleFocusWidget />
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-1 leading-tight italic">
-                  «Прогрессивная перегрузка — ключ к росту»
-                </div>
-              </div>
+            {/* Left Column: Calorie & Macro (БЖУ) Hub with Photo Food Analyzer */}
+            <AthleticNutritionWidget 
+              userProfile={userProfile} 
+              onOpenScanner={() => setShowNutritionModal(true)} 
+              refreshTrigger={nutritionRefreshKey}
+            />
 
-              <NeuSplitMenu 
-                currentDayType={recommendedDay?.type}
-                onSelectDay={(type) => {
-                  handleStartDay(type, selectedVariant);
-                }}
-              />
-            </div>
-
-            {/* Right Column: Retro Water LCD Widget + Streak Dial Gauge */}
-            <div className="space-y-3 flex flex-col justify-between">
-              <NeuWaterWidget />
-              <NeuStreakDialWidget workouts={workouts} onNavigateTab={onNavigateTab} />
-            </div>
+            {/* Right Column: Interactive Liquid Shaker (Smooth Water Filling Animation) */}
+            <AthleticLiquidWaterWidget 
+              userProfile={userProfile} 
+            />
           </div>
 
           {/* Interactive 7-Day Weekly Norm Tracker */}
@@ -5117,6 +5776,14 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           setReps(stepReps);
           setSetType(stepType);
         }}
+      />
+
+      {/* Food Photo Analysis & KBJU Nutrition Modal */}
+      <FoodPhotoAnalysisModal
+        isOpen={showNutritionModal}
+        onClose={() => setShowNutritionModal(false)}
+        userProfile={userProfile}
+        onMealLogged={() => setNutritionRefreshKey(k => k + 1)}
       />
 
       {/* Edit Set Modal */}

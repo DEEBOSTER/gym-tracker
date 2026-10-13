@@ -163,6 +163,24 @@ def init_database():
             except Exception:
                 pass
 
+        # Nutrition logs table (Food & KBJU tracking)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS nutrition_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT DEFAULT 'default',
+                date TEXT NOT NULL,
+                meal_name TEXT NOT NULL,
+                calories REAL NOT NULL DEFAULT 0,
+                protein REAL NOT NULL DEFAULT 0,
+                fat REAL NOT NULL DEFAULT 0,
+                carbs REAL NOT NULL DEFAULT 0,
+                portion_grams REAL DEFAULT 100,
+                image_url TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_nutrition_user_date ON nutrition_logs(user_id, date);")
+
         # Retroactively calculate and sync gamification progress for all users
         try:
             sync_all_users_gamification_stats(conn)
