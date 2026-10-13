@@ -2527,20 +2527,23 @@ def delete_meal_entry(
         return {"status": "ok", "deleted_id": meal_id}
 
 def analyze_food_image_with_gemini(image_data: str, hint: str = "", client_api_key: str = "") -> Optional[dict]:
-    api_key = (
-        (client_api_key or "").strip()
-        or os.environ.get("GEMINI_API_KEY", "").strip()
-        or os.environ.get("GOOGLE_API_KEY", "").strip()
-    )
-    if not api_key:
-        try:
-            import base64
-            # Default embedded key for out-of-the-box Vision recognition
-            api_key = base64.b64decode("QVEuQWI4Uk42S05nVWVVNWd6bGRRTXp5OTdaWGxKTnNaWXE3WkNrVUtfU3pSM2dLY3VKQ3c=").decode("utf-8")
-        except Exception:
-            pass
+    keys_to_try = []
+    if (client_api_key or "").strip():
+        keys_to_try.append(client_api_key.strip())
+    if os.environ.get("GEMINI_API_KEY", "").strip():
+        keys_to_try.append(os.environ.get("GEMINI_API_KEY", "").strip())
+    if os.environ.get("GOOGLE_API_KEY", "").strip():
+        keys_to_try.append(os.environ.get("GOOGLE_API_KEY", "").strip())
 
-    if not api_key or not image_data:
+    try:
+        import base64
+        embedded = base64.b64decode("QVEuQWI4Uk42S05nVWVVNWd6bGRRTXp5OTdaWGxKTnNaWXE3WkNrVUtfU3pSM2dLY3VKQ3c=").decode("utf-8")
+        if embedded not in keys_to_try:
+            keys_to_try.append(embedded)
+    except Exception:
+        pass
+
+    if not keys_to_try or not image_data:
         return None
 
     # Parse base64
@@ -2598,46 +2601,54 @@ def analyze_food_image_with_gemini(image_data: str, hint: str = "", client_api_k
         ],
         "generationConfig": {
             "response_mime_type": "application/json",
-            "temperature": 0.2
+            "temperature": 0.1
         }
     }
 
-    # Resilient model cascade: fast gemini-3-flash-preview first, then stable flash models
-    models = ["gemini-3-flash-preview", "gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.8-flash"]
+    models = [
+        "gemini-3.1-flash-lite-preview",
+        "gemini-3-flash-preview",
+        "gemini-3.5-flash",
+        "gemini-3.6-flash",
+        "gemini-3.8-flash"
+    ]
     req_body = json.dumps(payload).encode("utf-8")
 
-    for model in models:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-        req = urllib.request.Request(
-            url,
-            data=req_body,
-            headers={"Content-Type": "application/json"}
-        )
-        for attempt in range(2):
-            try:
-                with urllib.request.urlopen(req, timeout=25) as res:
-                    if res.status == 200:
-                        raw_data = json.loads(res.read().decode("utf-8"))
-                        text = raw_data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                        text = text.strip()
-                        if text.startswith("```json"):
-                            text = text[7:]
-                        if text.startswith("```"):
-                            text = text[3:]
-                        if text.endswith("```"):
-                            text = text[:-3]
-                        parsed = json.loads(text.strip())
-                        if "detected_dish" in parsed:
-                            return parsed
-            except urllib.error.HTTPError as he:
-                if he.code == 503 and attempt == 0:
-                    time.sleep(1.0)
-                    continue
-                print(f"[Vision AI] Model {model} HTTP {he.code}: {he}", file=sys.stderr)
-                break
-            except Exception as e:
-                print(f"[Vision AI] Model {model} attempt error: {e}", file=sys.stderr)
-                break
+    for api_key in keys_to_try:
+        for model in models:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            req = urllib.request.Request(
+                url,
+                data=req_body,
+                headers={"Content-Type": "application/json"}
+            )
+            for attempt in range(2):
+                try:
+                    with urllib.request.urlopen(req, timeout=18) as res:
+                        if res.status == 200:
+                            raw_data = json.loads(res.read().decode("utf-8"))
+                            text = raw_data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                            text = text.strip()
+                            if text.startswith("```json"):
+                                text = text[7:]
+                            if text.startswith("```"):
+                                text = text[3:]
+                            if text.endswith("```"):
+                                text = text[:-3]
+                            parsed = json.loads(text.strip())
+                            if "detected_dish" in parsed:
+                                return parsed
+                except urllib.error.HTTPError as he:
+                    print(f"[Vision AI] Key {api_key[:6]}... Model {model} attempt {attempt} HTTP {he.code}: {he.reason}", file=sys.stderr)
+                    if he.code in (400, 403):
+                        break
+                    if he.code == 503 and attempt == 0:
+                        time.sleep(1.0)
+                        continue
+                    break
+                except Exception as e:
+                    print(f"[Vision AI] Model {model} attempt {attempt} error: {e}", file=sys.stderr)
+                    break
 
     return None
 
