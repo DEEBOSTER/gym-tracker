@@ -3260,6 +3260,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   // Navigation inside the plan
   const [currentPlanIndex, setCurrentPlanIndex] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState('a');
+  const [selectedDayType, setSelectedDayType] = useState(() => {
+    const rec = coachDays.find(d => d.is_recommended);
+    return rec?.type || 'push';
+  });
+  const [workoutViewMode, setWorkoutViewMode] = useState('visual'); // 'visual' | 'list'
+  const [previewGuideEx, setPreviewGuideEx] = useState(null);
   const [showSwapModal, setShowSwapModal] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [showCoachTip, setShowCoachTip] = useState(false);
@@ -3272,9 +3278,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   const [editingSet, setEditingSet] = useState(null);
   const [finishResultModal, setFinishResultModal] = useState(null);
 
-  // Auto-switch variant tab if coach recommends variant B
+  // Auto-switch variant & day tab if coach recommends
   useEffect(() => {
     const rec = coachDays.find(d => d.is_recommended);
+    if (rec?.type) {
+      setSelectedDayType(rec.type);
+    }
     if (rec?.variant) {
       setSelectedVariant(rec.variant);
     }
@@ -4012,64 +4021,299 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           </div>
         </div>
 
-        {/* Workout Day Cards (Strava Segment Style) */}
-        <div className="grid grid-cols-1 gap-3.5">
-          {displayDays.map((day) => {
-            const isRec = day.is_recommended;
-            const cardBorder = isRec 
-              ? 'border-[#fc4c02]/40 ring-1 ring-[#fc4c02]/20' 
-              : 'border-white/10';
-
+        {/* Athletic Day Selector Tabs (Strava Segment Picker) */}
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { type: 'push', title: 'PUSH', sub: 'Грудь · Плечи', icon: '⚡' },
+            { type: 'pull', title: 'PULL', sub: 'Спина · Бицепс', icon: '🎯' },
+            { type: 'legs', title: 'LEGS', sub: 'Ноги · Пресс', icon: '🦵' }
+          ].map((tab) => {
+            const isTabActive = selectedDayType === tab.type;
+            const isTodayPlan = recommendedDay?.type === tab.type;
             return (
-              <div
-                key={`${day.type}_${day.variant}`}
-                className={`bg-[#18191d] border ${cardBorder} rounded-3xl p-4.5 shadow-xl transition-all relative overflow-hidden`}
+              <button
+                key={tab.type}
+                type="button"
+                onClick={() => {
+                  triggerHaptic('light');
+                  setSelectedDayType(tab.type);
+                }}
+                className={`p-2.5 rounded-2xl flex flex-col items-center justify-center text-center transition-all active:scale-95 cursor-pointer relative ${
+                  isTabActive
+                    ? 'bg-[#fc4c02] text-white shadow-lg shadow-[#fc4c02]/30 ring-2 ring-white/20'
+                    : 'bg-[#18191d] text-zinc-400 hover:text-white border border-white/10'
+                }`}
               >
-                {isRec && (
-                  <div className="absolute top-0 right-0 bg-[#fc4c02] text-white text-[10px] font-black px-3.5 py-1 rounded-bl-2xl uppercase tracking-wider shadow-md shadow-[#fc4c02]/30 flex items-center space-x-1">
-                    <span>🔥</span>
-                    <span>Рекомендуется сегодня</span>
-                  </div>
+                {isTodayPlan && (
+                  <span className={`absolute -top-1.5 -right-1 text-[8px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-tighter shadow ${
+                    isTabActive ? 'bg-white text-[#fc4c02]' : 'bg-[#fc4c02] text-white'
+                  }`}>
+                    План
+                  </span>
                 )}
+                <div className="flex items-center space-x-1">
+                  <span className="text-sm">{tab.icon}</span>
+                  <span className="text-xs font-black tracking-tight">{tab.title}</span>
+                </div>
+                <span className={`text-[9px] mt-0.5 truncate max-w-full ${isTabActive ? 'text-white/90 font-bold' : 'text-zinc-500'}`}>
+                  {tab.sub}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-                {/* Card Title & Muscle Focus */}
-                <div className="mb-2">
-                  <div className="text-[10px] font-black uppercase tracking-wider text-[#fc4c02] font-mono">
-                    {day.focus}
+        {/* Selected Day Visual Program Card */}
+        {(() => {
+          const activeDay = coachDays.find(d => d.type === selectedDayType && d.variant === selectedVariant) 
+            || displayDays.find(d => d.type === selectedDayType) 
+            || displayDays[0] 
+            || coachDays[0];
+
+          if (!activeDay) return null;
+
+          const isRec = activeDay.is_recommended;
+          const cardBorder = isRec 
+            ? 'border-[#fc4c02]/40 ring-1 ring-[#fc4c02]/20' 
+            : 'border-white/10';
+
+          return (
+            <div className={`bg-[#18191d] border ${cardBorder} rounded-3xl p-4 sm:p-5 shadow-2xl relative space-y-3.5`}>
+              {/* Day Header with fixed padding to prevent any clipping */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/5 pb-3">
+                <div className="space-y-1.5 min-w-0">
+                  <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                    {isRec && (
+                      <span className="bg-[#fc4c02] text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm flex items-center space-x-1">
+                        <span>🔥</span>
+                        <span>План на сегодня</span>
+                      </span>
+                    )}
+                    <span className="text-[10px] font-mono font-black text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 uppercase">
+                      {activeDay.variant === 'a' ? 'Вариант А · Базовый' : 'Вариант Б · Памп'}
+                    </span>
                   </div>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white mt-0.5 tracking-tight font-sans">
-                    {day.title}
+
+                  <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight font-sans">
+                    {activeDay.title}
                   </h3>
+
+                  {/* Muscle focus chips - cleanly padded without overflow truncation */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    {activeDay.focus.split(',').map((chip, idx) => (
+                      <span 
+                        key={idx}
+                        className="text-[10px] font-black uppercase tracking-wider text-zinc-300 font-mono bg-white/5 border border-white/10 px-2 py-0.5 rounded-md"
+                      >
+                        {chip.trim()}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Exercises List (Strava Segment Style - Clean, readable, no ugly truncation) */}
-                <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5 my-3 space-y-1 divide-y divide-white/[0.04]">
-                  {day.exercises.map((ex, i) => {
+                {/* View Mode Switcher: Visual Cards vs Compact List */}
+                <div className="flex items-center self-start sm:self-auto bg-[#121316] border border-white/10 p-1 rounded-xl shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('light');
+                      setWorkoutViewMode('visual');
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                      workoutViewMode === 'visual'
+                        ? 'bg-[#fc4c02] text-white shadow-sm'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                    title="Показать с фотографиями упражнений"
+                  >
+                    <span>🖼️</span>
+                    <span>Фото</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('light');
+                      setWorkoutViewMode('list');
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                      workoutViewMode === 'list'
+                        ? 'bg-[#fc4c02] text-white shadow-sm'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                    title="Показать компактным списком"
+                  >
+                    <span>📋</span>
+                    <span>Список</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Day Quick Metrics Bar */}
+              <div className="grid grid-cols-3 gap-2 bg-[#121316] border border-white/5 rounded-2xl p-2.5 text-center">
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-zinc-500">Упражнений</div>
+                  <div className="text-sm font-black font-mono text-white mt-0.5">
+                    {activeDay.exercises.length}
+                  </div>
+                </div>
+                <div className="border-x border-white/5">
+                  <div className="text-[10px] uppercase font-bold text-zinc-500">Подходов</div>
+                  <div className="text-sm font-black font-mono text-[#fc4c02] mt-0.5">
+                    {activeDay.exercises.reduce((acc, e) => acc + (e.target_sets || 3), 0)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-zinc-500">Время</div>
+                  <div className="text-sm font-black font-mono text-white mt-0.5">
+                    ~45-50 м
+                  </div>
+                </div>
+              </div>
+
+              {/* EXERCISES: VISUAL CARDS GRID (User Request: "поменять его весь на картинк") */}
+              {workoutViewMode === 'visual' ? (
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+                  {activeDay.exercises.map((ex, i) => {
                     const cleanName = ex.name.split('(')[0].trim();
                     const isOverload = ex.progression_status === 'INCREASE';
+                    const gifUrl = ex.image_url || exerciseGuides[ex.name]?.local_video || exerciseGuides[ex.name]?.remote_video || '/static/videos/barbell_bench_press.gif';
+
                     return (
-                      <div key={i} className="flex items-center justify-between py-1.5 first:pt-0.5 last:pb-0.5">
-                        {/* Left: Index badge + Name + Overload tag */}
-                        <div className="flex items-center space-x-2.5 min-w-0 pr-2 flex-1">
-                          <span className="w-5 h-5 rounded-md bg-zinc-800/80 border border-white/10 flex items-center justify-center text-[10px] font-mono font-bold text-zinc-400 shrink-0">
-                            {String(i + 1).padStart(2, '0')}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-[12.5px] font-bold text-slate-900 dark:text-white leading-snug truncate" title={cleanName}>
-                              {cleanName}
+                      <div
+                        key={i}
+                        onClick={() => {
+                          triggerHaptic('light');
+                          setPreviewGuideEx(ex);
+                        }}
+                        className="bg-[#121316] border border-white/10 hover:border-[#fc4c02]/60 rounded-2xl overflow-hidden shadow-md transition-all active:scale-[0.98] cursor-pointer flex flex-col justify-between group relative"
+                      >
+                        {/* Motion GIF Image Box */}
+                        <div className="relative w-full aspect-[4/3] bg-black overflow-hidden">
+                          <img
+                            src={gifUrl}
+                            alt={cleanName}
+                            loading="lazy"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = '/static/videos/barbell_bench_press.gif';
+                            }}
+                          />
+                          {/* Gradient Shading */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#121316] via-transparent to-black/40 pointer-events-none" />
+
+                          {/* Index Pill */}
+                          <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-[10px] font-mono font-black text-white flex items-center space-x-0.5">
+                            <span className="text-[#fc4c02]">#</span>
+                            <span>{String(i + 1).padStart(2, '0')}</span>
+                          </div>
+
+                          {/* Progression or Play Badge */}
+                          {isOverload ? (
+                            <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-lg bg-emerald-500 text-white text-[9px] font-black tracking-wide shadow-md flex items-center space-x-0.5 border border-emerald-400">
+                              <span>↗</span>
+                              <span>{ex.progression_badge || '+2.5 кг'}</span>
                             </div>
-                            {isOverload && (
-                              <div className="flex items-center space-x-1 mt-0.5">
-                                <span className="text-[9px] font-black font-mono text-emerald-400 px-1 py-0.2 bg-emerald-500/15 border border-emerald-500/30 rounded">
-                                  ↗ {ex.progression_badge || '+2.5 кг'}
-                                </span>
-                                <span className="text-[9px] text-zinc-400 font-medium">прогрессия веса</span>
-                              </div>
-                            )}
+                          ) : (
+                            <div className="absolute top-2 right-2 p-1 rounded-lg bg-black/60 backdrop-blur-sm text-zinc-300 text-[10px] border border-white/10">
+                              <span>🎬</span>
+                            </div>
+                          )}
+
+                          {/* Bottom Overlay on Image: Sets/Reps & Target Weight */}
+                          <div className="absolute bottom-1.5 left-2 right-2 flex items-center justify-between pointer-events-none">
+                            <span className="text-[10px] font-mono font-bold text-zinc-300 bg-black/70 px-1.5 py-0.5 rounded backdrop-blur-sm border border-white/10">
+                              {ex.target_sets}×{ex.target_reps}
+                            </span>
+                            <span className="text-[11px] font-mono font-black text-white px-2 py-0.5 rounded-md bg-[#fc4c02] shadow-sm">
+                              {ex.recommended_weight} кг
+                            </span>
                           </div>
                         </div>
 
-                        {/* Right: Sets x Reps & Weight Pill */}
+                        {/* Title & Info */}
+                        <div className="p-2.5 pt-2 flex flex-col justify-between flex-1">
+                          <div>
+                            <h4 className="text-xs font-black text-white leading-snug line-clamp-2 min-h-[32px] group-hover:text-[#fc4c02] transition-colors" title={ex.name}>
+                              {cleanName}
+                            </h4>
+                            {ex.primary_muscle && (
+                              <div className="text-[10px] text-zinc-400 truncate mt-1">
+                                {ex.primary_muscle.split('(')[0].trim()}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="mt-2 pt-1.5 border-t border-white/5 flex items-center justify-between text-[10px] text-zinc-400 font-medium">
+                            <span className="text-[#fc4c02] group-hover:underline flex items-center space-x-0.5 font-bold">
+                              <span>Техника</span>
+                              <span>→</span>
+                            </span>
+                            {ex.pr_weight > 0 ? (
+                              <span className="text-amber-400 font-mono text-[9px] font-bold">
+                                PR {ex.pr_weight} кг
+                              </span>
+                            ) : (
+                              <span className="text-zinc-500 font-mono text-[9px]">
+                                {ex.estimated_1rm > 0 ? `1ПМ ~${ex.estimated_1rm}` : 'Старт'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* COMPACT LIST VIEW */
+                <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5 space-y-1 divide-y divide-white/[0.04]">
+                  {activeDay.exercises.map((ex, i) => {
+                    const cleanName = ex.name.split('(')[0].trim();
+                    const isOverload = ex.progression_status === 'INCREASE';
+                    const gifUrl = ex.image_url || exerciseGuides[ex.name]?.local_video || exerciseGuides[ex.name]?.remote_video || '/static/videos/barbell_bench_press.gif';
+
+                    return (
+                      <div 
+                        key={i} 
+                        onClick={() => {
+                          triggerHaptic('light');
+                          setPreviewGuideEx(ex);
+                        }}
+                        className="flex items-center justify-between py-2 first:pt-1 last:pb-1 hover:bg-white/[0.02] rounded-xl px-1.5 transition cursor-pointer"
+                      >
+                        {/* Left: Thumbnail + Name */}
+                        <div className="flex items-center space-x-2.5 min-w-0 pr-2 flex-1">
+                          <div className="w-11 h-11 rounded-xl bg-black border border-white/10 overflow-hidden shrink-0 relative">
+                            <img 
+                              src={gifUrl} 
+                              alt={cleanName} 
+                              loading="lazy" 
+                              className="w-full h-full object-cover" 
+                              onError={(e) => { e.target.onerror = null; e.target.src = '/static/videos/barbell_bench_press.gif'; }}
+                            />
+                            <span className="absolute bottom-0 right-0 bg-black/80 text-[8px] font-mono text-zinc-300 px-1 rounded-tl">
+                              #{i + 1}
+                            </span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[12.5px] font-bold text-white leading-snug truncate" title={cleanName}>
+                              {cleanName}
+                            </div>
+                            <div className="flex items-center space-x-1.5 mt-0.5">
+                              {isOverload ? (
+                                <span className="text-[9px] font-black font-mono text-emerald-400 px-1 py-0.2 bg-emerald-500/15 border border-emerald-500/30 rounded">
+                                  ↗ {ex.progression_badge || '+2.5 кг'}
+                                </span>
+                              ) : (
+                                <span className="text-[9px] text-zinc-400 font-medium">
+                                  {ex.primary_muscle ? ex.primary_muscle.split('(')[0].trim() : 'Базовое'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: Sets & Weight */}
                         <div className="flex items-center space-x-1.5 shrink-0 font-mono text-right">
                           <span className="text-[11px] text-zinc-400 font-medium">
                             {ex.target_sets}×{ex.target_reps}
@@ -4082,22 +4326,46 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                     );
                   })}
                 </div>
+              )}
 
-                {/* Primary Start Action (Strava CTA) */}
-                <button
-                  onClick={() => handleStartDay(day.type, day.variant)}
-                  className={`w-full py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-lg active:scale-98 cursor-pointer ${
-                    isRec 
-                      ? 'bg-[#fc4c02] hover:bg-[#e04302] text-white shadow-[#fc4c02]/25' 
-                      : 'bg-zinc-800 hover:bg-zinc-700 text-white border border-white/10'
-                  }`}
-                >
-                  <Icons.Play className="w-3.5 h-3.5 fill-current" />
-                  <span>НАЧАТЬ ТРЕНИРОВКУ {day.type.toUpperCase()} ({day.variant.toUpperCase()})</span>
-                </button>
-              </div>
-            );
-          })}
+              {/* Primary Start Workout Action (Strava CTA) */}
+              <button
+                onClick={() => handleStartDay(activeDay.type, activeDay.variant)}
+                className="w-full py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-xl shadow-[#fc4c02]/30 bg-[#fc4c02] hover:bg-[#e04302] text-white active:scale-98 cursor-pointer"
+              >
+                <Icons.Play className="w-4 h-4 fill-current" />
+                <span>НАЧАТЬ ТРЕНИРОВКУ {activeDay.type.toUpperCase()} ({activeDay.variant.toUpperCase()})</span>
+              </button>
+            </div>
+          );
+        })()}
+
+        {/* Quick Day Switcher Footer */}
+        <div className="bg-[#141518] border border-white/5 rounded-2xl p-2.5 flex items-center justify-between text-xs text-zinc-400">
+          <span className="text-[11px] text-zinc-500">Сменить тренировку:</span>
+          <div className="flex items-center space-x-1.5">
+            {[
+              { type: 'push', label: 'Push' },
+              { type: 'pull', label: 'Pull' },
+              { type: 'legs', label: 'Legs' }
+            ].map(d => (
+              <button
+                key={d.type}
+                type="button"
+                onClick={() => {
+                  triggerHaptic('light');
+                  setSelectedDayType(d.type);
+                }}
+                className={`px-2 py-0.8 rounded-lg text-[11px] font-bold transition active:scale-95 cursor-pointer ${
+                  selectedDayType === d.type
+                    ? 'bg-white/15 text-white'
+                    : 'hover:bg-white/5 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -4817,12 +5085,25 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
         onSwap={handleSwapExercise}
       />
 
-      {/* Exercise Video & Technique Modal */}
+      {/* Exercise Video & Technique Modal (Active Workout) */}
       <ExerciseVideoModal
         isOpen={showVideoModal}
         onClose={() => setShowVideoModal(false)}
         exerciseName={currentPlanEx?.name}
         guide={exerciseGuides[currentPlanEx?.name]}
+      />
+
+      {/* Exercise Technique Preview Modal (from Program Selection Cards) */}
+      <ExerciseVideoModal
+        isOpen={!!previewGuideEx}
+        onClose={() => setPreviewGuideEx(null)}
+        exerciseName={previewGuideEx?.name}
+        guide={exerciseGuides[previewGuideEx?.name] || (previewGuideEx ? {
+          name: previewGuideEx.name,
+          local_video: previewGuideEx.image_url,
+          primary_muscle: previewGuideEx.primary_muscle,
+          tip: previewGuideEx.tip
+        } : null)}
       />
 
       {/* Warmup Ladder Modal (Smart Pyramid) */}

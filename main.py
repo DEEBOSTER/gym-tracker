@@ -142,11 +142,18 @@ def create_exercise(exercise: ExerciseCreate):
             raise HTTPException(status_code=400, detail="Упражнение с таким названием уже существует")
 
 GUIDES_FILE_PATH = os.path.join(os.path.dirname(__file__), "static", "exercise_guides.json")
+GUIDES_CACHE = {}
+if os.path.exists(GUIDES_FILE_PATH):
+    try:
+        with open(GUIDES_FILE_PATH, "r", encoding="utf-8") as _gf:
+            GUIDES_CACHE = json.load(_gf)
+    except Exception as _ge:
+        print(f"Error loading GUIDES_CACHE: {_ge}")
 
 @app.get("/api/exercises/guides")
 def get_exercise_guides():
-    content = {}
-    if os.path.exists(GUIDES_FILE_PATH):
+    content = GUIDES_CACHE if GUIDES_CACHE else {}
+    if not content and os.path.exists(GUIDES_FILE_PATH):
         with open(GUIDES_FILE_PATH, "r", encoding="utf-8") as f:
             content = json.load(f)
     return JSONResponse(content=content, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
@@ -828,6 +835,10 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default"):
 
     estimated_1rm = round(rec_weight * (1.0 + (target_max / 30.0)), 1) if rec_weight > 0 else 0.0
 
+    guide_info = GUIDES_CACHE.get(ex_name, {})
+    image_url = guide_info.get("local_video") or guide_info.get("remote_video") or ""
+    primary_muscle = guide_info.get("primary_muscle") or ""
+
     return {
         "name": ex_name,
         "target_sets": target_sets,
@@ -845,7 +856,9 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default"):
         "estimated_1rm": estimated_1rm,
         "total_sessions": total_sessions,
         "days_ago": days_ago,
-        "warmup_pyramid": warmup_pyramid
+        "warmup_pyramid": warmup_pyramid,
+        "image_url": image_url,
+        "primary_muscle": primary_muscle
     }
 
 def enrich_single_plan(plan_template, cursor, profile=None, user_id: str = "default"):
