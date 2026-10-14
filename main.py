@@ -190,7 +190,7 @@ PPL_PROGRAMS = {
                 "target_sets": 3,
                 "target_reps": "8–10",
                 "tip": "Локти на 30° вперед в плоскости лопаток, не соударять гантели вверху",
-                "alternatives": ["Армейский жим штанги стоя", "Жим Арнольда"]
+                "alternatives": ["Жим на плечи в тренажере", "Армейский жим штанги стоя", "Жим Арнольда"]
             },
             {
                 "name": "Махи гантелями через стороны",
@@ -241,7 +241,7 @@ PPL_PROGRAMS = {
                 "target_sets": 3,
                 "target_reps": "6–8",
                 "tip": "Пресс и ягодицы зажаты, штанга движется строго вертикально",
-                "alternatives": ["Жим гантелей сидя на плечи", "Жим Арнольда"]
+                "alternatives": ["Жим на плечи в тренажере", "Жим гантелей сидя на плечи", "Жим Арнольда"]
             },
             {
                 "name": "Тяга штанги к подбородку широким хватом",
@@ -754,7 +754,22 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default"):
 
             is_plateau = len(recent_sessions) >= 3 and len(set(r["max_w"] for r in recent_sessions)) == 1
 
-            if avg_reps >= target_max:
+            is_bodyweight = any(w in ex_name.lower() for w in ["брусь", "подтягиван", "турник", "висе", "отжимания"])
+            if is_bodyweight and max_w == 0.0:
+                rec_weight = 0.0
+                if avg_reps >= target_max:
+                    progression_status = "MAINTAIN"
+                    progression_badge = "Свой вес (закрыт) 🎯"
+                    rec_note = f"🎯 Свой вес (0 кг) закрыт ({round(avg_reps, 1)} повт. из {target_max})! Закрепляйте свой вес или при желании добавьте +1.25–2.5 кг."
+                elif avg_reps >= target_min:
+                    progression_status = "MAINTAIN"
+                    progression_badge = "Свой вес"
+                    rec_note = f"💪 Свой вес: {round(avg_reps, 1)} повт. Закрепляем до {target_max} повторений."
+                else:
+                    progression_status = "STABILIZE"
+                    progression_badge = "Свой вес"
+                    rec_note = f"🛡️ Свой вес: {round(avg_reps, 1)} повт. Работаем над чистой амплитудой."
+            elif avg_reps >= target_max:
                 rec_weight = round(max_w + step, 1)
                 progression_status = "INCREASE"
                 progression_badge = f"+{step} кг Прогрессия"
@@ -1881,6 +1896,10 @@ async def schedule_rest_timer(
         except Exception:
             pass
 
+    # Ultimate fallback for standalone web application
+    if not target_chat_id:
+        target_chat_id = 591306946
+
     # If resolved, cache it in user_profiles and telegram_chat_id.txt for future speed
     if target_chat_id:
         try:
@@ -2510,10 +2529,10 @@ def log_meal_entry(
             round(payload.fat, 1),
             round(payload.carbs, 1),
             round(payload.portion_grams or 100.0, 1),
-            payload.image_url or ""
+            ""  # In history and logs do NOT store photo to save space and respect user privacy
         ))
         meal_id = cursor.lastrowid
-        cursor.execute("SELECT * FROM nutrition_logs WHERE id = ?;", (meal_id,))
+        cursor.execute("SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, created_at FROM nutrition_logs WHERE id = ?;", (meal_id,))
         return dict(cursor.fetchone())
 
 @app.delete("/api/nutrition/meals/{meal_id}")
@@ -2521,10 +2540,60 @@ def delete_meal_entry(
     meal_id: int,
     user_id: str = Depends(get_current_user_id)
 ):
+    alt_user_id = user_id.replace("tg_", "") if user_id.startswith("tg_") else f"tg_{user_id}"
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM nutrition_logs WHERE id = ? AND (user_id = ? OR user_id = 'default');", (meal_id, user_id))
+        cursor.execute("DELETE FROM nutrition_logs WHERE id = ? AND (user_id IN (?, ?, 'default') OR ? = 'default');", (meal_id, user_id, alt_user_id, user_id))
         return {"status": "ok", "deleted_id": meal_id}
+
+@app.get("/api/nutrition/history")
+def get_nutrition_history(
+    days_limit: int = 30,
+    user_id: str = Depends(get_current_user_id),
+    user_name: str = Depends(get_current_user_name)
+):
+    """
+    Returns full history of logged meals grouped by day with daily macros,
+    completely excluding photos.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        profile = get_user_profile_dict(cursor, user_id=user_id, user_name=user_name)
+        targets = calculate_daily_macro_targets(profile)
+
+        alt_user_id = user_id.replace("tg_", "") if user_id.startswith("tg_") else f"tg_{user_id}"
+        # Do NOT select image_url: history does not store/return photos
+        cursor.execute("""
+            SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, created_at
+            FROM nutrition_logs
+            WHERE user_id IN (?, ?, 'default')
+            ORDER BY date DESC, id DESC;
+        """, (user_id, alt_user_id))
+        rows = [dict(r) for r in cursor.fetchall()]
+
+        days_map = {}
+        for r in rows:
+            d = r["date"]
+            if d not in days_map:
+                days_map[d] = {
+                    "date": d,
+                    "calories": 0.0,
+                    "protein": 0.0,
+                    "fat": 0.0,
+                    "carbs": 0.0,
+                    "meals": []
+                }
+            days_map[d]["calories"] = round(days_map[d]["calories"] + float(r["calories"] or 0), 1)
+            days_map[d]["protein"] = round(days_map[d]["protein"] + float(r["protein"] or 0), 1)
+            days_map[d]["fat"] = round(days_map[d]["fat"] + float(r["fat"] or 0), 1)
+            days_map[d]["carbs"] = round(days_map[d]["carbs"] + float(r["carbs"] or 0), 1)
+            days_map[d]["meals"].append(r)
+
+        return {
+            "targets": targets,
+            "days": list(days_map.values())[:days_limit],
+            "total_logged_meals": len(rows)
+        }
 
 def analyze_food_image_with_gemini(image_data: str, hint: str = "", client_api_key: str = "") -> Optional[dict]:
     keys_to_try = []

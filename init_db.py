@@ -16,6 +16,7 @@ DEFAULT_EXERCISES = [
     "Жим штанги лежа",
     "Жим гантелей на горизонтальной скамье",
     "Жим гантелей сидя на плечи",
+    "Жим на плечи в тренажере",
     "Армейский жим штанги стоя",
     "Жим Арнольда",
     "Сведение рук в кроссовере",
@@ -80,15 +81,18 @@ def seed_exercises():
             except Exception:
                 print(f"  - Упражнение уже существует: {name}")
                 
-        # Ensure 'Пуловер в тренажере' is present and categorized under Спина
+        # Ensure 'Пуловер в тренажере' and 'Жим на плечи в тренажере' are present
         try:
             cursor.execute("SELECT id FROM exercises WHERE name = 'Пуловер в тренажере';")
             if not cursor.fetchone():
                 cursor.execute("INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);", ('Пуловер в тренажере', 'Спина'))
+            cursor.execute("SELECT id FROM exercises WHERE name = 'Жим на плечи в тренажере';")
+            if not cursor.fetchone():
+                cursor.execute("INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);", ('Жим на плечи в тренажере', 'Плечи'))
             # If user had active workout notes with old pullover, update notes
             cursor.execute("UPDATE workouts SET notes = REPLACE(notes, 'Пуловер с гантелью на скамье', 'Пуловер в тренажере') WHERE end_time IS NULL;")
         except Exception as mig_err:
-            print(f"  [i] Pullover migration note: {mig_err}")
+            print(f"  [i] Migration note: {mig_err}")
                 
         print(f"[OK] Предзаполнение завершено. Добавлено новых: {inserted_count}")
 

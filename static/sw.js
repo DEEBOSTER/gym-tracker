@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gymtracker-v49';
+const CACHE_NAME = 'gymtracker-v50';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',
@@ -35,6 +35,54 @@ self.addEventListener('activate', (event) => {
     })
   );
   self.clients.claim();
+});
+
+// --- BACKGROUND REST TIMER NOTIFICATIONS ---
+let restNotificationTimeout = null;
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SCHEDULE_REST_NOTIFICATION') {
+    if (restNotificationTimeout) {
+      clearTimeout(restNotificationTimeout);
+      restNotificationTimeout = null;
+    }
+    const delayMs = Math.max(0, parseInt(event.data.delayMs, 10) || 0);
+    const title = event.data.title || 'GymTracker ⏱️ Отдых окончен!';
+    const body = event.data.body || 'Пора на следующий подход! 💪';
+
+    if (delayMs > 0) {
+      restNotificationTimeout = setTimeout(() => {
+        self.registration.showNotification(title, {
+          body: body,
+          icon: '/static/icon-192.png',
+          badge: '/static/icon-192.png',
+          vibrate: [300, 100, 300, 100, 300],
+          tag: 'rest-timer',
+          renotify: true,
+          requireInteraction: true,
+          data: { url: '/' }
+        });
+        restNotificationTimeout = null;
+      }, delayMs);
+    }
+  } else if (event.data?.type === 'CANCEL_REST_NOTIFICATION') {
+    if (restNotificationTimeout) {
+      clearTimeout(restNotificationTimeout);
+      restNotificationTimeout = null;
+    }
+  }
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('/');
+    })
+  );
 });
 
 self.addEventListener('fetch', (event) => {

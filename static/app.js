@@ -66,6 +66,46 @@ function getTelegramUser() {
   return { id: 'tg_591306946', name: 'DEBOOSTER' };
 }
 
+// --- BACKGROUND AUDIO KEEPALIVE & BODYWEIGHT HELPERS ---
+let _bgAudioCtx = null;
+let _bgAudioOsc = null;
+
+function startBackgroundAudioKeepalive() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!_bgAudioCtx) {
+      _bgAudioCtx = new AudioCtx();
+    }
+    if (_bgAudioCtx.state === 'suspended') {
+      _bgAudioCtx.resume().catch(() => {});
+    }
+    if (!_bgAudioOsc) {
+      _bgAudioOsc = _bgAudioCtx.createOscillator();
+      const gainNode = _bgAudioCtx.createGain();
+      gainNode.gain.value = 0.00001; // Inaudible, but keeps audio stream active in mobile background
+      _bgAudioOsc.connect(gainNode);
+      gainNode.connect(_bgAudioCtx.destination);
+      _bgAudioOsc.start();
+    }
+  } catch (e) {}
+}
+
+function stopBackgroundAudioKeepalive() {
+  try {
+    if (_bgAudioOsc) {
+      _bgAudioOsc.stop();
+      _bgAudioOsc.disconnect();
+      _bgAudioOsc = null;
+    }
+  } catch (e) {}
+}
+
+function isBodyweightExercise(name) {
+  const n = (name || '').toLowerCase();
+  return n.includes('брусь') || n.includes('подтягиван') || n.includes('турник') || n.includes('отжимания') || n.includes('висе');
+}
+
 const _origFetch = window.fetch;
 window.fetch = function(input, init = {}) {
   init.headers = init.headers || {};
@@ -1393,7 +1433,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
           fat: finalF,
           carbs: finalC,
           portion_grams: portionGrams,
-          image_url: photoPreview || ''
+          image_url: ''
         })
       });
 
@@ -2451,7 +2491,10 @@ function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = n
   const minReps = parseInt(parts[0], 10) || 8;
   const maxReps = parts.length > 1 ? (parseInt(parts[1], 10) || minReps) : minReps;
 
-  const baseRecWeight = parseFloat(currentPlanEx.recommended_weight) || 20;
+  const isBodyweight = isBodyweightExercise(exName);
+  const baseRecWeight = (currentPlanEx.recommended_weight !== undefined && currentPlanEx.recommended_weight !== null)
+    ? parseFloat(currentPlanEx.recommended_weight)
+    : (isBodyweight ? 0 : 20);
   const allTimePr = parseFloat(currentPlanEx.pr_weight) || 0;
   const prE1rm = parseFloat(currentPlanEx.pr_e1rm) || 0;
 
@@ -2478,8 +2521,10 @@ function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = n
 
   // If no working sets done yet (about to do Set 1)
   if (workingSets.length === 0) {
-    const startE1rm = Math.round(baseRecWeight * (1.0 + maxReps / 30.0) * 10) / 10;
-    let startMsg = `Подход 1 из ${targetSets}: расчетный рабочий вес ${baseRecWeight} кг на ${targetRepsStr} повт. (расчетный 1ПМ: ~${startE1rm} кг).`;
+    const startE1rm = baseRecWeight > 0 ? Math.round(baseRecWeight * (1.0 + maxReps / 30.0) * 10) / 10 : 0;
+    let startMsg = isBodyweight && baseRecWeight === 0
+      ? `Подход 1 из ${targetSets}: свой вес (0 кг) на ${targetRepsStr} повт.`
+      : `Подход 1 из ${targetSets}: расчетный рабочий вес ${baseRecWeight} кг на ${targetRepsStr} повт. (расчетный 1ПМ: ~${startE1rm} кг).`;
     if (currentPlanEx.recommendation_note) {
       startMsg = `${currentPlanEx.recommendation_note} ${startMsg}`;
     }
@@ -2489,7 +2534,7 @@ function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = n
 
     return {
       status: 'START',
-      badge: 'СТАРТОВЫЙ ВЕС 🎯',
+      badge: isBodyweight && baseRecWeight === 0 ? 'СВОЙ ВЕС 🎯' : 'СТАРТОВЫЙ ВЕС 🎯',
       badgeColor: 'bg-[#fc4c02]/15 text-[#fc4c02] border-[#fc4c02]/30',
       recWeight: baseRecWeight,
       recReps: maxReps,
@@ -2502,7 +2547,9 @@ function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = n
 
   // Get the last working set
   const lastSet = workingSets[workingSets.length - 1];
-  const lastWeight = parseFloat(lastSet.weight) || baseRecWeight;
+  const lastWeight = (lastSet.weight !== undefined && lastSet.weight !== null && !isNaN(parseFloat(lastSet.weight)))
+    ? parseFloat(lastSet.weight)
+    : baseRecWeight;
   const lastReps = parseInt(lastSet.reps, 10) || minReps;
   const lastType = lastSet.set_type || 'normal';
 
@@ -2517,8 +2564,33 @@ function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = n
   let message = '';
   let status = 'MAINTAIN';
 
+  // Special handling for pure bodyweight sets (weight === 0)
+  if (isBodyweight && lastWeight === 0) {
+    if (lastReps >= maxReps) {
+      recWeight = 0;
+      recReps = maxReps;
+      status = 'TOP_HIT';
+      badge = 'СВОЙ ВЕС ЗАКРЫТ 🎯';
+      badgeColor = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-black';
+      message = `Отличный сет! Выполнено ${lastReps} повт. со своим весом. Сохраняйте 0 кг (свой вес) для закрепления или при желании накиньте +1.25–2.5 кг.`;
+    } else if (lastReps < minReps) {
+      recWeight = 0;
+      recReps = minReps;
+      status = 'DECREASE';
+      badge = 'СВОЙ ВЕС ⚖️';
+      badgeColor = 'bg-amber-500/20 text-amber-400 border-amber-500/30 font-black';
+      message = `Утомление: ${lastReps} повт. Работаем со своим весом (0 кг). Отдохните подольше (+30 сек).`;
+    } else {
+      recWeight = 0;
+      recReps = lastReps;
+      status = 'IN_ZONE';
+      badge = 'СВОЙ ВЕС 💪';
+      badgeColor = 'bg-sky-500/20 text-sky-400 border-sky-500/30';
+      message = `Хороший рабочий сет со своим весом (${lastReps} повт.). Держим 0 кг на подход ${nextSetNum}.`;
+    }
+  }
   // 1. OVERSHOT REPS (e.g. Target 8-10, did 11 or 12+)
-  if (lastReps > maxReps) {
+  else if (lastReps > maxReps) {
     const repsOver = lastReps - maxReps;
     const addStep = repsOver >= 3 ? weightStep * 2 : weightStep;
     recWeight = Math.round((lastWeight + addStep) * 10) / 10;
@@ -4265,14 +4337,19 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
       
       setSetType('normal');
 
+      const isBw = isBodyweightExercise(currentPlanEx.name);
+
       if (wSets.length > 0) {
         const adv = calculateNextSetAdvice(currentPlanEx, curSets, userProfile);
-        if (adv && adv.recWeight) {
+        if (adv && adv.recWeight !== undefined && adv.recWeight !== null) {
           setWeight(adv.recWeight);
           setReps(adv.recReps);
         }
       } else {
-        setWeight(currentPlanEx.recommended_weight || 20);
+        const defaultW = (currentPlanEx.recommended_weight !== undefined && currentPlanEx.recommended_weight !== null)
+          ? currentPlanEx.recommended_weight
+          : (isBw ? 0 : 20);
+        setWeight(defaultW);
         const targetRepsNum = parseInt(currentPlanEx.target_reps?.split('–')[1] || currentPlanEx.target_reps?.split('-')[0] || 10);
         setReps(targetRepsNum || 10);
       }
@@ -4349,13 +4426,39 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
   // Rest Timer Countdown (Timestamp-based: works 100% in background / screen off)
   useEffect(() => {
-    if (!restActive) return;
+    if (!restActive) {
+      stopBackgroundAudioKeepalive();
+      try {
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({ type: 'CANCEL_REST_NOTIFICATION' });
+        }
+      } catch (e) {}
+      return;
+    }
+
+    // Start silent audio keepalive to prevent mobile OS from freezing JS timers in background
+    startBackgroundAudioKeepalive();
+
+    // Schedule native background notification in Service Worker
+    try {
+      const targetStr = localStorage.getItem('gym_tracker_rest_end');
+      if (targetStr && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        const ms = Math.max(0, parseInt(targetStr, 10) - Date.now());
+        navigator.serviceWorker.controller.postMessage({
+          type: 'SCHEDULE_REST_NOTIFICATION',
+          delayMs: ms,
+          title: 'GymTracker ⏱️ Отдых окончен!',
+          body: `Пора на следующий подход: ${currentPlanEx?.name || 'упражнение'} 💪`
+        });
+      }
+    } catch (e) {}
 
     const checkRest = () => {
       const targetStr = localStorage.getItem('gym_tracker_rest_end');
       if (!targetStr) {
         setRestActive(false);
         setRestSecondsLeft(0);
+        stopBackgroundAudioKeepalive();
         return;
       }
       const target = parseInt(targetStr, 10);
@@ -4365,7 +4468,11 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
       if (remaining <= 0) {
         setRestActive(false);
+        stopBackgroundAudioKeepalive();
         try {
+          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({ type: 'CANCEL_REST_NOTIFICATION' });
+          }
           localStorage.removeItem('gym_tracker_rest_end');
           localStorage.removeItem('gym_tracker_rest_total');
           localStorage.removeItem('gym_tracker_rest_reason');
@@ -4376,7 +4483,6 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
         if (navigator.vibrate) navigator.vibrate([250, 100, 250, 100, 400]);
 
         // Only play chime sound if the timer expired just now (within 3.5 seconds)
-        // If the user reopened the app minutes later, do NOT interrupt their music or workout!
         if (soundEnabled && overdueMs < 3500) {
           playChimeSound();
         }
@@ -4386,17 +4492,20 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           if ('Notification' in window && Notification.permission === 'granted') {
             if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
               navigator.serviceWorker.ready.then(reg => {
-                reg.showNotification('GymTracker ⏱️', {
-                  body: 'Отдых окончен! Пора на следующий подход 💪',
+                reg.showNotification('GymTracker ⏱️ Отдых окончен!', {
+                  body: `Пора на следующий подход: ${currentPlanEx?.name || 'упражнение'} 💪`,
                   icon: '/static/icon-192.png',
                   badge: '/static/icon-192.png',
-                  tag: 'rest-timer'
+                  vibrate: [300, 100, 300, 100, 300],
+                  tag: 'rest-timer',
+                  renotify: true,
+                  requireInteraction: true
                 });
               }).catch(() => {
-                try { new Notification('GymTracker ⏱️', { body: 'Отдых окончен! Пора на следующий подход 💪', icon: '/static/icon-192.png' }); } catch (e) {}
+                try { new Notification('GymTracker ⏱️ Отдых окончен!', { body: `Пора на следующий подход: ${currentPlanEx?.name || 'упражнение'} 💪`, icon: '/static/icon-192.png' }); } catch (e) {}
               });
             } else {
-              try { new Notification('GymTracker ⏱️', { body: 'Отдых окончен! Пора на следующий подход 💪', icon: '/static/icon-192.png' }); } catch (e) {}
+              try { new Notification('GymTracker ⏱️ Отдых окончен!', { body: `Пора на следующий подход: ${currentPlanEx?.name || 'упражнение'} 💪`, icon: '/static/icon-192.png' }); } catch (e) {}
             }
           }
         } catch (e) {}
@@ -4415,6 +4524,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
     return () => {
       clearInterval(interval);
+      stopBackgroundAudioKeepalive();
       document.removeEventListener('visibilitychange', onVisibilityOrFocus);
       window.removeEventListener('focus', onVisibilityOrFocus);
     };
@@ -4434,6 +4544,9 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
         } else if (/^\d+$/.test(u.id)) {
           tgUserId = parseInt(u.id, 10);
         }
+      }
+      if (!tgUserId) {
+        tgUserId = 591306946; // Fallback for standalone PWA web application
       }
       fetch('/api/timer/schedule', {
         method: 'POST',
@@ -4733,14 +4846,14 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
         if (isWarmup) {
           setSetType('normal');
-          if (currentPlanEx.recommended_weight) {
+          if (currentPlanEx.recommended_weight !== undefined && currentPlanEx.recommended_weight !== null) {
             setWeight(currentPlanEx.recommended_weight);
             nextWeightToRec = currentPlanEx.recommended_weight;
           }
         } else if (newWorkingCount < currentPlanEx.target_sets) {
           // Compute dynamic next set advice based on the set just finished!
           const nextAdvice = calculateNextSetAdvice(currentPlanEx, updatedSetsForEx, userProfile);
-          if (nextAdvice && nextAdvice.recWeight) {
+          if (nextAdvice && nextAdvice.recWeight !== undefined && nextAdvice.recWeight !== null) {
             setWeight(nextAdvice.recWeight);
             setReps(nextAdvice.recReps);
             nextWeightToRec = nextAdvice.recWeight;
@@ -5755,8 +5868,11 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
               <div className="grid grid-cols-2 gap-2.5">
                 {/* Weight Stepper */}
                 <div className="bg-[#121316] border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-between">
-                  <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                  <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
                     Вес (кг)
+                    {isBodyweightExercise(currentPlanEx?.name) && (parseFloat(weight) === 0 || weight === '' || weight === '0') && (
+                      <span className="text-[9px] px-1.5 py-0.2 bg-emerald-500/20 text-emerald-400 font-bold rounded">Свой вес</span>
+                    )}
                   </span>
 
                   <div className="flex items-center justify-between w-full my-1.5 px-0.5">
@@ -5786,6 +5902,14 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                   </div>
 
                   <div className="flex space-x-1.5 w-full justify-center">
+                    {isBodyweightExercise(currentPlanEx?.name) && (
+                      <button 
+                        onClick={() => { setWeight(0); triggerHaptic('light'); }} 
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border transition ${(parseFloat(weight) === 0 || weight === '0') ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 font-bold' : 'text-zinc-400 bg-[#0f1013] border-white/5 active:bg-white/10'}`}
+                      >
+                        0 (Свой)
+                      </button>
+                    )}
                     <button onClick={() => { adjustWeight(-5); triggerHaptic('light'); }} className="text-[10px] font-mono text-zinc-400 bg-[#0f1013] px-2 py-0.5 rounded-lg border border-white/5 active:bg-white/10">-5</button>
                     <button onClick={() => { adjustWeight(+5); triggerHaptic('light'); }} className="text-[10px] font-mono text-[#fc4c02] bg-[#0f1013] px-2 py-0.5 rounded-lg border border-white/5 active:bg-white/10">+5</button>
                   </div>
@@ -7773,9 +7897,293 @@ function DeleteWorkoutModal({ workout, isOpen, onClose, onDeleted }) {
 }
 
 // ==========================================
+// 🥗 NUTRITION HISTORY TAB COMPONENT
+// ==========================================
+function NutritionHistoryTab() {
+  const [historyData, setHistoryData] = useState({ targets: null, days: [], total_logged_meals: 0 });
+  const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
+  const [collapsedDays, setCollapsedDays] = useState({});
+
+  const fetchHistory = async () => {
+    try {
+      setLoading(true);
+      const u = getTelegramUser();
+      const res = await fetch('/api/nutrition/history?days_limit=45', {
+        headers: {
+          'x-telegram-user-id': u?.id || 'default',
+          'x-telegram-user-name': u?.first_name || 'Спортсмен'
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setHistoryData(data);
+      }
+    } catch (e) {
+      console.error('Failed to load nutrition history', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const toggleDayCollapse = (dateStr) => {
+    triggerHaptic('light');
+    setCollapsedDays(prev => ({ ...prev, [dateStr]: !prev[dateStr] }));
+  };
+
+  const handleDeleteMeal = async (mealId) => {
+    if (!confirm('Удалить этот прием пищи из истории?')) return;
+    try {
+      setDeletingId(mealId);
+      triggerHaptic('warning');
+      const u = getTelegramUser();
+      const res = await fetch(`/api/nutrition/meals/${mealId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-telegram-user-id': u?.id || 'default'
+        }
+      });
+      if (res.ok) {
+        setHistoryData(prev => {
+          const updatedDays = (prev.days || []).map(d => {
+            const updatedMeals = (d.meals || []).filter(m => m.id !== mealId);
+            if (updatedMeals.length === d.meals.length) return d;
+            return {
+              ...d,
+              calories: Math.round(updatedMeals.reduce((s, m) => s + (parseFloat(m.calories) || 0), 0) * 10) / 10,
+              protein: Math.round(updatedMeals.reduce((s, m) => s + (parseFloat(m.protein) || 0), 0) * 10) / 10,
+              fat: Math.round(updatedMeals.reduce((s, m) => s + (parseFloat(m.fat) || 0), 0) * 10) / 10,
+              carbs: Math.round(updatedMeals.reduce((s, m) => s + (parseFloat(m.carbs) || 0), 0) * 10) / 10,
+              meals: updatedMeals
+            };
+          }).filter(d => d.meals.length > 0);
+
+          return {
+            ...prev,
+            days: updatedDays,
+            total_logged_meals: Math.max(0, (prev.total_logged_meals || 1) - 1)
+          };
+        });
+      }
+    } catch (e) {
+      alert('Ошибка при удалении');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const formatDayTitle = (dateStr) => {
+    const d = parseSafeDate(dateStr);
+    if (!d) return dateStr;
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const yest = new Date(now);
+    yest.setDate(yest.getDate() - 1);
+    const yestStr = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
+
+    if (dateStr === todayStr) return `Сегодня, ${d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}`;
+    if (dateStr === yestStr) return `Вчера, ${d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}`;
+    return d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' });
+  };
+
+  const targets = historyData?.targets;
+  const days = historyData?.days || [];
+
+  return (
+    <div className="space-y-4">
+      {/* 1. Daily Target Banner */}
+      {targets && (
+        <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 shadow-xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-xl">
+                🥗
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-base font-black text-white tracking-tight">Дневной план</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    Цель
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-400">
+                  Всего записано: <strong className="text-white">{historyData.total_logged_meals || 0}</strong> блюд
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={fetchHistory}
+              className="text-[11px] font-mono text-zinc-400 hover:text-white bg-[#121316] border border-white/5 px-2.5 py-1.5 rounded-xl active:scale-95 transition cursor-pointer"
+              title="Обновить историю"
+            >
+              ↻
+            </button>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2 pt-1 font-mono text-center">
+            <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5">
+              <span className="text-[9px] text-zinc-500 block uppercase font-bold tracking-wider">Ккал</span>
+              <span className="text-sm font-black text-amber-400">{targets.target_calories}</span>
+            </div>
+            <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5">
+              <span className="text-[9px] text-zinc-500 block uppercase font-bold tracking-wider">Белки</span>
+              <span className="text-sm font-black text-emerald-400">{targets.target_protein}г</span>
+            </div>
+            <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5">
+              <span className="text-[9px] text-zinc-500 block uppercase font-bold tracking-wider">Жиры</span>
+              <span className="text-sm font-black text-sky-400">{targets.target_fat}г</span>
+            </div>
+            <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5">
+              <span className="text-[9px] text-zinc-500 block uppercase font-bold tracking-wider">Углев.</span>
+              <span className="text-sm font-black text-purple-400">{targets.target_carbs}г</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading state */}
+      {loading && days.length === 0 && (
+        <div className="bg-[#18191d] border border-white/10 rounded-3xl p-8 text-center space-y-3">
+          <div className="animate-spin text-2xl inline-block">⏳</div>
+          <p className="text-xs text-zinc-400 font-mono">Загрузка истории питания...</p>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && days.length === 0 && (
+        <div className="bg-[#18191d] border border-white/10 rounded-3xl p-8 text-center space-y-3 shadow-xl">
+          <div className="text-3xl">🥗</div>
+          <h3 className="text-sm font-black text-white">История питания пуста</h3>
+          <p className="text-xs text-zinc-400 max-w-xs mx-auto leading-relaxed">
+            Фотографируйте или записывайте приемы пищи на вкладке «Питание» — они появятся здесь с подсчетом калорий и БЖУ по дням.
+          </p>
+        </div>
+      )}
+
+      {/* 2. Grouped days list */}
+      {days.map((day) => {
+        const isCollapsed = !!collapsedDays[day.date];
+        const calPercent = targets?.target_calories > 0 
+          ? Math.min(150, Math.round((day.calories / targets.target_calories) * 100))
+          : 0;
+
+        return (
+          <div key={day.date} className="bg-[#18191d] border border-white/10 rounded-3xl overflow-hidden shadow-xl">
+            {/* Day Header */}
+            <div 
+              onClick={() => toggleDayCollapse(day.date)}
+              className="p-4 cursor-pointer hover:bg-white/[0.02] transition flex items-center justify-between select-none"
+            >
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-black text-white capitalize">{formatDayTitle(day.date)}</span>
+                  <span className="text-[10px] font-mono text-zinc-400 bg-white/5 px-2 py-0.5 rounded-full">
+                    {day.meals.length} {day.meals.length === 1 ? 'прием' : (day.meals.length > 1 && day.meals.length < 5 ? 'приема' : 'приемов')}
+                  </span>
+                </div>
+
+                {/* Macro pills */}
+                <div className="flex items-center space-x-2 font-mono text-xs pt-0.5">
+                  <span className="font-black text-amber-400">🔥 {Math.round(day.calories)} ккал</span>
+                  <span className="text-zinc-600">•</span>
+                  <span className="text-emerald-400 font-bold">Б: {Math.round(day.protein)}г</span>
+                  <span className="text-sky-400 font-bold">Ж: {Math.round(day.fat)}г</span>
+                  <span className="text-purple-400 font-bold">У: {Math.round(day.carbs)}г</span>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 text-zinc-400 text-xs">
+                {targets?.target_calories > 0 && (
+                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg ${
+                    calPercent >= 85 && calPercent <= 110 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-zinc-400'
+                  }`}>
+                    {calPercent}% цели
+                  </span>
+                )}
+                <span className="text-xs transition-transform duration-200" style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
+                  ▼
+                </span>
+              </div>
+            </div>
+
+            {/* Target Progress Bar */}
+            {targets?.target_calories > 0 && (
+              <div className="w-full bg-[#121316] h-1.5 overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-300 ${
+                    calPercent > 105 ? 'bg-amber-500' : calPercent >= 80 ? 'bg-emerald-500' : 'bg-[#fc4c02]'
+                  }`}
+                  style={{ width: `${Math.min(100, calPercent)}%` }}
+                />
+              </div>
+            )}
+
+            {/* Meals inside Day (Photos are completely omitted!) */}
+            {!isCollapsed && (
+              <div className="divide-y divide-white/[0.04] p-3 space-y-2">
+                {day.meals.map((meal) => {
+                  const timeStr = meal.created_at ? parseSafeDate(meal.created_at)?.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+                  return (
+                    <div 
+                      key={meal.id} 
+                      className="bg-[#121316] border border-white/5 rounded-2xl p-3 flex items-center justify-between hover:border-white/10 transition"
+                    >
+                      <div className="space-y-1.5 pr-2 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          {timeStr && <span className="text-[10px] font-mono text-zinc-500">{timeStr}</span>}
+                          <span className="text-xs font-bold text-white truncate">{meal.meal_name}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
+                          <span className="text-zinc-400 bg-white/5 px-2 py-0.5 rounded-lg font-sans">
+                            {meal.portion_grams || 100} г
+                          </span>
+                          <span className="text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg font-bold">
+                            🔥 {Math.round(meal.calories)} ккал
+                          </span>
+                          <span className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg">
+                            Б: {meal.protein}г
+                          </span>
+                          <span className="text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded-lg">
+                            Ж: {meal.fat}г
+                          </span>
+                          <span className="text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-lg">
+                            У: {meal.carbs}г
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Delete meal button (Strictly NO photo shown anywhere!) */}
+                      <button
+                        type="button"
+                        disabled={deletingId === meal.id}
+                        onClick={() => handleDeleteMeal(meal.id)}
+                        className="w-8 h-8 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 active:scale-90 transition cursor-pointer"
+                        title="Удалить этот прием пищи"
+                      >
+                        {deletingId === meal.id ? '…' : '🗑️'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ==========================================
 // 📜 HISTORY SCREEN
 // ==========================================
 function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
+  const [historySubTab, setHistorySubTab] = useState('workouts'); // 'workouts' | 'nutrition'
   const [selectedDate, setSelectedDate] = useState(null); // 'YYYY-MM-DD'
   const [viewDate, setViewDate] = useState(new Date());
   const [expandedWorkoutId, setExpandedWorkoutId] = useState(null);
@@ -8074,8 +8482,40 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
 
   return (
     <div className="space-y-4">
-      {/* 1. STREAK & MOTIVATIONAL STATS CARD (Strava Athletic Style) */}
-      <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 shadow-xl space-y-3">
+      {/* 0. SUBTAB SWITCHER: WORKOUTS vs NUTRITION */}
+      <div className="flex bg-[#121316] p-1 rounded-2xl border border-white/5 shadow-md">
+        <button
+          type="button"
+          onClick={() => { setHistorySubTab('workouts'); triggerHaptic('light'); }}
+          className={`flex-1 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center space-x-2 cursor-pointer ${
+            historySubTab === 'workouts'
+              ? 'bg-[#fc4c02] text-white shadow-lg shadow-[#fc4c02]/25'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          <span>🏋️</span>
+          <span>Тренировки</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => { setHistorySubTab('nutrition'); triggerHaptic('light'); }}
+          className={`flex-1 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center space-x-2 cursor-pointer ${
+            historySubTab === 'nutrition'
+              ? 'bg-emerald-500 text-gym-950 font-black shadow-lg shadow-emerald-500/25'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          <span>🥗</span>
+          <span>История питания</span>
+        </button>
+      </div>
+
+      {historySubTab === 'nutrition' ? (
+        <NutritionHistoryTab />
+      ) : (
+        <>
+          {/* 1. STREAK & MOTIVATIONAL STATS CARD (Strava Athletic Style) */}
+          <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 shadow-xl space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-2xl bg-[#fc4c02]/15 border border-[#fc4c02]/30 flex items-center justify-center text-xl">
@@ -8545,6 +8985,8 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
             if (typeof onRefresh === 'function') onRefresh();
           }}
         />
+      )}
+        </>
       )}
     </div>
   );
