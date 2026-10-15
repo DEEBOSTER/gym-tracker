@@ -2483,12 +2483,13 @@ def get_today_nutrition(
         profile = get_user_profile_dict(cursor, user_id=user_id, user_name=user_name)
         targets = calculate_daily_macro_targets(profile)
 
+        alt_user_id = user_id.replace("tg_", "") if user_id.startswith("tg_") else f"tg_{user_id}"
         cursor.execute("""
             SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, image_url, created_at
             FROM nutrition_logs
-            WHERE user_id = ? AND date = ?
+            WHERE (user_id IN (?, ?, 'default') OR ? = 'default') AND date = ?
             ORDER BY id ASC;
-        """, (user_id, target_date))
+        """, (user_id, alt_user_id, user_id, target_date))
         meals = [dict(r) for r in cursor.fetchall()]
 
         consumed_kcal = round(sum(m["calories"] for m in meals), 1)
@@ -2566,9 +2567,9 @@ def get_nutrition_history(
         cursor.execute("""
             SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, created_at
             FROM nutrition_logs
-            WHERE user_id IN (?, ?, 'default')
+            WHERE user_id IN (?, ?, 'default') OR ? = 'default'
             ORDER BY date DESC, id DESC;
-        """, (user_id, alt_user_id))
+        """, (user_id, alt_user_id, user_id))
         rows = [dict(r) for r in cursor.fetchall()]
 
         days_map = {}

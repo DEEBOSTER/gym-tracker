@@ -114,19 +114,25 @@ window.fetch = function(input, init = {}) {
     if (!init.headers.has('ngrok-skip-browser-warning')) {
       init.headers.append('ngrok-skip-browser-warning', 'true');
     }
-    if (!init.headers.has('X-Telegram-User-Id')) {
+    if (!init.headers.has('X-Telegram-User-Id') && !init.headers.has('x-telegram-user-id')) {
       init.headers.append('X-Telegram-User-Id', user.id);
     }
-    if (!init.headers.has('X-Telegram-User-Name')) {
-      init.headers.append('X-Telegram-User-Name', encodeURIComponent(user.name));
+    if (!init.headers.has('X-Telegram-User-Name') && !init.headers.has('x-telegram-user-name')) {
+      init.headers.append('X-Telegram-User-Name', encodeURIComponent(user.name || 'Атлет'));
     }
   } else {
     init.headers['ngrok-skip-browser-warning'] = 'true';
-    if (!init.headers['X-Telegram-User-Id']) {
+    if (!init.headers['X-Telegram-User-Id'] && !init.headers['x-telegram-user-id']) {
       init.headers['X-Telegram-User-Id'] = user.id;
     }
-    if (!init.headers['X-Telegram-User-Name']) {
-      init.headers['X-Telegram-User-Name'] = encodeURIComponent(user.name);
+    if (!init.headers['X-Telegram-User-Name'] && !init.headers['x-telegram-user-name']) {
+      init.headers['X-Telegram-User-Name'] = encodeURIComponent(user.name || 'Атлет');
+    }
+    // Defense: Sanitize any existing non-ASCII header values so fetch() never throws ByteString TypeError on iOS Safari
+    for (const key of Object.keys(init.headers)) {
+      if (typeof init.headers[key] === 'string' && /[^\x00-\x7F]/.test(init.headers[key])) {
+        init.headers[key] = encodeURIComponent(init.headers[key]);
+      }
     }
   }
   return _origFetch(input, init);
@@ -7911,13 +7917,14 @@ function NutritionHistoryTab() {
       const u = getTelegramUser();
       const res = await fetch('/api/nutrition/history?days_limit=45', {
         headers: {
-          'x-telegram-user-id': u?.id || 'default',
-          'x-telegram-user-name': u?.first_name || 'Спортсмен'
+          'x-telegram-user-id': u?.id || 'default'
         }
       });
       if (res.ok) {
         const data = await res.json();
         setHistoryData(data);
+      } else {
+        console.warn('Failed to load nutrition history: HTTP', res.status);
       }
     } catch (e) {
       console.error('Failed to load nutrition history', e);
@@ -8060,8 +8067,16 @@ function NutritionHistoryTab() {
           <div className="text-3xl">🥗</div>
           <h3 className="text-sm font-black text-white">История питания пуста</h3>
           <p className="text-xs text-zinc-400 max-w-xs mx-auto leading-relaxed">
-            Фотографируйте или записывайте приемы пищи на вкладке «Питание» — они появятся здесь с подсчетом калорий и БЖУ по дням.
+            Фотографируйте или записывайте приемы пищи через виджет «КБЖУ дня» на главном экране — они появятся здесь с подсчетом калорий и БЖУ по дням.
           </p>
+          <button
+            type="button"
+            onClick={fetchHistory}
+            className="mt-3 inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-bold text-xs active:scale-95 transition cursor-pointer"
+          >
+            <span>↻</span>
+            <span>Обновить историю</span>
+          </button>
         </div>
       )}
 
