@@ -66,6 +66,48 @@ function getTelegramUser() {
   return { id: 'tg_591306946', name: 'DEBOOSTER' };
 }
 
+// --- LOCAL NUTRITION STORAGE & PERSISTENCE HELPERS ---
+function getStoredNutritionMeals(userId) {
+  try {
+    const raw = localStorage.getItem('gym_tracker_nutrition_meals_' + userId) ||
+                localStorage.getItem('gym_tracker_nutrition_meals_backup') || '[]';
+    return JSON.parse(raw) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveStoredNutritionMeals(userId, meals) {
+  try {
+    const json = JSON.stringify(meals || []);
+    localStorage.setItem('gym_tracker_nutrition_meals_' + userId, json);
+    localStorage.setItem('gym_tracker_nutrition_meals_backup', json);
+  } catch (e) {}
+}
+
+function groupMealsIntoDays(meals) {
+  const daysMap = {};
+  (meals || []).forEach(m => {
+    const d = m.date || (m.created_at ? m.created_at.substring(0, 10) : '2026-10-15');
+    if (!daysMap[d]) {
+      daysMap[d] = {
+        date: d,
+        calories: 0.0,
+        protein: 0.0,
+        fat: 0.0,
+        carbs: 0.0,
+        meals: []
+      };
+    }
+    daysMap[d].calories = Math.round((daysMap[d].calories + (parseFloat(m.calories) || 0)) * 10) / 10;
+    daysMap[d].protein = Math.round((daysMap[d].protein + (parseFloat(m.protein) || 0)) * 10) / 10;
+    daysMap[d].fat = Math.round((daysMap[d].fat + (parseFloat(m.fat) || 0)) * 10) / 10;
+    daysMap[d].carbs = Math.round((daysMap[d].carbs + (parseFloat(m.carbs) || 0)) * 10) / 10;
+    daysMap[d].meals.push(m);
+  });
+  return Object.values(daysMap).sort((a, b) => b.date.localeCompare(a.date));
+}
+
 // --- BACKGROUND AUDIO KEEPALIVE & BODYWEIGHT HELPERS ---
 let _bgAudioCtx = null;
 let _bgAudioOsc = null;
@@ -1100,12 +1142,68 @@ function AthleticNutritionWidget({ userProfile, onOpenScanner, refreshTrigger })
     try {
       const u = getTelegramUser();
       const uId = u?.id || 'default';
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      
+      const localAllMeals = getStoredNutritionMeals(uId);
+      const localTodayMeals = localAllMeals.filter(m => (m.date || '').substring(0, 10) === todayStr);
+
       const res = await fetch('/api/nutrition/today', {
         headers: { 'x-telegram-user-id': uId }
       });
       if (res.ok) {
         const data = await res.json();
+        const serverMeals = data.meals || [];
+        
+        // If server is missing meals that exist locally (e.g. after a redeploy/restart), auto-sync!
+        if (localTodayMeals.length > serverMeals.length) {
+          fetch('/api/nutrition/sync', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-telegram-user-id': uId
+            },
+            body: JSON.stringify({ meals: localAllMeals })
+          }).then(r => r.ok ? r.json() : null).then(syncData => {
+            if (syncData && syncData.days) {
+              const todayDay = syncData.days.find(d => d.date === todayStr);
+              if (todayDay) {
+                setNutrition(prev => ({
+                  ...prev,
+                  consumed: {
+                    calories: todayDay.calories,
+                    protein: todayDay.protein,
+                    fat: todayDay.fat,
+                    carbs: todayDay.carbs
+                  },
+                  meals: todayDay.meals
+                }));
+              }
+            }
+          }).catch(() => {});
+        } else if (serverMeals.length > 0) {
+          // Merge server meals into local storage
+          const merged = [...localAllMeals];
+          serverMeals.forEach(sm => {
+            if (!merged.some(lm => lm.id === sm.id || (lm.date === sm.date && lm.meal_name === sm.meal_name && Math.round(lm.calories) === Math.round(sm.calories)))) {
+              merged.push(sm);
+            }
+          });
+          saveStoredNutritionMeals(uId, merged);
+        }
+        
         setNutrition(data);
+      } else if (localTodayMeals.length > 0) {
+        // Fallback to local storage if offline/server rebooting
+        const cal = Math.round(localTodayMeals.reduce((s, m) => s + (parseFloat(m.calories) || 0), 0) * 10) / 10;
+        const p = Math.round(localTodayMeals.reduce((s, m) => s + (parseFloat(m.protein) || 0), 0) * 10) / 10;
+        const f = Math.round(localTodayMeals.reduce((s, m) => s + (parseFloat(m.fat) || 0), 0) * 10) / 10;
+        const c = Math.round(localTodayMeals.reduce((s, m) => s + (parseFloat(m.carbs) || 0), 0) * 10) / 10;
+        setNutrition(prev => ({
+          ...prev,
+          consumed: { calories: cal, protein: p, fat: f, carbs: c },
+          meals: localTodayMeals
+        }));
       }
     } catch (e) {
       console.warn('Nutrition load warning:', e);
@@ -1428,14 +1526,19 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
 
     try {
       const u = getTelegramUser();
+      const uId = u?.id || 'default';
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const dishTitle = customDishName || analysisResult.detected_dish;
+
       const res = await fetch('/api/nutrition/meals', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-telegram-user-id': u?.id || 'default'
+          'x-telegram-user-id': uId
         },
         body: JSON.stringify({
-          meal_name: customDishName || analysisResult.detected_dish,
+          meal_name: dishTitle,
           calories: finalKcal,
           protein: finalP,
           fat: finalF,
@@ -1445,11 +1548,30 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
         })
       });
 
+      let loggedMealData = null;
       if (res.ok) {
-        resetPhotoState();
-        if (typeof onMealLogged === 'function') onMealLogged();
-        onClose();
+        loggedMealData = await res.json().catch(() => null);
       }
+
+      // Persist locally immediately!
+      const newMealObj = loggedMealData || {
+        id: 'm_' + Date.now(),
+        date: todayStr,
+        meal_name: dishTitle,
+        calories: finalKcal,
+        protein: finalP,
+        fat: finalF,
+        carbs: finalC,
+        portion_grams: portionGrams,
+        created_at: new Date().toISOString()
+      };
+      const existingMeals = getStoredNutritionMeals(uId);
+      const updatedMeals = [newMealObj, ...existingMeals.filter(m => m.id !== newMealObj.id)];
+      saveStoredNutritionMeals(uId, updatedMeals);
+
+      resetPhotoState();
+      if (typeof onMealLogged === 'function') onMealLogged();
+      onClose();
     } catch (e) {
       alert('Ошибка при сохранении блюда');
     }
@@ -1459,14 +1581,19 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
     if (!confirm('Удалить эту запись приема пищи?')) return;
     try {
       const u = getTelegramUser();
-      const res = await fetch(`/api/nutrition/meals/${mealId}`, {
+      const uId = u?.id || 'default';
+      
+      const existingMeals = getStoredNutritionMeals(uId);
+      const updatedMeals = existingMeals.filter(m => String(m.id) !== String(mealId));
+      saveStoredNutritionMeals(uId, updatedMeals);
+
+      setTodayMeals(prev => prev.filter(m => m.id !== mealId));
+      if (typeof onMealLogged === 'function') onMealLogged();
+
+      await fetch(`/api/nutrition/meals/${mealId}`, {
         method: 'DELETE',
-        headers: { 'x-telegram-user-id': u?.id || 'default' }
-      });
-      if (res.ok) {
-        setTodayMeals(prev => prev.filter(m => m.id !== mealId));
-        if (typeof onMealLogged === 'function') onMealLogged();
-      }
+        headers: { 'x-telegram-user-id': uId }
+      }).catch(() => {});
     } catch (e) {}
   };
 
@@ -1474,11 +1601,15 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
     triggerHaptic('success');
     try {
       const u = getTelegramUser();
+      const uId = u?.id || 'default';
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
       const res = await fetch('/api/nutrition/meals', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-telegram-user-id': u?.id || 'default'
+          'x-telegram-user-id': uId
         },
         body: JSON.stringify({
           meal_name: food.name,
@@ -1489,10 +1620,29 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
           portion_grams: food.portion_grams
         })
       });
+
+      let loggedMealData = null;
       if (res.ok) {
-        if (typeof onMealLogged === 'function') onMealLogged();
-        onClose();
+        loggedMealData = await res.json().catch(() => null);
       }
+
+      const newMealObj = loggedMealData || {
+        id: 'm_' + Date.now(),
+        date: todayStr,
+        meal_name: food.name,
+        calories: food.calories,
+        protein: food.protein,
+        fat: food.fat,
+        carbs: food.carbs,
+        portion_grams: food.portion_grams,
+        created_at: new Date().toISOString()
+      };
+      const existingMeals = getStoredNutritionMeals(uId);
+      const updatedMeals = [newMealObj, ...existingMeals.filter(m => m.id !== newMealObj.id)];
+      saveStoredNutritionMeals(uId, updatedMeals);
+
+      if (typeof onMealLogged === 'function') onMealLogged();
+      onClose();
     } catch (e) {}
   };
 
@@ -3977,6 +4127,25 @@ function App() {
           console.warn("Workout sync warning:", syncErr);
         });
       }
+
+      // 🔄 TWO-WAY NUTRITION SYNC (PERSIST MEALS ACROSS REDEPLOYS & COLD RESTARTS):
+      try {
+        const localNutritionMeals = getStoredNutritionMeals(currentUserId);
+        if (localNutritionMeals.length > 0) {
+          fetch('/api/nutrition/sync', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-telegram-user-id': currentUserId
+            },
+            body: JSON.stringify({ meals: localNutritionMeals })
+          }).then(res => res.ok ? res.json() : null).then(syncData => {
+            if (syncData && Array.isArray(syncData.all_meals)) {
+              saveStoredNutritionMeals(currentUserId, syncData.all_meals);
+            }
+          }).catch(() => {});
+        }
+      } catch (nutrErr) {}
 
       // Update local cache with combined list
       try {
@@ -7908,28 +8077,111 @@ function DeleteWorkoutModal({ workout, isOpen, onClose, onDeleted }) {
 // 🥗 NUTRITION HISTORY TAB COMPONENT
 // ==========================================
 function NutritionHistoryTab() {
-  const [historyData, setHistoryData] = useState({ targets: null, days: [], total_logged_meals: 0 });
-  const [loading, setLoading] = useState(true);
+  const u = getTelegramUser();
+  const uId = u?.id || 'default';
+
+  const [historyData, setHistoryData] = useState(() => {
+    const stored = getStoredNutritionMeals(uId);
+    if (stored.length > 0) {
+      return {
+        targets: null,
+        days: groupMealsIntoDays(stored),
+        total_logged_meals: stored.length
+      };
+    }
+    return { targets: null, days: [], total_logged_meals: 0 };
+  });
+  const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [collapsedDays, setCollapsedDays] = useState({});
 
   const fetchHistory = async () => {
     try {
       setLoading(true);
-      const u = getTelegramUser();
+      const curUser = getTelegramUser();
+      const curUserId = curUser?.id || 'default';
+      const localMeals = getStoredNutritionMeals(curUserId);
+
       const res = await fetch('/api/nutrition/history?days_limit=45', {
         headers: {
-          'x-telegram-user-id': u?.id || 'default'
+          'x-telegram-user-id': curUserId
         }
       });
       if (res.ok) {
         const data = await res.json();
-        setHistoryData(data);
+        const serverDays = data.days || [];
+        const serverMeals = [];
+        serverDays.forEach(d => {
+          (d.meals || []).forEach(m => serverMeals.push(m));
+        });
+
+        // Check if client has local meals missing on server (e.g. after a Render redeploy!)
+        const missingOnServer = localMeals.filter(lm => {
+          return !serverMeals.some(sm => {
+            if (sm.id && lm.id && String(sm.id) === String(lm.id)) return true;
+            return sm.date === lm.date && 
+                   String(sm.meal_name).trim().toLowerCase() === String(lm.meal_name).trim().toLowerCase() && 
+                   Math.round(sm.calories) === Math.round(lm.calories);
+          });
+        });
+
+        if (missingOnServer.length > 0) {
+          console.log(`[Nutrition] 🔄 Restoring ${missingOnServer.length} meals to server after redeploy...`);
+          try {
+            const syncRes = await fetch('/api/nutrition/sync', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-telegram-user-id': curUserId
+              },
+              body: JSON.stringify({ meals: localMeals })
+            });
+            if (syncRes.ok) {
+              const syncData = await syncRes.json();
+              setHistoryData(syncData);
+              if (Array.isArray(syncData.all_meals)) {
+                saveStoredNutritionMeals(curUserId, syncData.all_meals);
+              }
+              return;
+            }
+          } catch (syncErr) {
+            console.warn('[Nutrition] Sync back warning:', syncErr);
+          }
+        }
+
+        // If server had all or more, merge into local storage
+        const mergedMeals = [...serverMeals];
+        localMeals.forEach(lm => {
+          if (!mergedMeals.some(mm => mm.id === lm.id || (mm.date === lm.date && String(mm.meal_name).trim().toLowerCase() === String(lm.meal_name).trim().toLowerCase() && Math.round(mm.calories) === Math.round(lm.calories)))) {
+            mergedMeals.push(lm);
+          }
+        });
+        saveStoredNutritionMeals(curUserId, mergedMeals);
+
+        setHistoryData({
+          targets: data.targets,
+          days: groupMealsIntoDays(mergedMeals),
+          total_logged_meals: mergedMeals.length
+        });
       } else {
-        console.warn('Failed to load nutrition history: HTTP', res.status);
+        if (localMeals.length > 0) {
+          setHistoryData(prev => ({
+            ...prev,
+            days: groupMealsIntoDays(localMeals),
+            total_logged_meals: localMeals.length
+          }));
+        }
       }
     } catch (e) {
       console.error('Failed to load nutrition history', e);
+      const localMeals = getStoredNutritionMeals(uId);
+      if (localMeals.length > 0) {
+        setHistoryData(prev => ({
+          ...prev,
+          days: groupMealsIntoDays(localMeals),
+          total_logged_meals: localMeals.length
+        }));
+      }
     } finally {
       setLoading(false);
     }
@@ -7949,35 +8201,27 @@ function NutritionHistoryTab() {
     try {
       setDeletingId(mealId);
       triggerHaptic('warning');
-      const u = getTelegramUser();
-      const res = await fetch(`/api/nutrition/meals/${mealId}`, {
+      const curUser = getTelegramUser();
+      const curUserId = curUser?.id || 'default';
+      
+      // Immediately remove from localStorage
+      const localMeals = getStoredNutritionMeals(curUserId);
+      const updatedLocal = localMeals.filter(m => String(m.id) !== String(mealId));
+      saveStoredNutritionMeals(curUserId, updatedLocal);
+
+      // Optimistically update UI
+      setHistoryData(prev => ({
+        ...prev,
+        days: groupMealsIntoDays(updatedLocal),
+        total_logged_meals: updatedLocal.length
+      }));
+
+      await fetch(`/api/nutrition/meals/${mealId}`, {
         method: 'DELETE',
         headers: {
-          'x-telegram-user-id': u?.id || 'default'
+          'x-telegram-user-id': curUserId
         }
-      });
-      if (res.ok) {
-        setHistoryData(prev => {
-          const updatedDays = (prev.days || []).map(d => {
-            const updatedMeals = (d.meals || []).filter(m => m.id !== mealId);
-            if (updatedMeals.length === d.meals.length) return d;
-            return {
-              ...d,
-              calories: Math.round(updatedMeals.reduce((s, m) => s + (parseFloat(m.calories) || 0), 0) * 10) / 10,
-              protein: Math.round(updatedMeals.reduce((s, m) => s + (parseFloat(m.protein) || 0), 0) * 10) / 10,
-              fat: Math.round(updatedMeals.reduce((s, m) => s + (parseFloat(m.fat) || 0), 0) * 10) / 10,
-              carbs: Math.round(updatedMeals.reduce((s, m) => s + (parseFloat(m.carbs) || 0), 0) * 10) / 10,
-              meals: updatedMeals
-            };
-          }).filter(d => d.meals.length > 0);
-
-          return {
-            ...prev,
-            days: updatedDays,
-            total_logged_meals: Math.max(0, (prev.total_logged_meals || 1) - 1)
-          };
-        });
-      }
+      }).catch(() => {});
     } catch (e) {
       alert('Ошибка при удалении');
     } finally {

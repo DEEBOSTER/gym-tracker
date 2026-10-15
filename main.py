@@ -2226,6 +2226,21 @@ class MealLogCreate(BaseModel):
     portion_grams: Optional[float] = 100.0
     image_url: Optional[str] = ""
 
+class SyncMealItem(BaseModel):
+    id: Optional[Union[int, str]] = None
+    date: Optional[str] = None
+    meal_name: str
+    calories: float
+    protein: float
+    fat: float
+    carbs: float
+    portion_grams: Optional[float] = 100.0
+    image_url: Optional[str] = ""
+    created_at: Optional[str] = None
+
+class SyncMealsRequest(BaseModel):
+    meals: List[SyncMealItem]
+
 class PhotoAnalysisRequest(BaseModel):
     image_data: Optional[str] = None
     filename: Optional[str] = None
@@ -2594,6 +2609,91 @@ def get_nutrition_history(
             "targets": targets,
             "days": list(days_map.values())[:days_limit],
             "total_logged_meals": len(rows)
+        }
+
+@app.post("/api/nutrition/sync")
+def sync_nutrition_meals(
+    payload: SyncMealsRequest,
+    user_id: str = Depends(get_current_user_id),
+    user_name: str = Depends(get_current_user_name)
+):
+    alt_user_id = user_id.replace("tg_", "") if user_id.startswith("tg_") else f"tg_{user_id}"
+    with get_db() as conn:
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, created_at
+            FROM nutrition_logs
+            WHERE user_id IN (?, ?, 'default') OR ? = 'default';
+        """, (user_id, alt_user_id, user_id))
+        existing_rows = [dict(r) for r in cursor.fetchall()]
+
+        existing_signatures = set()
+        for r in existing_rows:
+            sig = (r["date"], str(r["meal_name"]).strip().lower(), round(float(r["calories"] or 0)))
+            existing_signatures.add(sig)
+
+        synced_count = 0
+        for m in payload.meals:
+            if not m.meal_name:
+                continue
+            m_date = m.date or datetime.utcnow().strftime("%Y-%m-%d")
+            sig = (m_date, str(m.meal_name).strip().lower(), round(float(m.calories or 0)))
+            
+            if sig not in existing_signatures:
+                cursor.execute("""
+                    INSERT INTO nutrition_logs (user_id, date, meal_name, calories, protein, fat, carbs, portion_grams, image_url)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """, (
+                    user_id,
+                    m_date,
+                    m.meal_name,
+                    round(m.calories, 1),
+                    round(m.protein, 1),
+                    round(m.fat, 1),
+                    round(m.carbs, 1),
+                    round(m.portion_grams or 100.0, 1),
+                    ""
+                ))
+                existing_signatures.add(sig)
+                synced_count += 1
+
+        cursor.execute("""
+            SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, created_at
+            FROM nutrition_logs
+            WHERE user_id IN (?, ?, 'default') OR ? = 'default'
+            ORDER BY date DESC, id DESC;
+        """, (user_id, alt_user_id, user_id))
+        all_rows = [dict(r) for r in cursor.fetchall()]
+
+        profile = get_user_profile_dict(cursor, user_id=user_id, user_name=user_name)
+        targets = calculate_daily_macro_targets(profile)
+
+        days_map = {}
+        for r in all_rows:
+            d = r["date"]
+            if d not in days_map:
+                days_map[d] = {
+                    "date": d,
+                    "calories": 0.0,
+                    "protein": 0.0,
+                    "fat": 0.0,
+                    "carbs": 0.0,
+                    "meals": []
+                }
+            days_map[d]["calories"] = round(days_map[d]["calories"] + float(r["calories"] or 0), 1)
+            days_map[d]["protein"] = round(days_map[d]["protein"] + float(r["protein"] or 0), 1)
+            days_map[d]["fat"] = round(days_map[d]["fat"] + float(r["fat"] or 0), 1)
+            days_map[d]["carbs"] = round(days_map[d]["carbs"] + float(r["carbs"] or 0), 1)
+            days_map[d]["meals"].append(r)
+
+        return {
+            "status": "ok",
+            "synced_count": synced_count,
+            "targets": targets,
+            "days": list(days_map.values())[:45],
+            "total_logged_meals": len(all_rows),
+            "all_meals": all_rows
         }
 
 def analyze_food_image_with_gemini(image_data: str, hint: str = "", client_api_key: str = "") -> Optional[dict]:
