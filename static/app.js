@@ -147,6 +147,8 @@ if (tg) {
     tg.ready();
     tg.expand();
     if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
+    if (typeof tg.setHeaderColor === 'function') tg.setHeaderColor('#18191d');
+    if (typeof tg.setBackgroundColor === 'function') tg.setBackgroundColor('#0f1013');
   } catch (e) {
     console.warn('Telegram init:', e);
   }

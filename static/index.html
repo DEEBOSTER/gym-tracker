@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" class="dark theme-neu-dark">
+<html lang="ru" class="dark theme-neu-dark" style="background-color: #18191d; color-scheme: dark;">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -7,9 +7,11 @@
 
   <!-- PWA Meta Tags -->
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#0f1013">
+  <meta name="theme-color" content="#18191d">
+  <meta name="theme-color" content="#18191d" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#18191d" media="(prefers-color-scheme: light)">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="GymTracker">
   <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
@@ -112,6 +114,14 @@
       -webkit-tap-highlight-color: transparent;
       user-select: none;
       box-sizing: border-box;
+    }
+    html {
+      background-color: #18191d !important;
+      color-scheme: dark;
+    }
+    body {
+      background-color: #0f1013 !important;
+      color-scheme: dark;
     }
     html, body {
       overflow-x: hidden !important;
@@ -532,7 +542,7 @@
     }
   </style>
 </head>
-<body class="theme-neu-light theme-soft-neu text-slate-800 antialiased selection:bg-emerald-500 selection:text-white">
+<body class="dark theme-neu-dark bg-[#0f1013] text-white antialiased selection:bg-emerald-500 selection:text-white" style="background-color: #0f1013; color-scheme: dark;">
   <div id="root">
     <div id="app-loading-placeholder" class="min-h-screen bg-gym-950 flex flex-col items-center justify-center p-6 text-center">
       <div class="w-14 h-14 rounded-2xl bg-gym-900 border border-gym-800 flex items-center justify-center shadow-xl animate-pulse mb-4">
@@ -567,6 +577,6 @@
   </script>
 
   <!-- React App -->
-  <script type="text/babel" src="/static/app.js?v=51"></script>
+  <script type="text/babel" src="/static/app.js?v=52"></script>
 </body>
 </html>
