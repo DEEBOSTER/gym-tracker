@@ -1318,19 +1318,33 @@ function AthleticNutritionWidget({ userProfile, onOpenScanner, refreshTrigger })
         </div>
       </div>
 
-      {/* Primary Action Button: Photo Scanner */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          triggerHaptic('light');
-          if (typeof onOpenScanner === 'function') onOpenScanner();
-        }}
-        className="w-full mt-2 py-2 px-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-xs shadow-md shadow-emerald-500/25 flex items-center justify-center space-x-1.5 active:scale-95 transition cursor-pointer"
-      >
-        <span className="text-sm">📸</span>
-        <span className="truncate">Сканировать еду</span>
-      </button>
+      {/* Primary Action Buttons: Manual & Photo */}
+      <div className="grid grid-cols-2 gap-1.5 mt-2">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            triggerHaptic('light');
+            if (typeof onOpenScanner === 'function') onOpenScanner('manual');
+          }}
+          className="py-2 px-2 rounded-xl bg-[#1e2025] hover:bg-[#272a31] text-emerald-400 border border-emerald-500/30 font-black text-xs flex items-center justify-center space-x-1 active:scale-95 transition cursor-pointer"
+        >
+          <span>✍️</span>
+          <span>Вручную</span>
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            triggerHaptic('light');
+            if (typeof onOpenScanner === 'function') onOpenScanner('photo');
+          }}
+          className="py-2 px-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-xs shadow-md shadow-emerald-500/25 flex items-center justify-center space-x-1 active:scale-95 transition cursor-pointer"
+        >
+          <span>📸</span>
+          <span>По фото</span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -1338,8 +1352,8 @@ function AthleticNutritionWidget({ userProfile, onOpenScanner, refreshTrigger })
 // ==========================================
 // 📸 FOOD PHOTO ANALYSIS & KBJU MODAL
 // ==========================================
-function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) {
-  const [activeTab, setActiveTab] = useState('photo'); // 'photo' | 'history' | 'quick'
+function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, initialTab = 'manual' }) {
+  const [activeTab, setActiveTab] = useState(initialTab || 'manual'); // 'manual' | 'photo' | 'history' | 'quick'
   const [photoPreview, setPhotoPreview] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
@@ -1349,6 +1363,208 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
   const [todayMeals, setTodayMeals] = useState([]);
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
+
+  // Manual input states
+  const [manualDishName, setManualDishName] = useState('');
+  const [manualPortionGrams, setManualPortionGrams] = useState(200);
+  const [manualCalories, setManualCalories] = useState('');
+  const [manualProtein, setManualProtein] = useState('');
+  const [manualFat, setManualFat] = useState('');
+  const [manualCarbs, setManualCarbs] = useState('');
+  const [manualPer100g, setManualPer100g] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [isEstimating, setIsEstimating] = useState(false);
+  const [estimateNotice, setEstimateNotice] = useState('');
+  const [isSavingManual, setIsSavingManual] = useState(false);
+  const searchDebounceRef = useRef(null);
+
+  const resetManualState = () => {
+    setManualDishName('');
+    setManualPortionGrams(200);
+    setManualCalories('');
+    setManualProtein('');
+    setManualFat('');
+    setManualCarbs('');
+    setManualPer100g(null);
+    setSuggestions([]);
+    setIsEstimating(false);
+    setEstimateNotice('');
+    setIsSavingManual(false);
+  };
+
+  const handleManualNameChange = (val) => {
+    setManualDishName(val);
+    setEstimateNotice('');
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+
+    const q = (val || '').trim();
+    if (q.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/nutrition/foods?q=${encodeURIComponent(q)}`);
+        if (res.ok) {
+          const list = await res.json();
+          setSuggestions(list || []);
+        }
+      } catch (e) {}
+    }, 200);
+  };
+
+  const handleSelectSuggestion = (item) => {
+    triggerHaptic('light');
+    setManualDishName(item.name);
+    const defaultServing = item.serving_default_g || 150;
+    setManualPortionGrams(defaultServing);
+
+    const per100 = {
+      calories: item.cal_per_100g || 0,
+      protein: item.protein_per_100g || 0,
+      fat: item.fat_per_100g || 0,
+      carbs: item.carbs_per_100g || 0
+    };
+    setManualPer100g(per100);
+
+    const mult = defaultServing / 100.0;
+    setManualCalories(String(Math.round(per100.calories * mult)));
+    setManualProtein(String(Math.round(per100.protein * mult * 10) / 10));
+    setManualFat(String(Math.round(per100.fat * mult * 10) / 10));
+    setManualCarbs(String(Math.round(per100.carbs * mult * 10) / 10));
+    setSuggestions([]);
+    setEstimateNotice('Выбрано из справочника');
+  };
+
+  const handlePortionChange = (newGrams) => {
+    const g = Math.max(10, Math.min(2500, Math.round(parseFloat(newGrams) || 100)));
+    setManualPortionGrams(g);
+    if (manualPer100g) {
+      const mult = g / 100.0;
+      setManualCalories(String(Math.round(manualPer100g.calories * mult)));
+      setManualProtein(String(Math.round(manualPer100g.protein * mult * 10) / 10));
+      setManualFat(String(Math.round(manualPer100g.fat * mult * 10) / 10));
+      setManualCarbs(String(Math.round(manualPer100g.carbs * mult * 10) / 10));
+    }
+  };
+
+  const handleCalculateKcalFromMacros = () => {
+    triggerHaptic('light');
+    const p = parseFloat(manualProtein) || 0;
+    const f = parseFloat(manualFat) || 0;
+    const c = parseFloat(manualCarbs) || 0;
+    const calculated = Math.round(p * 4 + f * 9 + c * 4);
+    setManualCalories(String(calculated));
+  };
+
+  const handleAiEstimate = async () => {
+    const text = manualDishName.trim();
+    if (!text) return;
+    triggerHaptic('medium');
+    setIsEstimating(true);
+    setEstimateNotice('');
+    setSuggestions([]);
+
+    try {
+      const res = await fetch('/api/nutrition/estimate-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.detected_dish) setManualDishName(data.detected_dish);
+        const g = data.portion_grams || manualPortionGrams || 200;
+        setManualPortionGrams(g);
+
+        if (data.per_100g) {
+          setManualPer100g(data.per_100g);
+        }
+        if (data.total) {
+          setManualCalories(String(Math.round(data.total.calories)));
+          setManualProtein(String(Math.round(data.total.protein * 10) / 10));
+          setManualFat(String(Math.round(data.total.fat * 10) / 10));
+          setManualCarbs(String(Math.round(data.total.carbs * 10) / 10));
+        }
+        setEstimateNotice(data.source === 'gemini_text_ai' ? '✨ Рассчитано через ИИ' : '🎯 Подобрано из базы');
+      }
+    } catch (e) {
+      alert('Не удалось связаться с сервером');
+    } finally {
+      setIsEstimating(false);
+    }
+  };
+
+  const handleSaveManualMeal = async () => {
+    const name = manualDishName.trim();
+    if (!name) {
+      alert('Пожалуйста, укажите название блюда');
+      return;
+    }
+    const kcal = parseFloat(manualCalories) || 0;
+    const p = parseFloat(manualProtein) || 0;
+    const f = parseFloat(manualFat) || 0;
+    const c = parseFloat(manualCarbs) || 0;
+    const g = parseFloat(manualPortionGrams) || 100;
+
+    setIsSavingManual(true);
+    triggerHaptic('success');
+
+    try {
+      const u = getTelegramUser();
+      const uId = u?.id || 'default';
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+      const res = await fetch('/api/nutrition/meals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-telegram-user-id': uId
+        },
+        body: JSON.stringify({
+          meal_name: name,
+          calories: kcal,
+          protein: p,
+          fat: f,
+          carbs: c,
+          portion_grams: g,
+          image_url: ''
+        })
+      });
+
+      let loggedData = null;
+      if (res.ok) {
+        loggedData = await res.json().catch(() => null);
+      }
+
+      const newMealObj = loggedData || {
+        id: 'm_' + Date.now(),
+        date: todayStr,
+        meal_name: name,
+        calories: kcal,
+        protein: p,
+        fat: f,
+        carbs: c,
+        portion_grams: g,
+        created_at: new Date().toISOString()
+      };
+
+      const existingMeals = getStoredNutritionMeals(uId);
+      const updatedMeals = [newMealObj, ...existingMeals.filter(m => m.id !== newMealObj.id)];
+      saveStoredNutritionMeals(uId, updatedMeals);
+
+      resetManualState();
+      resetPhotoState();
+      if (typeof onMealLogged === 'function') onMealLogged();
+      onClose();
+    } catch (err) {
+      alert('Ошибка при сохранении блюда');
+    } finally {
+      setIsSavingManual(false);
+    }
+  };
 
   const compressImage = (dataUrl) => {
     return new Promise((resolve) => {
@@ -1404,12 +1620,17 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
 
   const handleClose = () => {
     resetPhotoState();
+    resetManualState();
     onClose();
   };
 
   useEffect(() => {
     if (isOpen) {
+      if (initialTab) {
+        setActiveTab(initialTab);
+      }
       resetPhotoState();
+      resetManualState();
       fetchMeals();
       const tg = window.Telegram?.WebApp;
       if (tg?.BackButton) {
@@ -1422,7 +1643,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
         };
       }
     }
-  }, [isOpen]);
+  }, [isOpen, initialTab]);
 
   if (!isOpen) return null;
 
@@ -1688,13 +1909,25 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
         </div>
 
         {/* Tab Controls */}
-        <div className="grid grid-cols-3 gap-1 p-2 bg-[#121316] border-b border-white/5 text-xs">
+        <div className="grid grid-cols-4 gap-1 p-2 bg-[#121316] border-b border-white/5 text-[11px]">
           <button
             type="button"
-            onClick={() => setActiveTab('photo')}
-            className={`py-2 px-2 rounded-xl font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
+            onClick={() => { setActiveTab('manual'); triggerHaptic('light'); }}
+            className={`py-2 px-1 rounded-xl font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
+              activeTab === 'manual'
+                ? 'bg-emerald-500 text-gym-950 font-black shadow-md'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <span>✍️</span>
+            <span>Вручную</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setActiveTab('photo'); triggerHaptic('light'); }}
+            className={`py-2 px-1 rounded-xl font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
               activeTab === 'photo'
-                ? 'bg-emerald-500 text-white font-black shadow-md'
+                ? 'bg-emerald-500 text-gym-950 font-black shadow-md'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
@@ -1703,10 +1936,10 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('quick')}
-            className={`py-2 px-2 rounded-xl font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
+            onClick={() => { setActiveTab('quick'); triggerHaptic('light'); }}
+            className={`py-2 px-1 rounded-xl font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
               activeTab === 'quick'
-                ? 'bg-emerald-500 text-white font-black shadow-md'
+                ? 'bg-emerald-500 text-gym-950 font-black shadow-md'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
@@ -1715,10 +1948,10 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('history')}
-            className={`py-2 px-2 rounded-xl font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
+            onClick={() => { setActiveTab('history'); triggerHaptic('light'); }}
+            className={`py-2 px-1 rounded-xl font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
               activeTab === 'history'
-                ? 'bg-emerald-500 text-white font-black shadow-md'
+                ? 'bg-emerald-500 text-gym-950 font-black shadow-md'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
@@ -1729,6 +1962,216 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged }) 
 
         {/* Body Content */}
         <div className="p-4 overflow-y-auto space-y-4">
+          {activeTab === 'manual' && (
+            <div className="space-y-4">
+              {/* Dish Name with Live Autocomplete */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-black text-zinc-300 uppercase tracking-wider">
+                    Название блюда или продукта
+                  </label>
+                  {estimateNotice && (
+                    <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                      {estimateNotice}
+                    </span>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={manualDishName}
+                    onChange={(e) => handleManualNameChange(e.target.value)}
+                    placeholder="Например: Творог 5%, Куриная грудка с рисом, Банан..."
+                    className="w-full bg-[#121316] border border-white/10 rounded-2xl px-3.5 py-3 text-sm font-bold text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition"
+                  />
+                  {manualDishName && (
+                    <button
+                      type="button"
+                      onClick={() => { setManualDishName(''); setSuggestions([]); setEstimateNotice(''); }}
+                      className="absolute right-3.5 top-3.5 text-zinc-500 hover:text-white text-xs cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* AI Estimator Button */}
+                <button
+                  type="button"
+                  disabled={!manualDishName.trim() || isEstimating}
+                  onClick={handleAiEstimate}
+                  className="w-full mt-1 py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-500/15 to-teal-500/15 hover:from-emerald-500/25 hover:to-teal-500/25 border border-emerald-500/35 text-emerald-300 font-bold text-xs flex items-center justify-center space-x-1.5 active:scale-98 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <span>{isEstimating ? '⏳' : '✨'}</span>
+                  <span>{isEstimating ? 'ИИ анализирует состав...' : 'Рассчитать КБЖУ по описанию через ИИ'}</span>
+                </button>
+
+                {/* Autocomplete Dropdown */}
+                {suggestions.length > 0 && (
+                  <div className="bg-[#121316] border border-emerald-500/30 rounded-2xl p-2 space-y-1 max-h-48 overflow-y-auto shadow-2xl animate-in fade-in duration-100">
+                    <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider px-2 py-1 flex items-center justify-between">
+                      <span>Продукты из базы ({suggestions.length})</span>
+                      <span className="text-[9px] text-zinc-500 font-mono">нажмите для автозаполнения</span>
+                    </div>
+                    {suggestions.map((item) => (
+                      <div
+                        key={item.id || item.name}
+                        onClick={() => handleSelectSuggestion(item)}
+                        className="p-2.5 rounded-xl hover:bg-white/5 active:bg-emerald-500/10 cursor-pointer flex items-center justify-between text-xs transition border border-transparent hover:border-white/5"
+                      >
+                        <div className="min-w-0 pr-2">
+                          <div className="font-bold text-white truncate">{item.name}</div>
+                          <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                            на 100г: <span className="text-amber-400 font-bold">{item.cal_per_100g} ккал</span> · Б:{item.protein_per_100g}г · Ж:{item.fat_per_100g}г · У:{item.carbs_per_100g}г
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-500/15 border border-emerald-500/30 px-2 py-1 rounded-lg shrink-0">
+                          + Выбрать
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Portion Selector */}
+              <div className="bg-[#121316] border border-white/5 rounded-2xl p-3 space-y-2">
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span className="font-bold text-zinc-300 uppercase tracking-wider text-[11px]">Вес порции:</span>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => { triggerHaptic('light'); handlePortionChange(manualPortionGrams - 25); }}
+                      className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black flex items-center justify-center text-sm cursor-pointer active:scale-90 transition"
+                    >
+                      -
+                    </button>
+                    <div className="flex items-center bg-black/50 border border-white/10 rounded-xl px-2.5 py-1">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={manualPortionGrams}
+                        onChange={(e) => handlePortionChange(cleanNumericInput(e.target.value, false))}
+                        className="w-14 bg-transparent text-center font-mono font-black text-white text-sm focus:outline-none"
+                      />
+                      <span className="text-zinc-400 text-xs font-mono ml-0.5">г</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { triggerHaptic('light'); handlePortionChange(manualPortionGrams + 25); }}
+                      className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black flex items-center justify-center text-sm cursor-pointer active:scale-90 transition"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* Preset Gram Buttons */}
+                <div className="grid grid-cols-6 gap-1 pt-1">
+                  {[50, 100, 150, 200, 250, 300].map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => { triggerHaptic('light'); handlePortionChange(g); }}
+                      className={`py-1 rounded-lg font-mono text-[11px] font-bold transition active:scale-95 cursor-pointer ${
+                        parseInt(manualPortionGrams, 10) === g
+                          ? 'bg-emerald-500 text-gym-950 font-black shadow'
+                          : 'bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      {g}г
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Macros Input Grid (КБЖУ) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-zinc-300 uppercase tracking-wider">Макронутриенты (КБЖУ)</span>
+                  <button
+                    type="button"
+                    onClick={handleCalculateKcalFromMacros}
+                    className="text-[10px] font-mono text-emerald-400 hover:text-emerald-300 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg active:scale-95 transition cursor-pointer"
+                    title="Рассчитать ккал по формуле: Б*4 + Ж*9 + У*4"
+                  >
+                    ⚡ Рассчитать ккал
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-4 gap-2">
+                  {/* Calories */}
+                  <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5 text-center space-y-1">
+                    <label className="text-[9.5px] font-bold text-[#fc4c02] uppercase tracking-wider block">Калории</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={manualCalories}
+                      onChange={(e) => setManualCalories(cleanNumericInput(e.target.value, false))}
+                      placeholder="0"
+                      className="w-full bg-black/40 border border-white/10 rounded-xl py-1 text-center font-mono font-black text-white text-base focus:outline-none focus:border-[#fc4c02]"
+                    />
+                    <span className="text-[9px] text-zinc-500 block font-mono">ккал</span>
+                  </div>
+
+                  {/* Protein */}
+                  <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5 text-center space-y-1">
+                    <label className="text-[9.5px] font-bold text-emerald-400 uppercase tracking-wider block">Белки</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={manualProtein}
+                      onChange={(e) => setManualProtein(cleanNumericInput(e.target.value, true))}
+                      placeholder="0"
+                      className="w-full bg-black/40 border border-white/10 rounded-xl py-1 text-center font-mono font-black text-emerald-400 text-base focus:outline-none focus:border-emerald-500"
+                    />
+                    <span className="text-[9px] text-zinc-500 block font-mono">грамм</span>
+                  </div>
+
+                  {/* Fat */}
+                  <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5 text-center space-y-1">
+                    <label className="text-[9.5px] font-bold text-amber-400 uppercase tracking-wider block">Жиры</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={manualFat}
+                      onChange={(e) => setManualFat(cleanNumericInput(e.target.value, true))}
+                      placeholder="0"
+                      className="w-full bg-black/40 border border-white/10 rounded-xl py-1 text-center font-mono font-black text-amber-400 text-base focus:outline-none focus:border-amber-500"
+                    />
+                    <span className="text-[9px] text-zinc-500 block font-mono">грамм</span>
+                  </div>
+
+                  {/* Carbs */}
+                  <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5 text-center space-y-1">
+                    <label className="text-[9.5px] font-bold text-sky-400 uppercase tracking-wider block">Углеводы</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={manualCarbs}
+                      onChange={(e) => setManualCarbs(cleanNumericInput(e.target.value, true))}
+                      placeholder="0"
+                      className="w-full bg-black/40 border border-white/10 rounded-xl py-1 text-center font-mono font-black text-sky-400 text-base focus:outline-none focus:border-sky-500"
+                    />
+                    <span className="text-[9px] text-zinc-500 block font-mono">грамм</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Primary Save Button */}
+              <button
+                type="button"
+                disabled={isSavingManual || !manualDishName.trim()}
+                onClick={handleSaveManualMeal}
+                className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-gym-950 font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/25 active:scale-98 transition flex items-center justify-center space-x-2 cursor-pointer disabled:cursor-not-allowed"
+              >
+                <span>✓</span>
+                <span>{isSavingManual ? 'Сохранение...' : 'Записать в дневник питания'}</span>
+              </button>
+            </div>
+          )}
+
           {activeTab === 'photo' && (
             <div className="space-y-4">
               {/* Direct Camera Capture (forces camera on mobile) */}
@@ -4441,6 +4884,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   const [workoutViewMode, setWorkoutViewMode] = useState('visual'); // 'visual' | 'list'
   const [previewGuideEx, setPreviewGuideEx] = useState(null);
   const [showNutritionModal, setShowNutritionModal] = useState(false);
+  const [nutritionModalTab, setNutritionModalTab] = useState('manual');
   const [nutritionRefreshKey, setNutritionRefreshKey] = useState(0);
   const [showSwapModal, setShowSwapModal] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
@@ -5156,7 +5600,10 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
             {/* Left Column: Calorie & Macro (БЖУ) Hub with Photo Food Analyzer */}
             <AthleticNutritionWidget 
               userProfile={userProfile} 
-              onOpenScanner={() => setShowNutritionModal(true)} 
+              onOpenScanner={(tab) => {
+                setNutritionModalTab(tab || 'manual');
+                setShowNutritionModal(true);
+              }} 
               refreshTrigger={nutritionRefreshKey}
             />
 
@@ -5590,6 +6037,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           isOpen={showNutritionModal}
           onClose={() => setShowNutritionModal(false)}
           userProfile={userProfile}
+          initialTab={nutritionModalTab}
           onMealLogged={() => setNutritionRefreshKey(k => k + 1)}
         />
 
@@ -6373,6 +6821,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
         isOpen={showNutritionModal}
         onClose={() => setShowNutritionModal(false)}
         userProfile={userProfile}
+        initialTab={nutritionModalTab}
         onMealLogged={() => setNutritionRefreshKey(k => k + 1)}
       />
 
@@ -8094,6 +8543,7 @@ function NutritionHistoryTab() {
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [collapsedDays, setCollapsedDays] = useState({});
+  const [showAddMealModal, setShowAddMealModal] = useState(false);
 
   const fetchHistory = async () => {
     try {
@@ -8268,14 +8718,24 @@ function NutritionHistoryTab() {
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={fetchHistory}
-              className="text-[11px] font-mono text-zinc-400 hover:text-white bg-[#121316] border border-white/5 px-2.5 py-1.5 rounded-xl active:scale-95 transition cursor-pointer"
-              title="Обновить историю"
-            >
-              ↻
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => { triggerHaptic('light'); setShowAddMealModal(true); }}
+                className="bg-emerald-500 hover:bg-emerald-400 text-gym-950 font-black text-xs px-3 py-1.5 rounded-xl flex items-center space-x-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition cursor-pointer"
+              >
+                <span>✍️</span>
+                <span>Записать еду</span>
+              </button>
+              <button
+                type="button"
+                onClick={fetchHistory}
+                className="text-[11px] font-mono text-zinc-400 hover:text-white bg-[#121316] border border-white/5 px-2.5 py-1.5 rounded-xl active:scale-95 transition cursor-pointer"
+                title="Обновить историю"
+              >
+                ↻
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-4 gap-2 pt-1 font-mono text-center">
@@ -8313,16 +8773,26 @@ function NutritionHistoryTab() {
           <div className="text-3xl">🥗</div>
           <h3 className="text-sm font-black text-white">История питания пуста</h3>
           <p className="text-xs text-zinc-400 max-w-xs mx-auto leading-relaxed">
-            Фотографируйте или записывайте приемы пищи через виджет «КБЖУ дня» на главном экране — они появятся здесь с подсчетом калорий и БЖУ по дням.
+            Записывайте приемы пищи вручную или сканируйте по фото — они появятся здесь с подсчетом калорий и БЖУ по дням.
           </p>
-          <button
-            type="button"
-            onClick={fetchHistory}
-            className="mt-3 inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-bold text-xs active:scale-95 transition cursor-pointer"
-          >
-            <span>↻</span>
-            <span>Обновить историю</span>
-          </button>
+          <div className="flex items-center justify-center space-x-2 mt-3">
+            <button
+              type="button"
+              onClick={() => { triggerHaptic('light'); setShowAddMealModal(true); }}
+              className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gym-950 font-black text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition cursor-pointer"
+            >
+              <span>✍️</span>
+              <span>Записать прием пищи</span>
+            </button>
+            <button
+              type="button"
+              onClick={fetchHistory}
+              className="inline-flex items-center space-x-1.5 px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white font-bold text-xs active:scale-95 transition cursor-pointer"
+            >
+              <span>↻</span>
+              <span>Обновить</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -8436,6 +8906,15 @@ function NutritionHistoryTab() {
           </div>
         );
       })}
+
+      {showAddMealModal && (
+        <FoodPhotoAnalysisModal
+          isOpen={showAddMealModal}
+          onClose={() => setShowAddMealModal(false)}
+          initialTab="manual"
+          onMealLogged={fetchHistory}
+        />
+      )}
     </div>
   );
 }
