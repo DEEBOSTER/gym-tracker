@@ -5860,16 +5860,6 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
                 {/* View Mode Switcher: Visual Cards vs Compact List */}
                 <div className="flex items-center self-start sm:self-auto bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] p-1 rounded-xl shrink-0">
-                        className="text-[10px] font-black uppercase tracking-wider text-zinc-300 font-mono bg-white/5 border border-white/10 px-2 py-0.5 rounded-md"
-                      >
-                        {chip.trim()}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* View Mode Switcher: Visual Cards vs Compact List */}
-                <div className="flex items-center self-start sm:self-auto bg-[#121316] border border-white/10 p-1 rounded-xl shrink-0">
                   <button
                     type="button"
                     onClick={() => {
@@ -5879,7 +5869,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
                       workoutViewMode === 'visual'
                         ? 'bg-[#fc4c02] text-white shadow-sm'
-                        : 'text-zinc-400 hover:text-white'
+                        : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                     title="Показать с фотографиями упражнений"
                   >
@@ -5895,7 +5885,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
                       workoutViewMode === 'list'
                         ? 'bg-[#fc4c02] text-white shadow-sm'
-                        : 'text-zinc-400 hover:text-white'
+                        : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                     title="Показать компактным списком"
                   >
