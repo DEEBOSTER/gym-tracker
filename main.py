@@ -2223,7 +2223,7 @@ class MealLogCreate(BaseModel):
     protein: float
     fat: float
     carbs: float
-    portion_grams: Optional[float] = 100.0
+    portion_grams: Optional[float] = 0.0
     image_url: Optional[str] = ""
 
 class SyncMealItem(BaseModel):
@@ -2234,7 +2234,7 @@ class SyncMealItem(BaseModel):
     protein: float
     fat: float
     carbs: float
-    portion_grams: Optional[float] = 100.0
+    portion_grams: Optional[float] = 0.0
     image_url: Optional[str] = ""
     created_at: Optional[str] = None
 
@@ -2702,7 +2702,7 @@ def log_meal_entry(
             round(payload.protein, 1),
             round(payload.fat, 1),
             round(payload.carbs, 1),
-            round(payload.portion_grams or 100.0, 1),
+            round(float(payload.portion_grams) if payload.portion_grams is not None else 0.0, 1),
             ""  # In history and logs do NOT store photo to save space and respect user privacy
         ))
         meal_id = cursor.lastrowid
@@ -2810,7 +2810,7 @@ def sync_nutrition_meals(
                     round(m.protein, 1),
                     round(m.fat, 1),
                     round(m.carbs, 1),
-                    round(m.portion_grams or 100.0, 1),
+                    round(float(m.portion_grams) if m.portion_grams is not None else 0.0, 1),
                     ""
                 ))
                 existing_signatures.add(sig)

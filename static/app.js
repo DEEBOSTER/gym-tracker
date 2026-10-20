@@ -1366,7 +1366,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
 
   // Manual input states
   const [manualDishName, setManualDishName] = useState('');
-  const [manualPortionGrams, setManualPortionGrams] = useState(200);
+  const [manualPortionGrams, setManualPortionGrams] = useState(0);
   const [manualCalories, setManualCalories] = useState('');
   const [manualProtein, setManualProtein] = useState('');
   const [manualFat, setManualFat] = useState('');
@@ -1380,7 +1380,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
 
   const resetManualState = () => {
     setManualDishName('');
-    setManualPortionGrams(200);
+    setManualPortionGrams(0);
     setManualCalories('');
     setManualProtein('');
     setManualFat('');
@@ -1438,8 +1438,21 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
   };
 
   const handlePortionChange = (newGrams) => {
-    const g = Math.max(10, Math.min(2500, Math.round(parseFloat(newGrams) || 100)));
-    setManualPortionGrams(g);
+    if (newGrams === '' || newGrams === null || newGrams === undefined) {
+      setManualPortionGrams('');
+      if (manualPer100g) {
+        setManualCalories('0');
+        setManualProtein('0');
+        setManualFat('0');
+        setManualCarbs('0');
+      }
+      return;
+    }
+
+    const parsed = parseFloat(newGrams);
+    const g = isNaN(parsed) ? 0 : Math.max(0, Math.min(5000, Math.round(parsed)));
+    setManualPortionGrams(String(newGrams) === '0' || newGrams === 0 ? '0' : g);
+
     if (manualPer100g) {
       const mult = g / 100.0;
       setManualCalories(String(Math.round(manualPer100g.calories * mult)));
@@ -1475,7 +1488,8 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
       if (res.ok) {
         const data = await res.json();
         if (data.detected_dish) setManualDishName(data.detected_dish);
-        const g = data.portion_grams || manualPortionGrams || 200;
+        const parsedG = parseFloat(data.portion_grams);
+        const g = !isNaN(parsedG) ? Math.max(0, parsedG) : (parseFloat(manualPortionGrams) || 0);
         setManualPortionGrams(g);
 
         if (data.per_100g) {
@@ -1506,7 +1520,8 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
     const p = parseFloat(manualProtein) || 0;
     const f = parseFloat(manualFat) || 0;
     const c = parseFloat(manualCarbs) || 0;
-    const g = parseFloat(manualPortionGrams) || 100;
+    const parsedGrams = parseFloat(manualPortionGrams);
+    const g = !isNaN(parsedGrams) ? Math.max(0, parsedGrams) : 0;
 
     setIsSavingManual(true);
     triggerHaptic('success');
@@ -1733,10 +1748,10 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
     triggerHaptic('success');
 
     const per100 = analysisResult.per_100g || {
-      calories: analysisResult.total.calories / (portionGrams / 100),
-      protein: analysisResult.total.protein / (portionGrams / 100),
-      fat: analysisResult.total.fat / (portionGrams / 100),
-      carbs: analysisResult.total.carbs / (portionGrams / 100),
+      calories: portionGrams > 0 ? analysisResult.total.calories / (portionGrams / 100) : (analysisResult.total?.calories || 0),
+      protein: portionGrams > 0 ? analysisResult.total.protein / (portionGrams / 100) : (analysisResult.total?.protein || 0),
+      fat: portionGrams > 0 ? analysisResult.total.fat / (portionGrams / 100) : (analysisResult.total?.fat || 0),
+      carbs: portionGrams > 0 ? analysisResult.total.carbs / (portionGrams / 100) : (analysisResult.total?.carbs || 0),
     };
 
     const mult = portionGrams / 100.0;
@@ -2042,7 +2057,11 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
-                      onClick={() => { triggerHaptic('light'); handlePortionChange(manualPortionGrams - 25); }}
+                      onClick={() => {
+                        triggerHaptic('light');
+                        const cur = parseFloat(manualPortionGrams) || 0;
+                        handlePortionChange(Math.max(0, cur - 25));
+                      }}
                       className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black flex items-center justify-center text-sm cursor-pointer active:scale-90 transition"
                     >
                       -
@@ -2053,13 +2072,22 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
                         inputMode="numeric"
                         value={manualPortionGrams}
                         onChange={(e) => handlePortionChange(cleanNumericInput(e.target.value, false))}
+                        onBlur={() => {
+                          if (manualPortionGrams === '' || manualPortionGrams === null || manualPortionGrams === undefined) {
+                            handlePortionChange(0);
+                          }
+                        }}
                         className="w-14 bg-transparent text-center font-mono font-black text-white text-sm focus:outline-none"
                       />
                       <span className="text-zinc-400 text-xs font-mono ml-0.5">г</span>
                     </div>
                     <button
                       type="button"
-                      onClick={() => { triggerHaptic('light'); handlePortionChange(manualPortionGrams + 25); }}
+                      onClick={() => {
+                        triggerHaptic('light');
+                        const cur = parseFloat(manualPortionGrams) || 0;
+                        handlePortionChange(cur + 25);
+                      }}
                       className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black flex items-center justify-center text-sm cursor-pointer active:scale-90 transition"
                     >
                       +
@@ -2069,20 +2097,23 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
 
                 {/* Preset Gram Buttons */}
                 <div className="grid grid-cols-6 gap-1 pt-1">
-                  {[50, 100, 150, 200, 250, 300].map((g) => (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => { triggerHaptic('light'); handlePortionChange(g); }}
-                      className={`py-1 rounded-lg font-mono text-[11px] font-bold transition active:scale-95 cursor-pointer ${
-                        parseInt(manualPortionGrams, 10) === g
-                          ? 'bg-emerald-500 text-gym-950 font-black shadow'
-                          : 'bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white'
-                      }`}
-                    >
-                      {g}г
-                    </button>
-                  ))}
+                  {[0, 50, 100, 150, 200, 250].map((g) => {
+                    const isSelected = manualPortionGrams !== '' && (parseFloat(manualPortionGrams) || 0) === g;
+                    return (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => { triggerHaptic('light'); handlePortionChange(g); }}
+                        className={`py-1 rounded-lg font-mono text-[11px] font-bold transition active:scale-95 cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-500 text-gym-950 font-black shadow'
+                            : 'bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {g}г
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -2368,7 +2399,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
                           <div className="flex items-center space-x-2">
                             <button
                               type="button"
-                              onClick={() => { triggerHaptic('light'); setPortionGrams(g => Math.max(10, g - 25)); }}
+                              onClick={() => { triggerHaptic('light'); setPortionGrams(g => Math.max(0, g - 25)); }}
                               className="w-6 h-6 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center text-xs cursor-pointer active:scale-90"
                             >
                               -
@@ -2385,7 +2416,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
                         </div>
                         <div className="grid grid-cols-4 gap-1.5">
                           {[
-                            Math.max(20, Math.round(portionGrams * 0.5)),
+                            Math.max(0, Math.round(portionGrams * 0.5)),
                             portionGrams,
                             Math.round(portionGrams * 1.5),
                             Math.round(portionGrams * 2)
