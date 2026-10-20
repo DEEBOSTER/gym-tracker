@@ -1,37 +1,3 @@
-// --- MULTI-ACCOUNT MANAGEMENT HELPERS ---
-function getSavedTelegramAccounts() {
-  try {
-    const raw = localStorage.getItem('gym_tracker_accounts_list');
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function addSavedTelegramAccount(id, name) {
-  try {
-    if (!id || id === 'default') return;
-    const cleanId = id.startsWith('tg_') || id.startsWith('u_') ? id : 'tg_' + id;
-    const list = getSavedTelegramAccounts();
-    const existingIdx = list.findIndex(a => a.id === cleanId);
-    const item = { id: cleanId, name: name || 'Атлет', lastUsed: Date.now() };
-    if (existingIdx !== -1) {
-      list[existingIdx] = { ...list[existingIdx], ...item };
-    } else {
-      list.unshift(item);
-    }
-    list.sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
-    localStorage.setItem('gym_tracker_accounts_list', JSON.stringify(list.slice(0, 10)));
-  } catch (e) {}
-}
-
-function removeSavedTelegramAccount(id) {
-  try {
-    const list = getSavedTelegramAccounts().filter(a => a.id !== id);
-    localStorage.setItem('gym_tracker_accounts_list', JSON.stringify(list));
-  } catch (e) {}
-}
-
 // --- TELEGRAM USER IDENTITY & API INTERCEPTOR ---
 function getTelegramUser() {
   // 1. Telegram WebApp Mini App environment (highest priority inside Telegram)
@@ -48,7 +14,6 @@ function getTelegramUser() {
         localStorage.setItem('gym_tracker_tg_id', tgId);
         localStorage.setItem('gym_tracker_user_id', tgId);
         localStorage.setItem('gym_tracker_user_name', fullName);
-        addSavedTelegramAccount(tgId, fullName);
       } catch (e) {}
       return { id: tgId, name: fullName };
     }
@@ -110,7 +75,6 @@ function getTelegramUser() {
         localStorage.setItem('gym_tracker_tg_id', cleanId);
         localStorage.setItem('gym_tracker_user_id', cleanId);
         localStorage.setItem('gym_tracker_user_name', paramName);
-        addSavedTelegramAccount(cleanId, paramName);
 
         // Immediately clean URL parameter from address bar so it doesn't get baked into future bookmarks or home screen shortcuts!
         if (window.history && window.history.replaceState) {
@@ -7424,8 +7388,6 @@ function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
   const [activeGuideTab, setActiveGuideTab] = useState('ios'); // 'ios' | 'android'
   const [canInstallPwa, setCanInstallPwa] = useState(Boolean(deferredPwaInstallPrompt));
   const [installing, setInstalling] = useState(false);
-  const [accountRefreshTrigger, setAccountRefreshTrigger] = useState(0);
-  const savedAccounts = useMemo(() => getSavedTelegramAccounts(), [isOpen, accountRefreshTrigger]);
 
   useEffect(() => {
     const handlePwaReady = () => setCanInstallPwa(Boolean(deferredPwaInstallPrompt));
@@ -7459,7 +7421,7 @@ function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
     }
   };
 
-  const handleLogin = (idToUse, customName) => {
+  const handleLogin = (idToUse) => {
     const val = String(idToUse || tgInput || '').trim();
     if (!val) {
       alert('Пожалуйста, введите ваш Telegram ID (цифры)');
@@ -7472,14 +7434,13 @@ function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
     }
     triggerHaptic('success');
     const fullId = 'tg_' + clean;
-    const name = customName || (clean === '591306946' ? 'DEBOOSTER' : 'Атлет');
+    const name = clean === '591306946' ? 'DEBOOSTER' : 'Атлет';
     try {
       localStorage.setItem('gym_tracker_explicit_tg_id', fullId);
       localStorage.setItem('gym_tracker_active_tg_id', fullId);
       localStorage.setItem('gym_tracker_tg_id', fullId);
       localStorage.setItem('gym_tracker_user_id', fullId);
       localStorage.setItem('gym_tracker_user_name', name);
-      addSavedTelegramAccount(fullId, name);
 
       // Clean address bar so no stale query param remains
       if (window.history && window.history.replaceState) {
@@ -7719,77 +7680,17 @@ function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
           )}
         </div>
 
-        {/* 4. Switch / Connect Telegram ID & Multi-Account List */}
-        <div className="bg-gym-950/80 border border-gym-800 rounded-2xl p-3.5 space-y-3">
+        {/* 4. Switch / Connect Telegram ID */}
+        <div className="bg-gym-950/80 border border-gym-800 rounded-2xl p-3.5 space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-black text-amber-400 uppercase tracking-wider">
-              🔑 Вход и переключение аккаунтов
+              🔑 Вход по Telegram ID
             </span>
-            <span className="text-[10px] text-slate-500">Мульти-аккаунт</span>
+            <span className="text-[10px] text-slate-500">Синхронизация истории</span>
           </div>
 
-          {/* Quick account switcher if multiple accounts saved on this device */}
-          {savedAccounts.length > 0 && (
-            <div className="space-y-1.5 pt-1">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                Сохраненные аккаунты на этом устройстве:
-              </span>
-              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                {savedAccounts.map((acc) => {
-                  const isActive = acc.id === currentUser.id;
-                  return (
-                    <div
-                      key={acc.id}
-                      className={`p-2 rounded-xl flex items-center justify-between text-xs transition border ${
-                        isActive
-                          ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                          : 'bg-gym-900 border-gym-800 text-slate-300 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-2 min-w-0 pr-2">
-                        <span className="text-sm">👤</span>
-                        <div className="min-w-0">
-                          <span className="font-mono font-bold text-white truncate block">{acc.id}</span>
-                          <span className="text-[10px] text-slate-400 block">{acc.name || 'Атлет'}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-1.5 shrink-0">
-                        {isActive ? (
-                          <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/20 px-2.5 py-1 rounded-lg">
-                            ✓ Активен
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleLogin(acc.id.replace('tg_', ''), acc.name)}
-                            className="text-[11px] font-bold bg-amber-500 hover:bg-amber-400 text-gym-950 px-2.5 py-1 rounded-lg transition active:scale-95 cursor-pointer shadow-sm"
-                          >
-                            Войти
-                          </button>
-                        )}
-                        {!isActive && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              removeSavedTelegramAccount(acc.id);
-                              setAccountRefreshTrigger(k => k + 1);
-                            }}
-                            className="text-slate-500 hover:text-rose-400 p-1 text-xs transition cursor-pointer"
-                            title="Удалить из сохраненных на этом телефоне"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <p className="text-[11px] text-slate-400 leading-relaxed pt-1">
-            Чтобы войти под другим Telegram ID, введите его цифры ниже — приложение мгновенно подгрузит тренировки и сохранит аккаунт на этом телефоне:
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Если вы открыли приложение на новом устройстве или хотите сменить аккаунт, введите свой Telegram ID:
           </p>
 
           <div className="flex space-x-2">
