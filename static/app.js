@@ -1046,16 +1046,16 @@ function AthleticLiquidWaterWidget({ userProfile }) {
   };
 
   return (
-    <div className="bg-[#18191d] border border-cyan-500/20 hover:border-cyan-500/40 rounded-3xl p-3 flex flex-col justify-between items-center text-center relative overflow-hidden shadow-xl select-none group transition-all h-full">
+    <div className="neu-flat border border-cyan-500/20 hover:border-cyan-500/40 rounded-3xl p-3 flex flex-col justify-between items-center text-center relative overflow-hidden shadow-xl select-none group transition-all h-full">
       {/* Top Header */}
       <div className="w-full flex items-center justify-between pb-1 z-10">
         <div className="flex items-center space-x-1.5">
           <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-          <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 font-mono">
+          <span className="text-[10px] font-black uppercase tracking-wider text-cyan-500 dark:text-cyan-400 font-mono">
             Вода
           </span>
         </div>
-        <span className="text-[9.5px] font-mono font-bold text-zinc-400">
+        <span className="text-[9.5px] font-mono font-bold text-slate-500 dark:text-zinc-400">
           Цель: {targetMl} мл
         </span>
       </div>
@@ -1063,7 +1063,7 @@ function AthleticLiquidWaterWidget({ userProfile }) {
       {/* Stylized Shaker / Bottle with Smooth Liquid Filling */}
       <div 
         onClick={() => updateWater(250)}
-        className="w-full max-w-[110px] h-36 rounded-2xl bg-[#0b121c]/90 border-2 border-cyan-400/40 relative overflow-hidden shadow-[inset_0_2px_12px_rgba(0,0,0,0.8)] cursor-pointer active:scale-[0.97] transition-all flex flex-col justify-end group my-1"
+        className="w-full max-w-[110px] h-36 rounded-2xl bg-cyan-950/20 dark:bg-[#0b121c]/90 border-2 border-cyan-400/40 relative overflow-hidden shadow-[inset_0_2px_12px_rgba(0,0,0,0.3)] dark:shadow-[inset_0_2px_12px_rgba(0,0,0,0.8)] cursor-pointer active:scale-[0.97] transition-all flex flex-col justify-end group my-1 neu-liquid-text"
         title="Нажмите на бутылку, чтобы добавить +250 мл"
       >
         {/* Measurement tick marks on right edge */}
@@ -1127,7 +1127,7 @@ function AthleticLiquidWaterWidget({ userProfile }) {
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); updateWater(-250); }}
-          className="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center font-black text-xs border border-white/10 active:scale-90 transition shrink-0 cursor-pointer"
+          className="w-7 h-7 rounded-xl bg-slate-200/80 hover:bg-slate-300 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-zinc-400 dark:hover:text-white flex items-center justify-center font-black text-xs border border-slate-300 dark:border-white/10 active:scale-90 transition shrink-0 cursor-pointer"
           title="-250 мл"
         >
           –
@@ -1136,7 +1136,7 @@ function AthleticLiquidWaterWidget({ userProfile }) {
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); updateWater(250); }}
-          className="flex-1 py-1.5 px-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-300 font-mono font-black text-[11px] active:scale-95 transition shadow-sm flex items-center justify-center space-x-1 cursor-pointer"
+          className="flex-1 py-1.5 px-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-700 dark:text-cyan-300 font-mono font-black text-[11px] active:scale-95 transition shadow-sm flex items-center justify-center space-x-1 cursor-pointer"
           title="+250 мл"
         >
           <span>💧</span>
@@ -1146,7 +1146,7 @@ function AthleticLiquidWaterWidget({ userProfile }) {
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); updateWater(500); }}
-          className="py-1.5 px-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 font-mono font-bold text-[10px] active:scale-95 transition shrink-0 cursor-pointer"
+          className="py-1.5 px-2 rounded-xl bg-slate-200/80 hover:bg-slate-300 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-700 dark:text-zinc-300 font-mono font-bold text-[10px] active:scale-95 transition shrink-0 cursor-pointer"
           title="+500 мл (шейкер)"
         >
           +500
@@ -1264,18 +1264,18 @@ function AthleticNutritionWidget({ userProfile, onOpenScanner, refreshTrigger })
         triggerHaptic('light');
         if (typeof onOpenScanner === 'function') onOpenScanner();
       }}
-      className="bg-[#18191d] border border-emerald-500/20 hover:border-emerald-500/40 rounded-3xl p-3 flex flex-col justify-between shadow-xl select-none transition-all h-full relative overflow-hidden group cursor-pointer"
+      className="neu-flat border border-emerald-500/20 hover:border-emerald-500/40 rounded-3xl p-3 flex flex-col justify-between shadow-xl select-none transition-all h-full relative overflow-hidden group cursor-pointer"
     >
       {/* Top Header */}
       <div>
         <div className="flex items-center justify-between pb-1">
           <div className="flex items-center space-x-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 font-mono">
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500 dark:text-emerald-400 font-mono">
               КБЖУ дня
             </span>
           </div>
-          <span className="text-[9.5px] font-mono font-bold text-zinc-400">
+          <span className="text-[9.5px] font-mono font-bold text-slate-500 dark:text-zinc-400">
             {nutrition.meals?.length || 0} приемов
           </span>
         </div>
@@ -1283,37 +1283,37 @@ function AthleticNutritionWidget({ userProfile, onOpenScanner, refreshTrigger })
         {/* Calories Progress Bar */}
         <div className="mt-1">
           <div className="flex items-baseline justify-between">
-            <span className="text-base font-black font-mono text-white">
+            <span className="text-base font-black font-mono text-slate-800 dark:text-white">
               {Math.round(consumed.calories)}
-              <span className="text-[10px] text-zinc-400 font-normal"> / {targets.target_calories} ккал</span>
+              <span className="text-[10px] text-slate-500 dark:text-zinc-400 font-normal"> / {targets.target_calories} ккал</span>
             </span>
             <span className="text-[10px] font-mono font-bold text-[#fc4c02]">
               {calPct}%
             </span>
           </div>
-          <div className="w-full bg-black/50 h-1.5 rounded-full overflow-hidden border border-white/5 mt-1">
+          <div className="w-full bg-slate-200 dark:bg-black/50 h-1.5 rounded-full overflow-hidden border border-black/5 dark:border-white/5 mt-1">
             <div 
               className="bg-[#fc4c02] h-full rounded-full transition-all duration-500"
               style={{ width: `${calPct}%` }}
             />
           </div>
-          <div className="text-[8.5px] text-zinc-400 mt-0.5">
-            Осталось: <strong className="text-zinc-200 font-mono">{remainingKcal}</strong> ккал
+          <div className="text-[8.5px] text-slate-500 dark:text-zinc-400 mt-0.5">
+            Осталось: <strong className="text-slate-700 dark:text-zinc-200 font-mono">{remainingKcal}</strong> ккал
           </div>
         </div>
 
         {/* 3 Macro Lines (Б / Ж / У) */}
-        <div className="mt-2 space-y-1.5 bg-[#121316] border border-white/5 rounded-xl p-2">
+        <div className="mt-2 space-y-1.5 neu-inset rounded-xl p-2">
           {/* Protein */}
           <div>
             <div className="flex items-center justify-between text-[9px] font-mono">
-              <span className="font-bold text-emerald-400 flex items-center space-x-1">
+              <span className="font-bold text-emerald-500 dark:text-emerald-400 flex items-center space-x-1">
                 <span>🥩</span>
                 <span>Белки</span>
               </span>
-              <span className="text-zinc-300 font-bold">{Math.round(consumed.protein)}/{targets.target_protein}г</span>
+              <span className="text-slate-700 dark:text-zinc-300 font-bold">{Math.round(consumed.protein)}/{targets.target_protein}г</span>
             </div>
-            <div className="w-full bg-black/40 h-1 rounded-full overflow-hidden mt-0.5">
+            <div className="w-full bg-slate-300/70 dark:bg-black/40 h-1 rounded-full overflow-hidden mt-0.5">
               <div 
                 className="bg-emerald-500 h-full rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(100, Math.round((consumed.protein / targets.target_protein) * 100))}%` }}
@@ -1324,13 +1324,13 @@ function AthleticNutritionWidget({ userProfile, onOpenScanner, refreshTrigger })
           {/* Fat */}
           <div>
             <div className="flex items-center justify-between text-[9px] font-mono">
-              <span className="font-bold text-amber-400 flex items-center space-x-1">
+              <span className="font-bold text-amber-500 dark:text-amber-400 flex items-center space-x-1">
                 <span>🥑</span>
                 <span>Жиры</span>
               </span>
-              <span className="text-zinc-300 font-bold">{Math.round(consumed.fat)}/{targets.target_fat}г</span>
+              <span className="text-slate-700 dark:text-zinc-300 font-bold">{Math.round(consumed.fat)}/{targets.target_fat}г</span>
             </div>
-            <div className="w-full bg-black/40 h-1 rounded-full overflow-hidden mt-0.5">
+            <div className="w-full bg-slate-300/70 dark:bg-black/40 h-1 rounded-full overflow-hidden mt-0.5">
               <div 
                 className="bg-amber-500 h-full rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(100, Math.round((consumed.fat / targets.target_fat) * 100))}%` }}
@@ -1341,13 +1341,13 @@ function AthleticNutritionWidget({ userProfile, onOpenScanner, refreshTrigger })
           {/* Carbs */}
           <div>
             <div className="flex items-center justify-between text-[9px] font-mono">
-              <span className="font-bold text-sky-400 flex items-center space-x-1">
+              <span className="font-bold text-sky-500 dark:text-sky-400 flex items-center space-x-1">
                 <span>🍚</span>
                 <span>Углеводы</span>
               </span>
-              <span className="text-zinc-300 font-bold">{Math.round(consumed.carbs)}/{targets.target_carbs}г</span>
+              <span className="text-slate-700 dark:text-zinc-300 font-bold">{Math.round(consumed.carbs)}/{targets.target_carbs}г</span>
             </div>
-            <div className="w-full bg-black/40 h-1 rounded-full overflow-hidden mt-0.5">
+            <div className="w-full bg-slate-300/70 dark:bg-black/40 h-1 rounded-full overflow-hidden mt-0.5">
               <div 
                 className="bg-sky-500 h-full rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(100, Math.round((consumed.carbs / targets.target_carbs) * 100))}%` }}
@@ -1366,7 +1366,7 @@ function AthleticNutritionWidget({ userProfile, onOpenScanner, refreshTrigger })
             triggerHaptic('light');
             if (typeof onOpenScanner === 'function') onOpenScanner('manual');
           }}
-          className="py-2 px-2 rounded-xl bg-[#1e2025] hover:bg-[#272a31] text-emerald-400 border border-emerald-500/30 font-black text-xs flex items-center justify-center space-x-1 active:scale-95 transition cursor-pointer"
+          className="py-2 px-2 rounded-xl bg-slate-200/80 hover:bg-slate-300 dark:bg-[#1e2025] dark:hover:bg-[#272a31] text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-black text-xs flex items-center justify-center space-x-1 active:scale-95 transition cursor-pointer"
         >
           <span>✍️</span>
           <span>Вручную</span>
@@ -1942,35 +1942,35 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
       onClick={handleClose}
     >
       <div 
-        className="w-full max-w-lg bg-[#18191d] border border-white/10 rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden"
+        className="w-full max-w-lg bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#121316]">
+        <div className="p-4 border-b border-[var(--neu-border-subtle)] flex items-center justify-between bg-[var(--neu-inset-bg)]">
           <div className="flex items-center space-x-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-            <h3 className="text-base font-black text-white">
+            <h3 className="text-base font-black text-slate-800 dark:text-white">
               Анализатор питания & БЖУ
             </h3>
           </div>
           <button
             type="button"
             onClick={handleClose}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center font-bold text-sm transition cursor-pointer"
+            className="w-8 h-8 rounded-full bg-slate-300/60 dark:bg-white/5 hover:bg-slate-300 dark:hover:bg-white/10 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center font-bold text-sm transition cursor-pointer"
           >
             ✕
           </button>
         </div>
 
         {/* Tab Controls */}
-        <div className="grid grid-cols-4 gap-1 p-2 bg-[#121316] border-b border-white/5 text-[11px]">
+        <div className="grid grid-cols-4 gap-1 p-2 bg-[var(--neu-inset-bg)] border-b border-[var(--neu-border-subtle)] text-[11px]">
           <button
             type="button"
             onClick={() => { setActiveTab('manual'); triggerHaptic('light'); }}
             className={`py-2 px-1 rounded-xl font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
               activeTab === 'manual'
                 ? 'bg-emerald-500 text-gym-950 font-black shadow-md'
-                : 'text-zinc-400 hover:text-white'
+                : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <span>✍️</span>
@@ -1982,7 +1982,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
             className={`py-2 px-1 rounded-xl font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
               activeTab === 'photo'
                 ? 'bg-emerald-500 text-gym-950 font-black shadow-md'
-                : 'text-zinc-400 hover:text-white'
+                : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <span>📸</span>
@@ -1994,7 +1994,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
             className={`py-2 px-1 rounded-xl font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
               activeTab === 'quick'
                 ? 'bg-emerald-500 text-gym-950 font-black shadow-md'
-                : 'text-zinc-400 hover:text-white'
+                : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <span>⚡</span>
@@ -2006,7 +2006,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
             className={`py-2 px-1 rounded-xl font-bold transition flex items-center justify-center space-x-1 cursor-pointer ${
               activeTab === 'history'
                 ? 'bg-emerald-500 text-gym-950 font-black shadow-md'
-                : 'text-zinc-400 hover:text-white'
+                : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <span>📋</span>
@@ -2566,25 +2566,25 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
           {activeTab === 'history' && (
             <div className="space-y-2">
               {todayMeals.length === 0 ? (
-                <div className="py-8 text-center text-zinc-500 text-xs">
+                <div className="py-8 text-center text-slate-500 dark:text-zinc-500 text-xs">
                   Сегодня пока нет записей приемов пищи.
                 </div>
               ) : (
                 todayMeals.map((meal) => (
                   <div
                     key={meal.id}
-                    className="bg-[#121316] border border-white/5 p-3 rounded-2xl flex items-center justify-between"
+                    className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] p-3 rounded-2xl flex items-center justify-between"
                   >
                     <div className="min-w-0 pr-2 flex-1">
-                      <div className="text-xs font-black text-white truncate">{meal.meal_name}</div>
-                      <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                      <div className="text-xs font-black text-slate-800 dark:text-white truncate">{meal.meal_name}</div>
+                      <div className="text-[10px] text-slate-500 dark:text-zinc-400 font-mono mt-0.5">
                         {meal.portion_grams}г · {meal.calories} ккал (Б:{meal.protein}г · Ж:{meal.fat}г · У:{meal.carbs}г)
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleDeleteMeal(meal.id)}
-                      className="text-zinc-500 hover:text-rose-400 p-1.5 text-xs transition cursor-pointer"
+                      className="text-slate-400 hover:text-rose-500 dark:text-zinc-500 dark:hover:text-rose-400 p-1.5 text-xs transition cursor-pointer active:scale-90"
                       title="Удалить"
                     >
                       🗑️
@@ -4407,6 +4407,8 @@ function App() {
 
   const [theme, setTheme] = useState(() => {
     try {
+      const q = new URLSearchParams(window.location.search).get('theme');
+      if (q === 'light' || q === 'dark') return q;
       return localStorage.getItem('gym_tracker_theme') || 'dark';
     } catch (e) {
       return 'dark';
@@ -4421,12 +4423,21 @@ function App() {
         document.documentElement.classList.remove('theme-neu-light', 'theme-soft-neu');
         document.body.classList.add('theme-neu-dark');
         document.body.classList.remove('theme-neu-light', 'theme-soft-neu');
+        document.documentElement.style.backgroundColor = '#0f1013';
+        document.documentElement.style.colorScheme = 'dark';
       } else {
         document.documentElement.classList.add('theme-neu-light', 'theme-soft-neu');
         document.documentElement.classList.remove('theme-neu-dark', 'dark');
         document.body.classList.add('theme-neu-light', 'theme-soft-neu');
         document.body.classList.remove('theme-neu-dark', 'dark');
+        document.documentElement.style.backgroundColor = '#f8f8fa';
+        document.documentElement.style.colorScheme = 'light';
       }
+
+      // Sync Safari & Chrome meta theme-color with active theme
+      const metaTheme = document.querySelectorAll('meta[name="theme-color"]');
+      metaTheme.forEach(m => m.setAttribute('content', isDark ? '#0f1013' : '#f8f8fa'));
+
       localStorage.setItem('gym_tracker_theme', theme);
     } catch (e) {}
   }, [theme]);
@@ -4730,7 +4741,7 @@ function App() {
       {/* Top Header: Hidden in workout focus mode to maximize vertical space */}
       {/* Top Header: Strava Athletic Layout (100% responsive, never overflows) */}
       {!isInWorkoutFocus && (
-        <header className="sticky top-0 z-40 px-3.5 py-2.5 flex items-center justify-between safe-header bg-[var(--neu-surface)] border-b border-[var(--neu-border)] shadow-sm">
+        <header className="sticky top-0 z-40 px-3.5 pb-2.5 flex items-center justify-between safe-header bg-[var(--neu-surface)] border-b border-[var(--neu-border)] shadow-sm">
           {/* Left Brand block */}
           <div className="flex items-center space-x-2.5 min-w-0">
             <div className="relative shrink-0">
@@ -4858,39 +4869,41 @@ function App() {
 
       {/* Bottom Floating Navigation Bar (Hidden during active workout focus) */}
       {!isInWorkoutFocus && (
-        <nav className="fixed z-40 max-w-lg mx-auto safe-bottom bottom-2 left-3 right-3 rounded-full neu-dock shadow-xl px-2 py-1.5">
-          <div className="flex items-center justify-between">
-            <NavButton 
-              active={activeTab === 'workout'} 
-              onClick={() => { setIsMinimized(false); setActiveTab('workout'); }}
-              icon={<Icons.Dumbbell />}
-              label="Тренинг"
-              badge={activeWorkout ? "•" : null}
-            />
-            <NavButton 
-              active={activeTab === 'analytics'} 
-              onClick={() => setActiveTab('analytics')}
-              icon={<Icons.Chart />}
-              label="Анализ"
-            />
-            <NavButton 
-              active={activeTab === 'history'} 
-              onClick={() => setActiveTab('history')}
-              icon={<Icons.History />}
-              label="История"
-            />
-            <NavButton 
-              active={activeTab === 'exercises'} 
-              onClick={() => setActiveTab('exercises')}
-              icon={<Icons.List />}
-              label="База"
-            />
-            <NavButton 
-              active={activeTab === 'profile'} 
-              onClick={() => setActiveTab('profile')}
-              icon={<Icons.User />}
-              label="О себе"
-            />
+        <nav className="fixed z-40 inset-x-0 mx-auto max-w-lg px-3 safe-nav-container pointer-events-none">
+          <div className="rounded-full neu-dock shadow-xl px-1.5 py-1 pointer-events-auto">
+            <div className="grid grid-cols-5 items-center w-full">
+              <NavButton 
+                active={activeTab === 'workout'} 
+                onClick={() => { setIsMinimized(false); setActiveTab('workout'); }}
+                icon={<Icons.Dumbbell />}
+                label="Тренинг"
+                badge={activeWorkout ? "•" : null}
+              />
+              <NavButton 
+                active={activeTab === 'analytics'} 
+                onClick={() => setActiveTab('analytics')}
+                icon={<Icons.Chart />}
+                label="Анализ"
+              />
+              <NavButton 
+                active={activeTab === 'history'} 
+                onClick={() => setActiveTab('history')}
+                icon={<Icons.History />}
+                label="История"
+              />
+              <NavButton 
+                active={activeTab === 'exercises'} 
+                onClick={() => setActiveTab('exercises')}
+                icon={<Icons.List />}
+                label="База"
+              />
+              <NavButton 
+                active={activeTab === 'profile'} 
+                onClick={() => setActiveTab('profile')}
+                icon={<Icons.User />}
+                label="О себе"
+              />
+            </div>
           </div>
         </nav>
       )}
@@ -4916,11 +4929,12 @@ function App() {
 function NavButton({ active, onClick, icon, label, badge }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`relative flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all duration-150 active:scale-95 group ${
+      className={`relative w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-2xl transition-all duration-150 active:scale-95 group cursor-pointer ${
         active
           ? 'text-[#fc4c02] font-black bg-[#fc4c02]/12'
-          : 'text-zinc-500 hover:text-zinc-200 font-medium'
+          : 'text-slate-500 hover:text-slate-800 dark:text-zinc-500 dark:hover:text-zinc-200 font-medium'
       }`}
     >
       <div className="relative">
@@ -4931,7 +4945,7 @@ function NavButton({ active, onClick, icon, label, badge }) {
           <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-[#fc4c02] animate-pulse ring-2 ring-white dark:ring-gym-900" />
         )}
       </div>
-      <span className="text-[10px] mt-0.5 tracking-tight font-bold">{label}</span>
+      <span className="text-[10px] mt-0.5 tracking-tight font-bold truncate max-w-full">{label}</span>
       {active && (
         <span className="w-1.5 h-1 rounded-full bg-[#fc4c02] mt-0.5 shadow-sm shadow-[#fc4c02]" />
       )}
@@ -5702,21 +5716,21 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
         </div>
 
         {/* Strava Segment Control: Variant A vs Variant B */}
-        <div className="bg-[#141518] border border-white/10 rounded-2xl p-1.5 shadow-md">
+        <div className="bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-2xl p-1.5 shadow-md">
           <div className="grid grid-cols-2 gap-1.5">
             <button
               onClick={() => setSelectedVariant('a')}
               className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 cursor-pointer ${
                 selectedVariant === 'a'
                   ? 'bg-[#fc4c02] text-white font-black shadow-md shadow-[#fc4c02]/25'
-                  : 'bg-transparent text-zinc-400 hover:text-zinc-200'
+                  : 'bg-transparent text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200'
               }`}
             >
               <div className="flex items-center space-x-1">
                 <span>⚡ Вариант А</span>
                 {recommendedDay?.variant === 'a' && <span className="text-[10px]">🔥</span>}
               </div>
-              <span className={`text-[9px] uppercase tracking-wider mt-0.5 ${selectedVariant === 'a' ? 'text-white/85' : 'text-zinc-500'}`}>
+              <span className={`text-[9px] uppercase tracking-wider mt-0.5 ${selectedVariant === 'a' ? 'text-white/85' : 'text-slate-400 dark:text-zinc-500'}`}>
                 Базовый силовой
               </span>
             </button>
@@ -5726,28 +5740,28 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
               className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 cursor-pointer ${
                 selectedVariant === 'b'
                   ? 'bg-[#fc4c02] text-white font-black shadow-md shadow-[#fc4c02]/25'
-                  : 'bg-transparent text-zinc-400 hover:text-zinc-200'
+                  : 'bg-transparent text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200'
               }`}
             >
               <div className="flex items-center space-x-1">
                 <span>🔄 Вариант Б</span>
                 {recommendedDay?.variant === 'b' && <span className="text-[10px]">🔥</span>}
               </div>
-              <span className={`text-[9px] uppercase tracking-wider mt-0.5 ${selectedVariant === 'b' ? 'text-white/85' : 'text-zinc-500'}`}>
+              <span className={`text-[9px] uppercase tracking-wider mt-0.5 ${selectedVariant === 'b' ? 'text-white/85' : 'text-slate-400 dark:text-zinc-500'}`}>
                 Смена углов & памп
               </span>
             </button>
           </div>
 
-          <div className="mt-1.5 pt-1.5 border-t border-white/5 flex items-center justify-center text-[11px]">
+          <div className="mt-1.5 pt-1.5 border-t border-[var(--neu-border-subtle)] flex items-center justify-center text-[11px]">
             {recommendedDay?.variant === selectedVariant ? (
-              <span className="text-zinc-300 font-medium flex items-center space-x-1.5">
+              <span className="text-slate-700 dark:text-zinc-300 font-medium flex items-center space-x-1.5">
                 <span className="text-[#fc4c02]">🔥</span>
                 <span>Сегодня по плану:</span>
-                <strong className="text-white font-black">{recommendedDay?.title?.split('—')[0]}</strong>
+                <strong className="text-slate-900 dark:text-white font-black">{recommendedDay?.title?.split('—')[0]}</strong>
               </span>
             ) : (
-              <span className="text-zinc-400 text-[10.5px]">
+              <span className="text-slate-500 dark:text-zinc-400 text-[10.5px]">
                 Чередование вариантов развивает мышцы под разными углами
               </span>
             )}
@@ -5774,7 +5788,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                 className={`p-2.5 rounded-2xl flex flex-col items-center justify-center text-center transition-all active:scale-95 cursor-pointer relative ${
                   isTabActive
                     ? 'bg-[#fc4c02] text-white shadow-lg shadow-[#fc4c02]/30 ring-2 ring-white/20'
-                    : 'bg-[#18191d] text-zinc-400 hover:text-white border border-white/10'
+                    : 'bg-[var(--neu-surface)] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white border border-[var(--neu-border)]'
                 }`}
               >
                 {isTodayPlan && (
@@ -5788,7 +5802,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                   <span className="text-sm">{tab.icon}</span>
                   <span className="text-xs font-black tracking-tight">{tab.title}</span>
                 </div>
-                <span className={`text-[9px] mt-0.5 truncate max-w-full ${isTabActive ? 'text-white/90 font-bold' : 'text-zinc-500'}`}>
+                <span className={`text-[9px] mt-0.5 truncate max-w-full ${isTabActive ? 'text-white/90 font-bold' : 'text-slate-400 dark:text-zinc-500'}`}>
                   {tab.sub}
                 </span>
               </button>
@@ -5808,12 +5822,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           const isRec = activeDay.is_recommended;
           const cardBorder = isRec 
             ? 'border-[#fc4c02]/40 ring-1 ring-[#fc4c02]/20' 
-            : 'border-white/10';
+            : 'border-[var(--neu-border)]';
 
           return (
-            <div className={`bg-[#18191d] border ${cardBorder} rounded-3xl p-4 sm:p-5 shadow-2xl relative space-y-3.5`}>
+            <div className={`bg-[var(--neu-surface)] border ${cardBorder} rounded-3xl p-4 sm:p-5 shadow-2xl relative space-y-3.5`}>
               {/* Day Header with fixed padding to prevent any clipping */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/5 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[var(--neu-border-subtle)] pb-3">
                 <div className="space-y-1.5 min-w-0">
                   <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                     {isRec && (
@@ -5822,12 +5836,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                         <span>План на сегодня</span>
                       </span>
                     )}
-                    <span className="text-[10px] font-mono font-black text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 uppercase">
+                    <span className="text-[10px] font-mono font-black text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 uppercase">
                       {activeDay.variant === 'a' ? 'Вариант А · Базовый' : 'Вариант Б · Памп'}
                     </span>
                   </div>
 
-                  <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight font-sans">
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white tracking-tight font-sans">
                     {activeDay.title}
                   </h3>
 
@@ -5836,6 +5850,16 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                     {activeDay.focus.split(',').map((chip, idx) => (
                       <span 
                         key={idx}
+                        className="text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-zinc-300 font-mono bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] px-2 py-0.5 rounded-md"
+                      >
+                        {chip.trim()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* View Mode Switcher: Visual Cards vs Compact List */}
+                <div className="flex items-center self-start sm:self-auto bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] p-1 rounded-xl shrink-0">
                         className="text-[10px] font-black uppercase tracking-wider text-zinc-300 font-mono bg-white/5 border border-white/10 px-2 py-0.5 rounded-md"
                       >
                         {chip.trim()}
@@ -6917,7 +6941,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 // ==========================================
 // 📊 ANALYTICS SCREEN WITH STYLISH PICKER
 // ==========================================
-function AnalyticsScreen({ exercises }) {
+function AnalyticsScreen({ exercises, theme }) {
   const [selectedExId, setSelectedExId] = useState(exercises[0]?.id || '');
   const [showPickerModal, setShowPickerModal] = useState(false);
   const [metric, setMetric] = useState('max_weight');
@@ -6979,6 +7003,8 @@ function AnalyticsScreen({ exercises }) {
     gradient.addColorStop(0, 'rgba(252, 76, 2, 0.40)');
     gradient.addColorStop(1, 'rgba(252, 76, 2, 0.0)');
 
+    const isLight = document.documentElement.classList.contains('theme-neu-light') || document.body.classList.contains('theme-neu-light');
+
     chartInstanceRef.current = new Chart(ctx, {
       type: 'line',
       data: {
@@ -6993,7 +7019,7 @@ function AnalyticsScreen({ exercises }) {
             fill: true,
             tension: 0.35,
             pointBackgroundColor: '#fc4c02',
-            pointBorderColor: '#0f1013',
+            pointBorderColor: isLight ? '#ffffff' : '#0f1013',
             pointBorderWidth: 2,
             pointRadius: 5,
             pointHoverRadius: 7,
@@ -7006,10 +7032,10 @@ function AnalyticsScreen({ exercises }) {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#121316',
-            titleColor: '#ffffff',
+            backgroundColor: isLight ? '#ffffff' : '#121316',
+            titleColor: isLight ? '#0f172a' : '#ffffff',
             bodyColor: '#fc4c02',
-            borderColor: 'rgba(255, 255, 255, 0.1)',
+            borderColor: isLight ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)',
             borderWidth: 1,
             padding: 10,
             displayColors: false,
@@ -7020,12 +7046,12 @@ function AnalyticsScreen({ exercises }) {
         },
         scales: {
           x: {
-            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-            ticks: { color: '#9ca3af', font: { size: 10 } }
+            grid: { color: isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.05)' },
+            ticks: { color: isLight ? '#64748b' : '#9ca3af', font: { size: 10 } }
           },
           y: {
-            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-            ticks: { color: '#9ca3af', font: { size: 10 } },
+            grid: { color: isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.05)' },
+            ticks: { color: isLight ? '#64748b' : '#9ca3af', font: { size: 10 } },
             beginAtZero: false
           }
         }
@@ -7035,7 +7061,7 @@ function AnalyticsScreen({ exercises }) {
     return () => {
       if (chartInstanceRef.current) chartInstanceRef.current.destroy();
     };
-  }, [data, metric]);
+  }, [data, metric, theme]);
 
   const selectedExObj = exercises.find(e => e.id == selectedExId);
 
@@ -8809,7 +8835,7 @@ function NutritionHistoryTab() {
     <div className="space-y-4">
       {/* 1. Daily Target Banner */}
       {targets && (
-        <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 shadow-xl space-y-3">
+        <div className="bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-3xl p-4 shadow-xl space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-xl">
@@ -8817,13 +8843,13 @@ function NutritionHistoryTab() {
               </div>
               <div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-base font-black text-white tracking-tight">Дневной план</span>
-                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  <span className="text-base font-black text-slate-800 dark:text-white tracking-tight">Дневной план</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
                     Цель
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-400">
-                  Всего записано: <strong className="text-white">{historyData.total_logged_meals || 0}</strong> блюд
+                <p className="text-[11px] text-slate-500 dark:text-zinc-400">
+                  Всего записано: <strong className="text-slate-800 dark:text-white">{historyData.total_logged_meals || 0}</strong> блюд
                 </p>
               </div>
             </div>
@@ -8839,7 +8865,7 @@ function NutritionHistoryTab() {
               <button
                 type="button"
                 onClick={fetchHistory}
-                className="text-[11px] font-mono text-zinc-400 hover:text-white bg-[#121316] border border-white/5 px-2.5 py-1.5 rounded-xl active:scale-95 transition cursor-pointer"
+                className="text-[11px] font-mono text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-white bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] px-2.5 py-1.5 rounded-xl active:scale-95 transition cursor-pointer"
                 title="Обновить историю"
               >
                 ↻
@@ -8848,11 +8874,11 @@ function NutritionHistoryTab() {
           </div>
 
           <div className="grid grid-cols-4 gap-2 pt-1 font-mono text-center">
-            <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5">
-              <span className="text-[9px] text-zinc-500 block uppercase font-bold tracking-wider">Ккал</span>
-              <span className="text-sm font-black text-amber-400">{targets.target_calories}</span>
+            <div className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] rounded-2xl p-2.5">
+              <span className="text-[9px] text-slate-400 dark:text-zinc-500 block uppercase font-bold tracking-wider">Ккал</span>
+              <span className="text-sm font-black text-amber-500">{targets.target_calories}</span>
             </div>
-            <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5">
+            <div className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] rounded-2xl p-2.5">
               <span className="text-[9px] text-zinc-500 block uppercase font-bold tracking-wider">Белки</span>
               <span className="text-sm font-black text-emerald-400">{targets.target_protein}г</span>
             </div>
@@ -8913,34 +8939,34 @@ function NutritionHistoryTab() {
           : 0;
 
         return (
-          <div key={day.date} className="bg-[#18191d] border border-white/10 rounded-3xl overflow-hidden shadow-xl">
+          <div key={day.date} className="bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-3xl overflow-hidden shadow-xl">
             {/* Day Header */}
             <div 
               onClick={() => toggleDayCollapse(day.date)}
-              className="p-4 cursor-pointer hover:bg-white/[0.02] transition flex items-center justify-between select-none"
+              className="p-4 cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition flex items-center justify-between select-none"
             >
               <div className="space-y-1">
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm font-black text-white capitalize">{formatDayTitle(day.date)}</span>
-                  <span className="text-[10px] font-mono text-zinc-400 bg-white/5 px-2 py-0.5 rounded-full">
+                  <span className="text-sm font-black text-slate-800 dark:text-white capitalize">{formatDayTitle(day.date)}</span>
+                  <span className="text-[10px] font-mono text-slate-500 dark:text-zinc-400 bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-full">
                     {day.meals.length} {day.meals.length === 1 ? 'прием' : (day.meals.length > 1 && day.meals.length < 5 ? 'приема' : 'приемов')}
                   </span>
                 </div>
 
                 {/* Macro pills */}
                 <div className="flex items-center space-x-2 font-mono text-xs pt-0.5">
-                  <span className="font-black text-amber-400">🔥 {Math.round(day.calories)} ккал</span>
-                  <span className="text-zinc-600">•</span>
-                  <span className="text-emerald-400 font-bold">Б: {Math.round(day.protein)}г</span>
-                  <span className="text-sky-400 font-bold">Ж: {Math.round(day.fat)}г</span>
-                  <span className="text-purple-400 font-bold">У: {Math.round(day.carbs)}г</span>
+                  <span className="font-black text-amber-500">🔥 {Math.round(day.calories)} ккал</span>
+                  <span className="text-slate-300 dark:text-zinc-600">•</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">Б: {Math.round(day.protein)}г</span>
+                  <span className="text-sky-600 dark:text-sky-400 font-bold">Ж: {Math.round(day.fat)}г</span>
+                  <span className="text-purple-600 dark:text-purple-400 font-bold">У: {Math.round(day.carbs)}г</span>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2 text-zinc-400 text-xs">
+              <div className="flex items-center space-x-2 text-slate-500 dark:text-zinc-400 text-xs">
                 {targets?.target_calories > 0 && (
                   <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg ${
-                    calPercent >= 85 && calPercent <= 110 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-zinc-400'
+                    calPercent >= 85 && calPercent <= 110 ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-black/5 dark:bg-white/5 text-slate-600 dark:text-zinc-400'
                   }`}>
                     {calPercent}% цели
                   </span>
@@ -8953,7 +8979,7 @@ function NutritionHistoryTab() {
 
             {/* Target Progress Bar */}
             {targets?.target_calories > 0 && (
-              <div className="w-full bg-[#121316] h-1.5 overflow-hidden">
+              <div className="w-full bg-[var(--neu-inset-bg)] h-1.5 overflow-hidden">
                 <div 
                   className={`h-full transition-all duration-300 ${
                     calPercent > 105 ? 'bg-amber-500' : calPercent >= 80 ? 'bg-emerald-500' : 'bg-[#fc4c02]'
@@ -8965,33 +8991,33 @@ function NutritionHistoryTab() {
 
             {/* Meals inside Day (Photos are completely omitted!) */}
             {!isCollapsed && (
-              <div className="divide-y divide-white/[0.04] p-3 space-y-2">
+              <div className="divide-y divide-black/[0.04] dark:divide-white/[0.04] p-3 space-y-2">
                 {day.meals.map((meal) => {
                   const timeStr = meal.created_at ? parseSafeDate(meal.created_at)?.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
                   return (
                     <div 
                       key={meal.id} 
-                      className="bg-[#121316] border border-white/5 rounded-2xl p-3 flex items-center justify-between hover:border-white/10 transition"
+                      className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] rounded-2xl p-3 flex items-center justify-between hover:border-[var(--neu-border)] transition"
                     >
                       <div className="space-y-1.5 pr-2 min-w-0">
                         <div className="flex items-center space-x-2">
-                          {timeStr && <span className="text-[10px] font-mono text-zinc-500">{timeStr}</span>}
-                          <span className="text-xs font-bold text-white truncate">{meal.meal_name}</span>
+                          {timeStr && <span className="text-[10px] font-mono text-slate-400 dark:text-zinc-500">{timeStr}</span>}
+                          <span className="text-xs font-bold text-slate-800 dark:text-white truncate">{meal.meal_name}</span>
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
-                          <span className="text-zinc-400 bg-white/5 px-2 py-0.5 rounded-lg font-sans">
+                          <span className="text-slate-600 dark:text-zinc-400 bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-lg font-sans">
                             {meal.portion_grams || 100} г
                           </span>
-                          <span className="text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg font-bold">
+                          <span className="text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg font-bold">
                             🔥 {Math.round(meal.calories)} ккал
                           </span>
-                          <span className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg">
+                          <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg">
                             Б: {meal.protein}г
                           </span>
-                          <span className="text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded-lg">
+                          <span className="text-sky-600 dark:text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded-lg">
                             Ж: {meal.fat}г
                           </span>
-                          <span className="text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-lg">
+                          <span className="text-purple-600 dark:text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-lg">
                             У: {meal.carbs}г
                           </span>
                         </div>
@@ -9002,7 +9028,7 @@ function NutritionHistoryTab() {
                         type="button"
                         disabled={deletingId === meal.id}
                         onClick={() => handleDeleteMeal(meal.id)}
-                        className="w-8 h-8 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 active:scale-90 transition cursor-pointer"
+                        className="w-8 h-8 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-500 flex items-center justify-center shrink-0 active:scale-90 transition cursor-pointer"
                         title="Удалить этот прием пищи"
                       >
                         {deletingId === meal.id ? '…' : '🗑️'}
@@ -9332,14 +9358,14 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
   return (
     <div className="space-y-4">
       {/* 0. SUBTAB SWITCHER: WORKOUTS vs NUTRITION */}
-      <div className="flex bg-[#121316] p-1 rounded-2xl border border-white/5 shadow-md">
+      <div className="flex bg-[var(--neu-inset-bg)] p-1 rounded-2xl border border-[var(--neu-border-subtle)] shadow-md">
         <button
           type="button"
           onClick={() => { setHistorySubTab('workouts'); triggerHaptic('light'); }}
           className={`flex-1 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center space-x-2 cursor-pointer ${
             historySubTab === 'workouts'
               ? 'bg-[#fc4c02] text-white shadow-lg shadow-[#fc4c02]/25'
-              : 'text-zinc-400 hover:text-white'
+              : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <span>🏋️</span>
@@ -9351,7 +9377,7 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
           className={`flex-1 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center space-x-2 cursor-pointer ${
             historySubTab === 'nutrition'
               ? 'bg-emerald-500 text-gym-950 font-black shadow-lg shadow-emerald-500/25'
-              : 'text-zinc-400 hover:text-white'
+              : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <span>🥗</span>
@@ -9364,7 +9390,7 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
       ) : (
         <>
           {/* 1. STREAK & MOTIVATIONAL STATS CARD (Strava Athletic Style) */}
-          <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 shadow-xl space-y-3">
+          <div className="bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-3xl p-4 shadow-xl space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-2xl bg-[#fc4c02]/15 border border-[#fc4c02]/30 flex items-center justify-center text-xl">
@@ -9372,7 +9398,7 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="text-lg font-black text-white tracking-tight">
+                <span className="text-lg font-black text-slate-800 dark:text-white tracking-tight">
                   {stats.streakWorkouts > 0 
                     ? `${stats.streakWorkouts} ${getPluralWorkouts(stats.streakWorkouts)} подряд`
                     : stats.streakWeeks > 0 
@@ -9381,7 +9407,7 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
                 </span>
                 <span className="text-[10px] bg-[#fc4c02]/20 text-[#fc4c02] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Стрик</span>
               </div>
-              <p className="text-[11px] text-zinc-400">
+              <p className="text-[11px] text-slate-500 dark:text-zinc-400">
                 {stats.streakWorkouts > 0 
                   ? `🔥 Серия без пропусков • ${stats.streakWeeks} ${getPluralWeeks(stats.streakWeeks)} в зале`
                   : 'Начните тренировку, чтобы запустить серию'}
@@ -9391,32 +9417,32 @@ function HistoryScreen({ workouts = [], exercises = [], onRefresh }) {
         </div>
 
         {/* 3 Metrics Grid */}
-        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5 text-center font-mono">
-          <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5">
-            <span className="text-[10px] text-zinc-500 block uppercase font-bold tracking-wider">За месяц</span>
+        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[var(--neu-border-subtle)] text-center font-mono">
+          <div className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] rounded-2xl p-2.5">
+            <span className="text-[10px] text-slate-400 dark:text-zinc-500 block uppercase font-bold tracking-wider">За месяц</span>
             <span className="text-sm font-black text-[#fc4c02]">{stats.monthCount} трен.</span>
           </div>
 
-          <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5">
-            <span className="text-[10px] text-zinc-500 block uppercase font-bold tracking-wider">Тоннаж мес.</span>
-            <span className="text-sm font-black text-white">
+          <div className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] rounded-2xl p-2.5">
+            <span className="text-[10px] text-slate-400 dark:text-zinc-500 block uppercase font-bold tracking-wider">Тоннаж мес.</span>
+            <span className="text-sm font-black text-slate-800 dark:text-white">
               {stats.monthVolume >= 1000 ? `${(stats.monthVolume / 1000).toFixed(1)} т` : `${Math.round(stats.monthVolume)} кг`}
             </span>
           </div>
 
-          <div className="bg-[#121316] border border-white/5 rounded-2xl p-2.5">
-            <span className="text-[10px] text-zinc-500 block uppercase font-bold tracking-wider">Ср. сетов</span>
-            <span className="text-sm font-black text-amber-400">{stats.avgSets}</span>
+          <div className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] rounded-2xl p-2.5">
+            <span className="text-[10px] text-slate-400 dark:text-zinc-500 block uppercase font-bold tracking-wider">Ср. сетов</span>
+            <span className="text-sm font-black text-amber-500">{stats.avgSets}</span>
           </div>
         </div>
       </div>
 
       {/* 2. INTERACTIVE CALENDAR WIDGET (Strava Athletic Style) */}
-      <div className="bg-[#18191d] border border-white/10 rounded-3xl p-4 shadow-xl space-y-3">
+      <div className="bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-3xl p-4 shadow-xl space-y-3">
         {/* Month Header & Controls */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="text-base font-black text-white tracking-tight">
+            <span className="text-base font-black text-slate-800 dark:text-white tracking-tight">
               {monthNames[viewMonth]} {viewYear}
             </span>
             {(viewMonth !== new Date().getMonth() || viewYear !== new Date().getFullYear()) && (

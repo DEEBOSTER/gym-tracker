@@ -1,9 +1,26 @@
 <!DOCTYPE html>
-<html lang="ru" class="dark theme-neu-dark" style="background-color: #18191d; color-scheme: dark;">
+<html lang="ru" class="dark theme-neu-dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>GymTracker — Силовые тренировки</title>
+
+  <!-- Instant Theme Initializer (zero flash on reload) -->
+  <script>
+    (function() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var qTheme = params.get('theme');
+        var savedTheme = qTheme || localStorage.getItem('gym_tracker_theme');
+        if (savedTheme === 'light') {
+          document.documentElement.classList.remove('dark', 'theme-neu-dark');
+          document.documentElement.classList.add('theme-neu-light', 'theme-soft-neu');
+          document.documentElement.style.backgroundColor = '#f8f8fa';
+          document.documentElement.style.colorScheme = 'light';
+        }
+      } catch (e) {}
+    })();
+  </script>
 
   <!-- PWA Meta Tags -->
   <link rel="manifest" href="/manifest.json">
@@ -95,19 +112,22 @@
     }
 
     .safe-header {
-      padding-top: max(0.5rem, calc(env(safe-area-inset-top, 0px) + 0.35rem));
+      padding-top: max(0.85rem, calc(env(safe-area-inset-top, 0px) + 0.5rem)) !important;
     }
     .safe-top {
-      padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+      padding-top: max(0.85rem, calc(env(safe-area-inset-top, 0px) + 0.5rem)) !important;
     }
     .safe-bottom {
-      padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
+      padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px)) !important;
     }
     .safe-pb-nav {
-      padding-bottom: max(5rem, calc(env(safe-area-inset-bottom, 0px) + 4.75rem));
+      padding-bottom: max(5.5rem, calc(env(safe-area-inset-bottom, 0px) + 5.25rem)) !important;
     }
     .pt-safe-top {
-      padding-top: max(0.5rem, calc(env(safe-area-inset-top, 0px) + 0.35rem));
+      padding-top: max(0.85rem, calc(env(safe-area-inset-top, 0px) + 0.5rem)) !important;
+    }
+    .safe-nav-container {
+      bottom: max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.35rem)) !important;
     }
 
     * {
@@ -116,12 +136,17 @@
       box-sizing: border-box;
     }
     html {
-      background-color: #18191d !important;
-      color-scheme: dark;
+      background-color: var(--neu-base) !important;
     }
     body {
-      background-color: #0f1013 !important;
+      background-color: var(--neu-base) !important;
+      color: var(--neu-text-primary) !important;
+    }
+    html.dark, html.theme-neu-dark, body.dark, body.theme-neu-dark {
       color-scheme: dark;
+    }
+    html.theme-neu-light, body.theme-neu-light {
+      color-scheme: light;
     }
     html, body {
       overflow-x: hidden !important;
@@ -286,17 +311,57 @@
     }
 
     /* 🏗️ Automated Card & Input Styling across entire app */
-    /* Outer elevated cards */
+    /* Outer elevated cards across all components */
     [class*="bg-gym-900"]:not(.neu-dock):not(.neu-dark-pill):not(.neu-btn),
-    [class*="bg-gym-850"]:not(.neu-dock):not(.neu-dark-pill):not(.neu-btn) {
+    [class*="bg-gym-850"]:not(.neu-dock):not(.neu-dark-pill):not(.neu-btn),
+    [class*="bg-[#18191d]"]:not(.neu-dock):not(.neu-dark-pill):not(.neu-btn),
+    [class*="bg-[#141518]"]:not(.neu-dock):not(.neu-dark-pill):not(.neu-btn),
+    [class*="bg-[#1e2025]"]:not(.neu-dock):not(.neu-dark-pill):not(.neu-btn),
+    [class*="bg-[#202127]"]:not(.neu-dock):not(.neu-dark-pill):not(.neu-btn),
+    [class*="bg-[#1a1c1e]"]:not(.neu-dock):not(.neu-dark-pill):not(.neu-btn) {
       background-color: var(--neu-surface) !important;
       border-color: var(--neu-border) !important;
       box-shadow: 0 4px 20px -2px var(--neu-shadow-dark) !important;
     }
 
     /* Inner sub-containers (smooth athletic pockets) */
-    [class*="bg-gym-950"]:not(.neu-dark-pill):not(.neu-dock):not(input):not(button) {
+    [class*="bg-gym-950"]:not(.neu-dark-pill):not(.neu-dock):not(input):not(button),
+    [class*="bg-[#121316]"]:not(.neu-dark-pill):not(.neu-dock):not(input):not(button),
+    [class*="bg-[#0f1013]"]:not(.neu-dark-pill):not(.neu-dock):not(input):not(button) {
       background-color: var(--neu-inset-bg) !important;
+      border-color: var(--neu-border-subtle) !important;
+    }
+
+    /* Light mode chip and subtle background overrides */
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) [class*="bg-white/5"]:not(button.bg-emerald-500):not(button.bg-[#fc4c02]),
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) [class*="bg-white/10"]:not(button.bg-emerald-500):not(button.bg-[#fc4c02]),
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) [class*="bg-white/[0.02]"],
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) [class*="bg-white/[0.04]"],
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) [class*="bg-white/5"]:not(button.bg-emerald-500):not(button.bg-[#fc4c02]),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) [class*="bg-white/10"]:not(button.bg-emerald-500):not(button.bg-[#fc4c02]) {
+      background-color: var(--neu-inset-bg) !important;
+      border-color: var(--neu-border-subtle) !important;
+    }
+
+    /* Light mode modal background backdrop */
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .bg-black\/85,
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .bg-black\/80,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .bg-black\/85,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .bg-black\/80 {
+      background-color: rgba(15, 23, 42, 0.45) !important;
+      backdrop-filter: blur(10px) !important;
+      -webkit-backdrop-filter: blur(10px) !important;
+    }
+
+    /* Light mode borders */
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) [class*="border-white/5"],
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) [class*="border-white/10"],
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) [class*="border-white/15"],
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) [class*="border-white/20"],
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) [class*="border-white/5"],
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) [class*="border-white/10"],
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) [class*="border-white/15"],
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) [class*="border-white/20"] {
       border-color: var(--neu-border-subtle) !important;
     }
 
@@ -342,11 +407,13 @@
       background-color: var(--neu-surface) !important;
     }
 
-    /* High contrast text on dark pills, dials, and solid accent buttons */
+    /* High contrast text on dark pills, dials, liquid text, and solid accent buttons */
     .neu-dark-pill,
     .neu-dark-pill *,
     .neu-dial,
     .neu-dial *,
+    .neu-liquid-text,
+    .neu-liquid-text *,
     .btn-strava,
     .btn-strava *,
     button[class*="bg-[#fc4c02]"],
@@ -375,49 +442,65 @@
     body.theme-soft-neu:not(.dark):not(.theme-neu-dark) #root {
       color: #1a202c !important;
     }
-    body.theme-neu-light:not(.dark):not(.theme-neu-dark) h1:not(.neu-dark-pill *),
-    body.theme-neu-light:not(.dark):not(.theme-neu-dark) h2:not(.neu-dark-pill *),
-    body.theme-neu-light:not(.dark):not(.theme-neu-dark) h3:not(.neu-dark-pill *),
-    body.theme-neu-light:not(.dark):not(.theme-neu-dark) h4:not(.neu-dark-pill *),
-    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) h1:not(.neu-dark-pill *),
-    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) h2:not(.neu-dark-pill *),
-    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) h3:not(.neu-dark-pill *),
-    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) h4:not(.neu-dark-pill *) {
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) h1:not(.neu-dark-pill *):not(.neu-liquid-text *),
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) h2:not(.neu-dark-pill *):not(.neu-liquid-text *),
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) h3:not(.neu-dark-pill *):not(.neu-liquid-text *),
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) h4:not(.neu-dark-pill *):not(.neu-liquid-text *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) h1:not(.neu-dark-pill *):not(.neu-liquid-text *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) h2:not(.neu-dark-pill *):not(.neu-liquid-text *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) h3:not(.neu-dark-pill *):not(.neu-liquid-text *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) h4:not(.neu-dark-pill *):not(.neu-liquid-text *) {
       color: #0f172a !important;
     }
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-800,
-    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-800 {
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-800,
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-zinc-800,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-zinc-800 {
       color: #1a202c !important;
     }
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-700,
-    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-700 {
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-700,
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-zinc-700,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-zinc-700 {
       color: #334155 !important;
     }
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-600,
-    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-600 {
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-600,
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-zinc-600,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-zinc-600 {
       color: #475569 !important;
     }
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-400,
     body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-400,
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-gym-400,
-    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-gym-400 {
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-gym-400,
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-zinc-400,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-zinc-400,
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-zinc-500,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-zinc-500 {
       color: #64748b !important;
     }
-    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-300:not(.neu-dark-pill *):not(.neu-dial *),
-    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-300:not(.neu-dark-pill *):not(.neu-dial *) {
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-300:not(.neu-dark-pill *):not(.neu-dial *):not(.neu-liquid-text *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-300:not(.neu-dark-pill *):not(.neu-dial *):not(.neu-liquid-text *),
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-zinc-300:not(.neu-dark-pill *):not(.neu-dial *):not(.neu-liquid-text *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-zinc-300:not(.neu-dark-pill *):not(.neu-dial *):not(.neu-liquid-text *) {
       color: #334155 !important;
     }
-    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-200:not(.neu-dark-pill *):not(.neu-dial *),
-    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-200:not(.neu-dark-pill *):not(.neu-dial *) {
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-200:not(.neu-dark-pill *):not(.neu-dial *):not(.neu-liquid-text *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-200:not(.neu-dark-pill *):not(.neu-dial *):not(.neu-liquid-text *),
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-zinc-200:not(.neu-dark-pill *):not(.neu-dial *):not(.neu-liquid-text *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-zinc-200:not(.neu-dark-pill *):not(.neu-dial *):not(.neu-liquid-text *) {
       color: #1e293b !important;
     }
-    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-100:not(.neu-dark-pill *):not(.neu-dial *),
-    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-100:not(.neu-dark-pill *):not(.neu-dial *) {
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-slate-100:not(.neu-dark-pill *):not(.neu-dial *):not(.neu-liquid-text *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-slate-100:not(.neu-dark-pill *):not(.neu-dial *):not(.neu-liquid-text *),
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-zinc-100:not(.neu-dark-pill *):not(.neu-dial *):not(.neu-liquid-text *),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-zinc-100:not(.neu-dark-pill *):not(.neu-dial *):not(.neu-liquid-text *) {
       color: #0f172a !important;
     }
-    /* ☀️ White text on light cards -> Dark charcoal slate, preserving white text on filled accent buttons/pills */
-    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-white:not(.neu-dark-pill):not(.neu-dark-pill *):not(.neu-dial):not(.neu-dial *):not(button.bg-emerald-500):not(button.bg-emerald-500 *):not(button.bg-emerald-600):not(button.bg-emerald-600 *):not(button.bg-sky-500):not(button.bg-sky-500 *):not(button.bg-sky-600):not(button.bg-sky-600 *):not(button.bg-rose-500):not(button.bg-rose-500 *):not(button.bg-rose-600):not(button.bg-rose-600 *):not(button.bg-amber-500):not(button.bg-amber-500 *):not(button.bg-purple-500):not(button.bg-purple-500 *):not(span.bg-purple-500):not(span.bg-rose-500):not(span.bg-amber-500):not(span.bg-emerald-500):not(span.bg-sky-500):not([class*="bg-gradient-to-r from-purple-500"]):not([class*="bg-gradient-to-r from-rose-500"]):not([class*="bg-gradient-to-r from-emerald-500"]),
-    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-white:not(.neu-dark-pill):not(.neu-dark-pill *):not(.neu-dial):not(.neu-dial *):not(button.bg-emerald-500):not(button.bg-emerald-500 *):not(button.bg-emerald-600):not(button.bg-emerald-600 *):not(button.bg-sky-500):not(button.bg-sky-500 *):not(button.bg-sky-600):not(button.bg-sky-600 *):not(button.bg-rose-500):not(button.bg-rose-500 *):not(button.bg-rose-600):not(button.bg-rose-600 *):not(button.bg-amber-500):not(button.bg-amber-500 *):not(button.bg-purple-500):not(button.bg-purple-500 *):not(span.bg-purple-500):not(span.bg-rose-500):not(span.bg-amber-500):not(span.bg-emerald-500):not(span.bg-sky-500):not([class*="bg-gradient-to-r from-purple-500"]):not([class*="bg-gradient-to-r from-rose-500"]):not([class*="bg-gradient-to-r from-emerald-500"]) {
+    /* ☀️ White text on light cards -> Dark charcoal slate, preserving white text on filled accent buttons/pills/liquid text */
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-white:not(.neu-dark-pill):not(.neu-dark-pill *):not(.neu-dial):not(.neu-dial *):not(.neu-liquid-text):not(.neu-liquid-text *):not(button.bg-emerald-500):not(button.bg-emerald-500 *):not(button.bg-emerald-600):not(button.bg-emerald-600 *):not(button.bg-sky-500):not(button.bg-sky-500 *):not(button.bg-sky-600):not(button.bg-sky-600 *):not(button.bg-rose-500):not(button.bg-rose-500 *):not(button.bg-rose-600):not(button.bg-rose-600 *):not(button.bg-amber-500):not(button.bg-amber-500 *):not(button.bg-purple-500):not(button.bg-purple-500 *):not(button[class*="bg-[#fc4c02]"]):not(button[class*="bg-[#fc4c02]"] *):not(span.bg-purple-500):not(span.bg-rose-500):not(span.bg-amber-500):not(span.bg-emerald-500):not(span.bg-sky-500):not(span[class*="bg-[#fc4c02]"]):not([class*="bg-gradient-to-r from-purple-500"]):not([class*="bg-gradient-to-r from-rose-500"]):not([class*="bg-gradient-to-r from-emerald-500"]):not([class*="bg-gradient-to-r from-[#fc4c02]"]),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-white:not(.neu-dark-pill):not(.neu-dark-pill *):not(.neu-dial):not(.neu-dial *):not(.neu-liquid-text):not(.neu-liquid-text *):not(button.bg-emerald-500):not(button.bg-emerald-500 *):not(button.bg-emerald-600):not(button.bg-emerald-600 *):not(button.bg-sky-500):not(button.bg-sky-500 *):not(button.bg-sky-600):not(button.bg-sky-600 *):not(button.bg-rose-500):not(button.bg-rose-500 *):not(button.bg-rose-600):not(button.bg-rose-600 *):not(button.bg-amber-500):not(button.bg-amber-500 *):not(button.bg-purple-500):not(button.bg-purple-500 *):not(button[class*="bg-[#fc4c02]"]):not(button[class*="bg-[#fc4c02]"] *):not(span.bg-purple-500):not(span.bg-rose-500):not(span.bg-amber-500):not(span.bg-emerald-500):not(span.bg-sky-500):not(span[class*="bg-[#fc4c02]"]):not([class*="bg-gradient-to-r from-purple-500"]):not([class*="bg-gradient-to-r from-rose-500"]):not([class*="bg-gradient-to-r from-emerald-500"]):not([class*="bg-gradient-to-r from-[#fc4c02]"]) {
       color: #0f172a !important;
     }
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) [class*="from-gym-"],
@@ -466,20 +549,28 @@
     body.theme-neu-dark .text-white,
     body.theme-neu-dark .text-slate-100,
     body.theme-neu-dark .text-slate-200,
-    body.theme-neu-dark .text-slate-300 {
+    body.theme-neu-dark .text-slate-300,
+    body.theme-neu-dark .text-zinc-100,
+    body.theme-neu-dark .text-zinc-200,
+    body.theme-neu-dark .text-zinc-300 {
       color: #f8fafc !important;
     }
-    body.theme-neu-dark .text-slate-800 {
+    body.theme-neu-dark .text-slate-800,
+    body.theme-neu-dark .text-zinc-800 {
       color: #f8fafc !important;
     }
-    body.theme-neu-dark .text-slate-700 {
+    body.theme-neu-dark .text-slate-700,
+    body.theme-neu-dark .text-zinc-700 {
       color: #cbd5e1 !important;
     }
-    body.theme-neu-dark .text-slate-600 {
+    body.theme-neu-dark .text-slate-600,
+    body.theme-neu-dark .text-zinc-600 {
       color: #cbd5e1 !important;
     }
     body.theme-neu-dark .text-slate-400,
-    body.theme-neu-dark .text-slate-500 {
+    body.theme-neu-dark .text-slate-500,
+    body.theme-neu-dark .text-zinc-400,
+    body.theme-neu-dark .text-zinc-500 {
       color: #94a3b8 !important;
     }
 
@@ -577,6 +668,6 @@
   </script>
 
   <!-- React App -->
-  <script type="text/babel" src="/static/app.js?v=57"></script>
+  <script type="text/babel" src="/static/app.js?v=58"></script>
 </body>
 </html>
