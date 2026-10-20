@@ -4867,11 +4867,11 @@ function App() {
         </>
       </main>
 
-      {/* Bottom Floating Navigation Bar (Hidden during active workout focus) */}
+      {/* Bottom Fixed Navigation Bar (Hidden during active workout focus) */}
       {!isInWorkoutFocus && (
-        <nav className="fixed z-40 inset-x-0 mx-auto max-w-lg px-3 safe-nav-container pointer-events-none">
-          <div className="rounded-full neu-dock shadow-xl px-1.5 py-1 pointer-events-auto">
-            <div className="grid grid-cols-5 items-center w-full">
+        <nav className="safe-dock-bar">
+          <div className="max-w-lg mx-auto px-2 pt-1 pb-0.5">
+            <div className="grid grid-cols-5 items-center w-full gap-1">
               <NavButton 
                 active={activeTab === 'workout'} 
                 onClick={() => { setIsMinimized(false); setActiveTab('workout'); }}
@@ -4933,8 +4933,8 @@ function NavButton({ active, onClick, icon, label, badge }) {
       onClick={onClick}
       className={`relative w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-2xl transition-all duration-150 active:scale-95 group cursor-pointer ${
         active
-          ? 'text-[#fc4c02] font-black bg-[#fc4c02]/12'
-          : 'text-slate-500 hover:text-slate-800 dark:text-zinc-500 dark:hover:text-zinc-200 font-medium'
+          ? 'nav-btn-active font-black'
+          : 'text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 font-medium'
       }`}
     >
       <div className="relative">
@@ -4945,7 +4945,9 @@ function NavButton({ active, onClick, icon, label, badge }) {
           <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-[#fc4c02] animate-pulse ring-2 ring-white dark:ring-gym-900" />
         )}
       </div>
-      <span className="text-[10px] mt-0.5 tracking-tight font-bold truncate max-w-full">{label}</span>
+      <span className={`text-[10px] mt-0.5 tracking-tight truncate max-w-full ${active ? 'font-black' : 'font-semibold'}`}>
+        {label}
+      </span>
       {active && (
         <span className="w-1.5 h-1 rounded-full bg-[#fc4c02] mt-0.5 shadow-sm shadow-[#fc4c02]" />
       )}

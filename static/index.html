@@ -121,10 +121,24 @@
       padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px)) !important;
     }
     .safe-pb-nav {
-      padding-bottom: max(5.5rem, calc(env(safe-area-inset-bottom, 0px) + 5.25rem)) !important;
+      padding-bottom: max(5.5rem, calc(env(safe-area-inset-bottom, 0px) + 5rem)) !important;
     }
     .pt-safe-top {
       padding-top: max(0.85rem, calc(env(safe-area-inset-top, 0px) + 0.5rem)) !important;
+    }
+    .safe-dock-bar {
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      width: 100% !important;
+      background-color: var(--neu-dock-bg) !important;
+      border-top: 1px solid var(--neu-border) !important;
+      box-shadow: 0 -4px 20px -2px var(--neu-shadow-dark) !important;
+      backdrop-filter: blur(20px) !important;
+      -webkit-backdrop-filter: blur(20px) !important;
+      padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px)) !important;
+      z-index: 40 !important;
     }
     .safe-nav-container {
       bottom: max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.35rem)) !important;
@@ -206,7 +220,7 @@
       --neu-lcd-bg: #111215;
       --neu-lcd-text: #34d399;
       --neu-dark-pill: #15161a;
-      --neu-dock-bg: rgba(18, 19, 23, 0.88);
+      --neu-dock-bg: rgba(18, 19, 23, 0.96);
     }
 
     /* ☀️ STRAVA ATHLETIC LIGHT PALETTE */
@@ -233,7 +247,7 @@
       --neu-lcd-bg: #e2e8f0;
       --neu-lcd-text: #0f172a;
       --neu-dark-pill: #1e293b;
-      --neu-dock-bg: rgba(255, 255, 255, 0.92);
+      --neu-dock-bg: rgba(255, 255, 255, 0.96);
     }
 
     /* Base Body & App Container */
@@ -416,8 +430,8 @@
     .neu-liquid-text *,
     .btn-strava,
     .btn-strava *,
-    button[class*="bg-[#fc4c02]"],
-    button[class*="bg-[#fc4c02]"] *,
+    button[class*="bg-[#fc4c02]"]:not([class*="/"]):not(.nav-btn-active),
+    button[class*="bg-[#fc4c02]"]:not([class*="/"]):not(.nav-btn-active) *,
     button.bg-sky-500,
     button.bg-sky-500 *,
     button.bg-emerald-500,
@@ -433,6 +447,48 @@
     .neu-dark-pill p,
     .neu-dark-pill span.font-mono {
       color: #cbd5e1 !important;
+    }
+
+    /* 📱 Bottom Navigation Active Tab High-Contrast Styling */
+    .nav-btn-active {
+      border-radius: 1rem !important;
+      transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .nav-btn-active {
+      background-color: #121316 !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 14px rgba(18, 19, 22, 0.28) !important;
+      border: 1px solid rgba(0, 0, 0, 0.18) !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .nav-btn-active * {
+      color: #ffffff !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .nav-btn-active [class*="text-[#fc4c02]"],
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .nav-btn-active svg,
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .nav-btn-active div.scale-110,
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .nav-btn-active div.scale-110 * {
+      color: #fc4c02 !important;
+    }
+    body.dark .nav-btn-active,
+    body.theme-neu-dark .nav-btn-active {
+      background-color: rgba(255, 255, 255, 0.12) !important;
+      border: 1px solid rgba(255, 255, 255, 0.16) !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+    }
+    body.dark .nav-btn-active *,
+    body.theme-neu-dark .nav-btn-active * {
+      color: #ffffff !important;
+    }
+    body.dark .nav-btn-active [class*="text-[#fc4c02]"],
+    body.theme-neu-dark .nav-btn-active [class*="text-[#fc4c02]"],
+    body.dark .nav-btn-active svg,
+    body.theme-neu-dark .nav-btn-active svg,
+    body.dark .nav-btn-active div.scale-110,
+    body.theme-neu-dark .nav-btn-active div.scale-110,
+    body.dark .nav-btn-active div.scale-110 *,
+    body.theme-neu-dark .nav-btn-active div.scale-110 * {
+      color: #fc4c02 !important;
     }
 
     /* Light Theme Typography: Headings and text contrast */
@@ -499,8 +555,8 @@
       color: #0f172a !important;
     }
     /* ☀️ White text on light cards -> Dark charcoal slate, preserving white text on filled accent buttons/pills/liquid text */
-    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-white:not(.neu-dark-pill):not(.neu-dark-pill *):not(.neu-dial):not(.neu-dial *):not(.neu-liquid-text):not(.neu-liquid-text *):not(button.bg-emerald-500):not(button.bg-emerald-500 *):not(button.bg-emerald-600):not(button.bg-emerald-600 *):not(button.bg-sky-500):not(button.bg-sky-500 *):not(button.bg-sky-600):not(button.bg-sky-600 *):not(button.bg-rose-500):not(button.bg-rose-500 *):not(button.bg-rose-600):not(button.bg-rose-600 *):not(button.bg-amber-500):not(button.bg-amber-500 *):not(button.bg-purple-500):not(button.bg-purple-500 *):not(button[class*="bg-[#fc4c02]"]):not(button[class*="bg-[#fc4c02]"] *):not(span.bg-purple-500):not(span.bg-rose-500):not(span.bg-amber-500):not(span.bg-emerald-500):not(span.bg-sky-500):not(span[class*="bg-[#fc4c02]"]):not([class*="bg-gradient-to-r from-purple-500"]):not([class*="bg-gradient-to-r from-rose-500"]):not([class*="bg-gradient-to-r from-emerald-500"]):not([class*="bg-gradient-to-r from-[#fc4c02]"]),
-    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-white:not(.neu-dark-pill):not(.neu-dark-pill *):not(.neu-dial):not(.neu-dial *):not(.neu-liquid-text):not(.neu-liquid-text *):not(button.bg-emerald-500):not(button.bg-emerald-500 *):not(button.bg-emerald-600):not(button.bg-emerald-600 *):not(button.bg-sky-500):not(button.bg-sky-500 *):not(button.bg-sky-600):not(button.bg-sky-600 *):not(button.bg-rose-500):not(button.bg-rose-500 *):not(button.bg-rose-600):not(button.bg-rose-600 *):not(button.bg-amber-500):not(button.bg-amber-500 *):not(button.bg-purple-500):not(button.bg-purple-500 *):not(button[class*="bg-[#fc4c02]"]):not(button[class*="bg-[#fc4c02]"] *):not(span.bg-purple-500):not(span.bg-rose-500):not(span.bg-amber-500):not(span.bg-emerald-500):not(span.bg-sky-500):not(span[class*="bg-[#fc4c02]"]):not([class*="bg-gradient-to-r from-purple-500"]):not([class*="bg-gradient-to-r from-rose-500"]):not([class*="bg-gradient-to-r from-emerald-500"]):not([class*="bg-gradient-to-r from-[#fc4c02]"]) {
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-white:not(.neu-dark-pill):not(.neu-dark-pill *):not(.neu-dial):not(.neu-dial *):not(.neu-liquid-text):not(.neu-liquid-text *):not(.nav-btn-active):not(.nav-btn-active *):not(button.bg-emerald-500):not(button.bg-emerald-500 *):not(button.bg-emerald-600):not(button.bg-emerald-600 *):not(button.bg-sky-500):not(button.bg-sky-500 *):not(button.bg-sky-600):not(button.bg-sky-600 *):not(button.bg-rose-500):not(button.bg-rose-500 *):not(button.bg-rose-600):not(button.bg-rose-600 *):not(button.bg-amber-500):not(button.bg-amber-500 *):not(button.bg-purple-500):not(button.bg-purple-500 *):not(button[class*="bg-[#fc4c02]"]):not(button[class*="bg-[#fc4c02]"] *):not(span.bg-purple-500):not(span.bg-rose-500):not(span.bg-amber-500):not(span.bg-emerald-500):not(span.bg-sky-500):not(span[class*="bg-[#fc4c02]"]):not([class*="bg-gradient-to-r from-purple-500"]):not([class*="bg-gradient-to-r from-rose-500"]):not([class*="bg-gradient-to-r from-emerald-500"]):not([class*="bg-gradient-to-r from-[#fc4c02]"]),
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-white:not(.neu-dark-pill):not(.neu-dark-pill *):not(.neu-dial):not(.neu-dial *):not(.neu-liquid-text):not(.neu-liquid-text *):not(.nav-btn-active):not(.nav-btn-active *):not(button.bg-emerald-500):not(button.bg-emerald-500 *):not(button.bg-emerald-600):not(button.bg-emerald-600 *):not(button.bg-sky-500):not(button.bg-sky-500 *):not(button.bg-sky-600):not(button.bg-sky-600 *):not(button.bg-rose-500):not(button.bg-rose-500 *):not(button.bg-rose-600):not(button.bg-rose-600 *):not(button.bg-amber-500):not(button.bg-amber-500 *):not(button.bg-purple-500):not(button.bg-purple-500 *):not(button[class*="bg-[#fc4c02]"]):not(button[class*="bg-[#fc4c02]"] *):not(span.bg-purple-500):not(span.bg-rose-500):not(span.bg-amber-500):not(span.bg-emerald-500):not(span.bg-sky-500):not(span[class*="bg-[#fc4c02]"]):not([class*="bg-gradient-to-r from-purple-500"]):not([class*="bg-gradient-to-r from-rose-500"]):not([class*="bg-gradient-to-r from-emerald-500"]):not([class*="bg-gradient-to-r from-[#fc4c02]"]) {
       color: #0f172a !important;
     }
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) [class*="from-gym-"],
@@ -668,6 +724,6 @@
   </script>
 
   <!-- React App -->
-  <script type="text/babel" src="/static/app.js?v=59"></script>
+  <script type="text/babel" src="/static/app.js?v=60"></script>
 </body>
 </html>
