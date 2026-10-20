@@ -1,6 +1,40 @@
+// --- MULTI-ACCOUNT MANAGEMENT HELPERS ---
+function getSavedTelegramAccounts() {
+  try {
+    const raw = localStorage.getItem('gym_tracker_accounts_list');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function addSavedTelegramAccount(id, name) {
+  try {
+    if (!id || id === 'default') return;
+    const cleanId = id.startsWith('tg_') || id.startsWith('u_') ? id : 'tg_' + id;
+    const list = getSavedTelegramAccounts();
+    const existingIdx = list.findIndex(a => a.id === cleanId);
+    const item = { id: cleanId, name: name || 'Атлет', lastUsed: Date.now() };
+    if (existingIdx !== -1) {
+      list[existingIdx] = { ...list[existingIdx], ...item };
+    } else {
+      list.unshift(item);
+    }
+    list.sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
+    localStorage.setItem('gym_tracker_accounts_list', JSON.stringify(list.slice(0, 10)));
+  } catch (e) {}
+}
+
+function removeSavedTelegramAccount(id) {
+  try {
+    const list = getSavedTelegramAccounts().filter(a => a.id !== id);
+    localStorage.setItem('gym_tracker_accounts_list', JSON.stringify(list));
+  } catch (e) {}
+}
+
 // --- TELEGRAM USER IDENTITY & API INTERCEPTOR ---
 function getTelegramUser() {
-  // 1. Telegram WebApp Mini App environment
+  // 1. Telegram WebApp Mini App environment (highest priority inside Telegram)
   try {
     const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
     if (tgUser && tgUser.id) {
@@ -9,28 +43,93 @@ function getTelegramUser() {
         ? `${tgUser.first_name}${tgUser.last_name ? ' ' + tgUser.last_name : ''}`.trim() 
         : 'Атлет';
       try {
+        localStorage.setItem('gym_tracker_explicit_tg_id', tgId);
+        localStorage.setItem('gym_tracker_active_tg_id', tgId);
         localStorage.setItem('gym_tracker_tg_id', tgId);
         localStorage.setItem('gym_tracker_user_id', tgId);
         localStorage.setItem('gym_tracker_user_name', fullName);
+        addSavedTelegramAccount(tgId, fullName);
       } catch (e) {}
       return { id: tgId, name: fullName };
     }
   } catch (e) {}
 
-  // 2. Direct URL testing parameters: ?user_id=... or ?tg_id=...
+  // Detect standalone PWA / iOS WebClip
+  const isStandalone = (function() {
+    try {
+      return Boolean(
+        window.navigator.standalone === true ||
+        window.matchMedia('(display-mode: standalone)').matches ||
+        document.referrer.includes('android-app://')
+      );
+    } catch (e) {
+      return false;
+    }
+  })();
+
+  // 2. Standalone PWA / WebClip mode:
+  // In standalone mode, the home screen icon's launch URL is permanently frozen by iOS/Android SpringBoard.
+  // Therefore, explicit account chosen by the user in localStorage MUST take absolute precedence over the static launch URL!
+  if (isStandalone) {
+    try {
+      const explicitId = localStorage.getItem('gym_tracker_explicit_tg_id') ||
+                         localStorage.getItem('gym_tracker_active_tg_id') ||
+                         localStorage.getItem('gym_tracker_tg_id') ||
+                         localStorage.getItem('gym_tracker_user_id');
+      if (explicitId && explicitId !== 'default') {
+        const cleanId = explicitId.startsWith('tg_') || explicitId.startsWith('u_') ? explicitId : 'tg_' + explicitId;
+        const name = localStorage.getItem('gym_tracker_user_name') || 'Атлет';
+        // Clean URL params if any leaked in from the static WebClip launch
+        if (window.history && window.history.replaceState && window.location.search) {
+          try {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          } catch (e) {}
+        }
+        return { id: cleanId, name };
+      }
+    } catch (e) {}
+  }
+
+  // 3. Direct URL parameters: ?user_id=... or ?tg_id=...
   try {
     const urlParams = new URLSearchParams(window.location.search);
     const paramId = urlParams.get('user_id') || urlParams.get('tg_id');
     if (paramId) {
       const cleanId = paramId.startsWith('tg_') || paramId.startsWith('u_') ? paramId : 'tg_' + paramId;
-      localStorage.setItem('gym_tracker_user_id', cleanId);
-      if (cleanId.startsWith('tg_')) {
+      const paramName = urlParams.get('user_name') || urlParams.get('tg_name') || localStorage.getItem('gym_tracker_user_name') || 'Атлет';
+
+      // If in standalone mode and user already explicitly chose an account, don't let a stale launch URL override it
+      const explicitId = localStorage.getItem('gym_tracker_explicit_tg_id');
+      if (isStandalone && explicitId && explicitId !== cleanId) {
+        return { id: explicitId, name: localStorage.getItem('gym_tracker_user_name') || 'Атлет' };
+      }
+
+      try {
+        localStorage.setItem('gym_tracker_explicit_tg_id', cleanId);
+        localStorage.setItem('gym_tracker_active_tg_id', cleanId);
         localStorage.setItem('gym_tracker_tg_id', cleanId);
-      }
-      const paramName = urlParams.get('user_name') || urlParams.get('tg_name');
-      if (paramName) {
+        localStorage.setItem('gym_tracker_user_id', cleanId);
         localStorage.setItem('gym_tracker_user_name', paramName);
-      }
+        addSavedTelegramAccount(cleanId, paramName);
+
+        // Immediately clean URL parameter from address bar so it doesn't get baked into future bookmarks or home screen shortcuts!
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      } catch (e) {}
+
+      return { id: cleanId, name: paramName };
+    }
+  } catch (e) {}
+
+  // 4. Saved ID in localStorage on this device
+  try {
+    const savedId = localStorage.getItem('gym_tracker_explicit_tg_id') ||
+                    localStorage.getItem('gym_tracker_active_tg_id') ||
+                    localStorage.getItem('gym_tracker_tg_id') ||
+                    localStorage.getItem('gym_tracker_user_id');
+    if (savedId && savedId !== 'default') {
+      const cleanId = savedId.startsWith('tg_') || savedId.startsWith('u_') ? savedId : 'tg_' + savedId;
       return {
         id: cleanId,
         name: localStorage.getItem('gym_tracker_user_name') || 'Атлет'
@@ -38,31 +137,7 @@ function getTelegramUser() {
     }
   } catch (e) {}
 
-  // 3. Persistent browser / device ID (checks if user previously logged in via Telegram on this device)
-  try {
-    const savedTgId = localStorage.getItem('gym_tracker_tg_id');
-    if (savedTgId) {
-      return {
-        id: savedTgId,
-        name: localStorage.getItem('gym_tracker_user_name') || 'DEBOOSTER'
-      };
-    }
-
-    let savedId = localStorage.getItem('gym_tracker_user_id');
-    if (!savedId || savedId === 'default' || savedId.startsWith('u_')) {
-      savedId = 'tg_591306946';
-      try {
-        localStorage.setItem('gym_tracker_user_id', savedId);
-        localStorage.setItem('gym_tracker_tg_id', savedId);
-        localStorage.setItem('gym_tracker_user_name', 'DEBOOSTER');
-      } catch (e) {}
-    }
-    return {
-      id: savedId,
-      name: localStorage.getItem('gym_tracker_user_name') || 'DEBOOSTER'
-    };
-  } catch (e) {}
-
+  // 5. Default fallback
   return { id: 'tg_591306946', name: 'DEBOOSTER' };
 }
 
@@ -4466,7 +4541,6 @@ function App() {
       if (profData && profData.telegram_chat_id) {
         try {
           localStorage.setItem('gym_tracker_chat_id', String(profData.telegram_chat_id));
-          localStorage.setItem('gym_tracker_tg_id', 'tg_' + profData.telegram_chat_id);
         } catch (e) {}
       }
 
@@ -7350,6 +7424,8 @@ function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
   const [activeGuideTab, setActiveGuideTab] = useState('ios'); // 'ios' | 'android'
   const [canInstallPwa, setCanInstallPwa] = useState(Boolean(deferredPwaInstallPrompt));
   const [installing, setInstalling] = useState(false);
+  const [accountRefreshTrigger, setAccountRefreshTrigger] = useState(0);
+  const savedAccounts = useMemo(() => getSavedTelegramAccounts(), [isOpen, accountRefreshTrigger]);
 
   useEffect(() => {
     const handlePwaReady = () => setCanInstallPwa(Boolean(deferredPwaInstallPrompt));
@@ -7383,8 +7459,8 @@ function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
     }
   };
 
-  const handleLogin = (idToUse) => {
-    const val = (idToUse || tgInput).trim();
+  const handleLogin = (idToUse, customName) => {
+    const val = String(idToUse || tgInput || '').trim();
     if (!val) {
       alert('Пожалуйста, введите ваш Telegram ID (цифры)');
       return;
@@ -7396,11 +7472,39 @@ function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
     }
     triggerHaptic('success');
     const fullId = 'tg_' + clean;
+    const name = customName || (clean === '591306946' ? 'DEBOOSTER' : 'Атлет');
     try {
+      localStorage.setItem('gym_tracker_explicit_tg_id', fullId);
+      localStorage.setItem('gym_tracker_active_tg_id', fullId);
       localStorage.setItem('gym_tracker_tg_id', fullId);
       localStorage.setItem('gym_tracker_user_id', fullId);
+      localStorage.setItem('gym_tracker_user_name', name);
+      addSavedTelegramAccount(fullId, name);
+
+      // Clean address bar so no stale query param remains
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
     } catch (e) {}
-    window.location.href = window.location.origin + window.location.pathname + '?tg_id=' + clean;
+
+    // Reload with clean root URL so it is never trapped with old query params!
+    window.location.href = window.location.origin + window.location.pathname;
+  };
+
+  const handleLogout = () => {
+    if (!confirm('Вы уверены, что хотите выйти из текущего аккаунта на этом устройстве?')) return;
+    triggerHaptic('medium');
+    try {
+      localStorage.removeItem('gym_tracker_explicit_tg_id');
+      localStorage.removeItem('gym_tracker_active_tg_id');
+      localStorage.removeItem('gym_tracker_tg_id');
+      localStorage.removeItem('gym_tracker_user_id');
+      localStorage.removeItem('gym_tracker_user_name');
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch (e) {}
+    window.location.href = window.location.origin + window.location.pathname;
   };
 
   const handleInstallClick = async () => {
@@ -7469,11 +7573,23 @@ function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
               </span>
             </div>
           </div>
-          <div className="text-right">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Аккаунт</span>
-            <span className="text-xs font-mono font-bold text-emerald-400">
-              {currentUser.id}
-            </span>
+          <div className="flex items-center space-x-2">
+            <div className="text-right">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Аккаунт</span>
+              <span className="text-xs font-mono font-bold text-emerald-400">
+                {currentUser.id}
+              </span>
+            </div>
+            {!isTg && (
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="text-[10px] text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 px-2 py-1 rounded-lg transition active:scale-95 cursor-pointer ml-1"
+                title="Выйти из этого аккаунта"
+              >
+                Выйти
+              </button>
+            )}
           </div>
         </div>
 
@@ -7603,16 +7719,77 @@ function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
           )}
         </div>
 
-        {/* 4. Switch / Connect Telegram ID */}
-        <div className="bg-gym-950/80 border border-gym-800 rounded-2xl p-3.5 space-y-2.5">
+        {/* 4. Switch / Connect Telegram ID & Multi-Account List */}
+        <div className="bg-gym-950/80 border border-gym-800 rounded-2xl p-3.5 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-black text-amber-400 uppercase tracking-wider">
-              🔑 Вход по Telegram ID
+              🔑 Вход и переключение аккаунтов
             </span>
-            <span className="text-[10px] text-slate-500">Синхронизация истории</span>
+            <span className="text-[10px] text-slate-500">Мульти-аккаунт</span>
           </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            Если вы открыли приложение на новом устройстве или в гостевом режиме, введите свой Telegram ID, чтобы мгновенно загрузить все сохраненные тренировки:
+
+          {/* Quick account switcher if multiple accounts saved on this device */}
+          {savedAccounts.length > 0 && (
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                Сохраненные аккаунты на этом устройстве:
+              </span>
+              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                {savedAccounts.map((acc) => {
+                  const isActive = acc.id === currentUser.id;
+                  return (
+                    <div
+                      key={acc.id}
+                      className={`p-2 rounded-xl flex items-center justify-between text-xs transition border ${
+                        isActive
+                          ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                          : 'bg-gym-900 border-gym-800 text-slate-300 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2 min-w-0 pr-2">
+                        <span className="text-sm">👤</span>
+                        <div className="min-w-0">
+                          <span className="font-mono font-bold text-white truncate block">{acc.id}</span>
+                          <span className="text-[10px] text-slate-400 block">{acc.name || 'Атлет'}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-1.5 shrink-0">
+                        {isActive ? (
+                          <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/20 px-2.5 py-1 rounded-lg">
+                            ✓ Активен
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleLogin(acc.id.replace('tg_', ''), acc.name)}
+                            className="text-[11px] font-bold bg-amber-500 hover:bg-amber-400 text-gym-950 px-2.5 py-1 rounded-lg transition active:scale-95 cursor-pointer shadow-sm"
+                          >
+                            Войти
+                          </button>
+                        )}
+                        {!isActive && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              removeSavedTelegramAccount(acc.id);
+                              setAccountRefreshTrigger(k => k + 1);
+                            }}
+                            className="text-slate-500 hover:text-rose-400 p-1 text-xs transition cursor-pointer"
+                            title="Удалить из сохраненных на этом телефоне"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <p className="text-[11px] text-slate-400 leading-relaxed pt-1">
+            Чтобы войти под другим Telegram ID, введите его цифры ниже — приложение мгновенно подгрузит тренировки и сохранит аккаунт на этом телефоне:
           </p>
 
           <div className="flex space-x-2">
@@ -7627,7 +7804,7 @@ function AccountModal({ isOpen, onClose, userProfile, onUserChanged }) {
             <button
               type="button"
               onClick={() => handleLogin()}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-gym-950 font-black text-xs rounded-xl shadow-md active:scale-95 transition shrink-0"
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-gym-950 font-black text-xs rounded-xl shadow-md active:scale-95 transition shrink-0 cursor-pointer"
             >
               Войти
             </button>
