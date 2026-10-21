@@ -1885,6 +1885,22 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
     setPhotoIngredients(prev => prev.filter((_, i) => i !== idx));
   };
 
+  const handlePhotoPortionChange = (newGrams) => {
+    if (newGrams === '' || newGrams === null || newGrams === undefined) {
+      setPortionGrams('');
+      return;
+    }
+    const parsed = parseFloat(newGrams);
+    const g = isNaN(parsed) ? 0 : Math.max(0, Math.min(5000, Math.round(parsed)));
+    setPortionGrams(String(newGrams) === '0' || newGrams === 0 ? '0' : g);
+  };
+
+  const handleAdjustPhotoPortion = (delta) => {
+    triggerHaptic('light');
+    const cur = parseFloat(portionGrams) || 0;
+    handlePhotoPortionChange(Math.max(0, cur + delta));
+  };
+
   const handlePortionChange = (newGrams) => {
     if (newGrams === '' || newGrams === null || newGrams === undefined) {
       setManualPortionGrams('');
@@ -2212,14 +2228,17 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
     if (!analysisResult) return;
     triggerHaptic('success');
 
+    const parsedG = parseFloat(portionGrams);
+    const finalPortionGrams = !isNaN(parsedG) ? Math.max(0, parsedG) : (Math.round(analysisResult.portion_grams) || 150);
+
     const per100 = analysisResult.per_100g || {
-      calories: portionGrams > 0 ? analysisResult.total.calories / (portionGrams / 100) : (analysisResult.total?.calories || 0),
-      protein: portionGrams > 0 ? analysisResult.total.protein / (portionGrams / 100) : (analysisResult.total?.protein || 0),
-      fat: portionGrams > 0 ? analysisResult.total.fat / (portionGrams / 100) : (analysisResult.total?.fat || 0),
-      carbs: portionGrams > 0 ? analysisResult.total.carbs / (portionGrams / 100) : (analysisResult.total?.carbs || 0),
+      calories: finalPortionGrams > 0 ? analysisResult.total.calories / (finalPortionGrams / 100) : (analysisResult.total?.calories || 0),
+      protein: finalPortionGrams > 0 ? analysisResult.total.protein / (finalPortionGrams / 100) : (analysisResult.total?.protein || 0),
+      fat: finalPortionGrams > 0 ? analysisResult.total.fat / (finalPortionGrams / 100) : (analysisResult.total?.fat || 0),
+      carbs: finalPortionGrams > 0 ? analysisResult.total.carbs / (finalPortionGrams / 100) : (analysisResult.total?.carbs || 0),
     };
 
-    const mult = portionGrams / 100.0;
+    const mult = finalPortionGrams / 100.0;
     const finalKcal = Math.round(per100.calories * mult);
     const finalP = Math.round(per100.protein * mult * 10) / 10;
     const finalF = Math.round(per100.fat * mult * 10) / 10;
@@ -2244,7 +2263,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
           protein: finalP,
           fat: finalF,
           carbs: finalC,
-          portion_grams: portionGrams,
+          portion_grams: finalPortionGrams,
           ingredients: photoIngredients,
           image_url: ''
         })
@@ -2264,7 +2283,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
         protein: finalP,
         fat: finalF,
         carbs: finalC,
-        portion_grams: portionGrams,
+        portion_grams: finalPortionGrams,
         ingredients: photoIngredients,
         created_at: new Date().toISOString()
       };
@@ -2405,7 +2424,10 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
     { name: 'Сывороточный протеин', portion_grams: 350, calories: 228, protein: 30.8, fat: 4.2, carbs: 15.8, icon: '🥤' }
   ];
 
-  const currentMult = portionGrams / 100.0;
+  const basePhotoGrams = analysisResult ? (Math.round(analysisResult.portion_grams) || 150) : 150;
+  const numPhotoGrams = parseFloat(portionGrams);
+  const currentPhotoGrams = !isNaN(numPhotoGrams) ? Math.max(0, numPhotoGrams) : 0;
+  const currentMult = currentPhotoGrams / 100.0;
   const currentCalcKcal = analysisResult ? Math.round((parseFloat(analysisResult.per_100g?.calories) || (parseFloat(analysisResult.total?.calories) / ((analysisResult.portion_grams || 100) / 100))) * currentMult) : 0;
   const currentCalcP = analysisResult ? Math.round((parseFloat(analysisResult.per_100g?.protein) || (parseFloat(analysisResult.total?.protein) / ((analysisResult.portion_grams || 100) / 100))) * currentMult * 10) / 10 : 0;
   const currentCalcF = analysisResult ? Math.round((parseFloat(analysisResult.per_100g?.fat) || (parseFloat(analysisResult.total?.fat) / ((analysisResult.portion_grams || 100) / 100))) * currentMult * 10) / 10 : 0;
@@ -2964,49 +2986,107 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
                         </div>
                       )}
 
-                      {/* Portion Selector with Step Controls */}
-                      <div>
-                        <div className="flex items-center justify-between text-xs text-zinc-400 mb-1.5">
-                          <span>Вес порции:</span>
-                          <div className="flex items-center space-x-2">
+                      {/* Portion Selector with Exact Manual Input & Step Controls */}
+                      <div className="bg-black/30 border border-white/10 rounded-2xl p-3 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-zinc-300 uppercase tracking-wider text-[11px] flex items-center space-x-1.5">
+                            <span>⚖️</span>
+                            <span>Вес порции (ввод вручную):</span>
+                          </span>
+                          <span className="text-[10px] text-emerald-400 font-mono font-bold">
+                            ИИ: {basePhotoGrams}г
+                          </span>
+                        </div>
+
+                        {/* Interactive Gram Input with -/+ Steppers */}
+                        <div className="flex items-center justify-between bg-black/50 border border-white/10 rounded-xl p-1.5">
+                          <div className="flex items-center space-x-1">
                             <button
                               type="button"
-                              onClick={() => { triggerHaptic('light'); setPortionGrams(g => Math.max(0, g - 25)); }}
-                              className="w-6 h-6 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center text-xs cursor-pointer active:scale-90"
+                              onClick={() => handleAdjustPhotoPortion(-50)}
+                              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/15 text-zinc-300 hover:text-white font-bold text-xs flex items-center justify-center active:scale-90 transition cursor-pointer"
+                              title="Уменьшить на 50г"
+                            >
+                              -50
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustPhotoPortion(-25)}
+                              className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black text-sm flex items-center justify-center active:scale-90 transition cursor-pointer"
+                              title="Уменьшить на 25г"
                             >
                               -
                             </button>
-                            <strong className="text-white font-mono text-sm">{portionGrams} г</strong>
+                          </div>
+
+                          <div className="flex items-baseline space-x-1">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={portionGrams}
+                              onFocus={(e) => e.target.select()}
+                              onClick={(e) => e.target.select()}
+                              onChange={(e) => handlePhotoPortionChange(cleanNumericInput(e.target.value, false))}
+                              onBlur={() => {
+                                if (portionGrams === '' || portionGrams === null || portionGrams === undefined) {
+                                  handlePhotoPortionChange(basePhotoGrams || 150);
+                                }
+                              }}
+                              placeholder="0"
+                              className="w-20 text-center bg-transparent text-xl font-black font-mono text-emerald-400 focus:outline-none"
+                            />
+                            <span className="text-xs font-mono font-bold text-zinc-400">г</span>
+                          </div>
+
+                          <div className="flex items-center space-x-1">
                             <button
                               type="button"
-                              onClick={() => { triggerHaptic('light'); setPortionGrams(g => g + 25); }}
-                              className="w-6 h-6 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center text-xs cursor-pointer active:scale-90"
+                              onClick={() => handleAdjustPhotoPortion(25)}
+                              className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black text-sm flex items-center justify-center active:scale-90 transition cursor-pointer"
+                              title="Увеличить на 25г"
                             >
                               +
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustPhotoPortion(50)}
+                              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/15 text-zinc-300 hover:text-white font-bold text-xs flex items-center justify-center active:scale-90 transition cursor-pointer"
+                              title="Увеличить на 50г"
+                            >
+                              +50
+                            </button>
                           </div>
                         </div>
-                        <div className="grid grid-cols-4 gap-1.5">
+
+                        {/* Quick Presets based on AI portion */}
+                        <div className="grid grid-cols-4 gap-1.5 pt-0.5">
                           {[
-                            Math.max(0, Math.round(portionGrams * 0.5)),
-                            portionGrams,
-                            Math.round(portionGrams * 1.5),
-                            Math.round(portionGrams * 2)
-                          ].filter((v, i, a) => a.indexOf(v) === i).slice(0, 4).map((g) => (
-                            <button
-                              key={g}
-                              type="button"
-                              onClick={() => { triggerHaptic('light'); setPortionGrams(g); }}
-                              className={`py-1.5 rounded-xl font-mono text-xs font-bold transition active:scale-95 cursor-pointer ${
-                                portionGrams === g
-                                  ? 'bg-emerald-500 text-white font-black shadow'
-                                  : 'bg-white/5 hover:bg-white/10 text-zinc-300'
-                              }`}
-                            >
-                              {g} г
-                            </button>
-                          ))}
+                            { label: '0.5×', g: Math.max(25, Math.round(basePhotoGrams * 0.5)) },
+                            { label: '1× (ИИ)', g: basePhotoGrams },
+                            { label: '1.5×', g: Math.round(basePhotoGrams * 1.5) },
+                            { label: '2×', g: Math.round(basePhotoGrams * 2) }
+                          ].map(item => {
+                            const isSelected = (parseFloat(portionGrams) || 0) === item.g;
+                            return (
+                              <button
+                                key={item.label}
+                                type="button"
+                                onClick={() => { triggerHaptic('light'); handlePhotoPortionChange(item.g); }}
+                                className={`py-1.5 rounded-xl font-mono text-xs font-bold transition active:scale-95 cursor-pointer flex flex-col items-center justify-center ${
+                                  isSelected
+                                    ? 'bg-emerald-500 text-gym-950 font-black shadow-md shadow-emerald-500/30'
+                                    : 'bg-white/5 hover:bg-white/10 text-zinc-300'
+                                }`}
+                              >
+                                <span className="text-[10px] leading-none opacity-80">{item.label}</span>
+                                <span className="text-xs font-black leading-tight mt-0.5">{item.g}г</span>
+                              </button>
+                            );
+                          })}
                         </div>
+                        <p className="text-[9.5px] text-zinc-400 leading-tight">
+                          💡 Вы можете нажать на граммы и <strong>ввести точный вес с весов</strong> — КБЖУ пересчитаются автоматически.
+                        </p>
                       </div>
 
                       {/* Calculated Macros Cards */}
