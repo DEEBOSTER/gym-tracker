@@ -2216,6 +2216,37 @@ def get_gamification_summary(
 # 🥗 NUTRITION, KBJU & PHOTO MEAL ANALYZER
 # ==========================================
 
+def parse_ingredients_field(raw) -> list:
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        return raw
+    try:
+        parsed = json.loads(raw)
+        return parsed if isinstance(parsed, list) else []
+    except Exception:
+        return [{"name": s.strip()} for s in str(raw).split(",") if s.strip()]
+
+def serialize_ingredients_field(val) -> str:
+    if not val:
+        return "[]"
+    if isinstance(val, str):
+        try:
+            parsed = json.loads(val)
+            return json.dumps(parsed, ensure_ascii=False)
+        except Exception:
+            return json.dumps([{"name": s.strip()} for s in val.split(",") if s.strip()], ensure_ascii=False)
+    if isinstance(val, list):
+        clean_list = []
+        for item in val:
+            if isinstance(item, str):
+                if item.strip():
+                    clean_list.append({"name": item.strip()})
+            elif isinstance(item, dict):
+                clean_list.append(item)
+        return json.dumps(clean_list, ensure_ascii=False)
+    return "[]"
+
 class MealLogCreate(BaseModel):
     date: Optional[str] = None
     meal_name: str
@@ -2225,6 +2256,16 @@ class MealLogCreate(BaseModel):
     carbs: float
     portion_grams: Optional[float] = 0.0
     image_url: Optional[str] = ""
+    ingredients: Optional[List[Any]] = None
+
+class MealLogUpdate(BaseModel):
+    meal_name: Optional[str] = None
+    calories: Optional[float] = None
+    protein: Optional[float] = None
+    fat: Optional[float] = None
+    carbs: Optional[float] = None
+    portion_grams: Optional[float] = None
+    ingredients: Optional[List[Any]] = None
 
 class SyncMealItem(BaseModel):
     id: Optional[Union[int, str]] = None
@@ -2236,6 +2277,7 @@ class SyncMealItem(BaseModel):
     carbs: float
     portion_grams: Optional[float] = 0.0
     image_url: Optional[str] = ""
+    ingredients: Optional[List[Any]] = None
     created_at: Optional[str] = None
 
 class SyncMealsRequest(BaseModel):
@@ -2658,12 +2700,14 @@ def get_today_nutrition(
 
         alt_user_id = user_id.replace("tg_", "") if user_id.startswith("tg_") else f"tg_{user_id}"
         cursor.execute("""
-            SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, image_url, created_at
+            SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, image_url, ingredients, created_at
             FROM nutrition_logs
             WHERE (user_id IN (?, ?, 'default') OR ? = 'default') AND date = ?
             ORDER BY id ASC;
         """, (user_id, alt_user_id, user_id, target_date))
         meals = [dict(r) for r in cursor.fetchall()]
+        for m in meals:
+            m["ingredients"] = parse_ingredients_field(m.get("ingredients"))
 
         consumed_kcal = round(sum(m["calories"] for m in meals), 1)
         consumed_protein = round(sum(m["protein"] for m in meals), 1)
@@ -2689,11 +2733,12 @@ def log_meal_entry(
     user_name: str = Depends(get_current_user_name)
 ):
     target_date = payload.date or datetime.utcnow().strftime("%Y-%m-%d")
+    ingredients_str = serialize_ingredients_field(payload.ingredients)
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO nutrition_logs (user_id, date, meal_name, calories, protein, fat, carbs, portion_grams, image_url)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+            INSERT INTO nutrition_logs (user_id, date, meal_name, calories, protein, fat, carbs, portion_grams, image_url, ingredients)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """, (
             user_id,
             target_date,
@@ -2703,22 +2748,73 @@ def log_meal_entry(
             round(payload.fat, 1),
             round(payload.carbs, 1),
             round(float(payload.portion_grams) if payload.portion_grams is not None else 0.0, 1),
-            ""  # In history and logs do NOT store photo to save space and respect user privacy
+            "",  # In history and logs do NOT store photo to save space and respect user privacy
+            ingredients_str
         ))
         meal_id = cursor.lastrowid
-        cursor.execute("SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, created_at FROM nutrition_logs WHERE id = ?;", (meal_id,))
-        return dict(cursor.fetchone())
+        cursor.execute("SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, ingredients, created_at FROM nutrition_logs WHERE id = ?;", (meal_id,))
+        row = dict(cursor.fetchone())
+        row["ingredients"] = parse_ingredients_field(row.get("ingredients"))
+        return row
 
-@app.delete("/api/nutrition/meals/{meal_id}")
-def delete_meal_entry(
-    meal_id: int,
+@app.put("/api/nutrition/meals/{meal_id}")
+def update_meal_entry(
+    meal_id: str,
+    payload: MealLogUpdate,
     user_id: str = Depends(get_current_user_id)
 ):
+    try:
+        numeric_id = int(meal_id)
+    except ValueError:
+        return {"status": "skipped_local_id", "id": meal_id}
+
     alt_user_id = user_id.replace("tg_", "") if user_id.startswith("tg_") else f"tg_{user_id}"
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM nutrition_logs WHERE id = ? AND (user_id IN (?, ?, 'default') OR ? = 'default');", (meal_id, user_id, alt_user_id, user_id))
-        return {"status": "ok", "deleted_id": meal_id}
+        cursor.execute("""
+            SELECT id, user_id, date, meal_name, calories, protein, fat, carbs, portion_grams, ingredients, created_at
+            FROM nutrition_logs
+            WHERE id = ? AND (user_id IN (?, ?, 'default') OR ? = 'default');
+        """, (numeric_id, user_id, alt_user_id, user_id))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Запись приема пищи не найдена")
+
+        current = dict(row)
+        new_name = payload.meal_name.strip() if payload.meal_name is not None and payload.meal_name.strip() else current["meal_name"]
+        new_cals = round(payload.calories, 1) if payload.calories is not None else current["calories"]
+        new_prot = round(payload.protein, 1) if payload.protein is not None else current["protein"]
+        new_fat = round(payload.fat, 1) if payload.fat is not None else current["fat"]
+        new_carbs = round(payload.carbs, 1) if payload.carbs is not None else current["carbs"]
+        new_portion = round(float(payload.portion_grams), 1) if payload.portion_grams is not None else current["portion_grams"]
+        new_ingredients = serialize_ingredients_field(payload.ingredients) if payload.ingredients is not None else current.get("ingredients", "[]")
+
+        cursor.execute("""
+            UPDATE nutrition_logs
+            SET meal_name = ?, calories = ?, protein = ?, fat = ?, carbs = ?, portion_grams = ?, ingredients = ?
+            WHERE id = ?;
+        """, (new_name, new_cals, new_prot, new_fat, new_carbs, new_portion, new_ingredients, numeric_id))
+
+        cursor.execute("SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, ingredients, created_at FROM nutrition_logs WHERE id = ?;", (numeric_id,))
+        updated = dict(cursor.fetchone())
+        updated["ingredients"] = parse_ingredients_field(updated.get("ingredients"))
+        return updated
+
+@app.delete("/api/nutrition/meals/{meal_id}")
+def delete_meal_entry(
+    meal_id: str,
+    user_id: str = Depends(get_current_user_id)
+):
+    try:
+        numeric_id = int(meal_id)
+    except ValueError:
+        return {"status": "skipped_local_id", "deleted_id": meal_id}
+
+    alt_user_id = user_id.replace("tg_", "") if user_id.startswith("tg_") else f"tg_{user_id}"
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM nutrition_logs WHERE id = ? AND (user_id IN (?, ?, 'default') OR ? = 'default');", (numeric_id, user_id, alt_user_id, user_id))
+        return {"status": "ok", "deleted_id": numeric_id}
 
 @app.get("/api/nutrition/history")
 def get_nutrition_history(
@@ -2738,7 +2834,7 @@ def get_nutrition_history(
         alt_user_id = user_id.replace("tg_", "") if user_id.startswith("tg_") else f"tg_{user_id}"
         # Do NOT select image_url: history does not store/return photos
         cursor.execute("""
-            SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, created_at
+            SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, ingredients, created_at
             FROM nutrition_logs
             WHERE user_id IN (?, ?, 'default') OR ? = 'default'
             ORDER BY date DESC, id DESC;
@@ -2748,6 +2844,7 @@ def get_nutrition_history(
         days_map = {}
         for r in rows:
             d = r["date"]
+            r["ingredients"] = parse_ingredients_field(r.get("ingredients"))
             if d not in days_map:
                 days_map[d] = {
                     "date": d,
@@ -2780,7 +2877,7 @@ def sync_nutrition_meals(
         cursor = conn.cursor()
         
         cursor.execute("""
-            SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, created_at
+            SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, ingredients, created_at
             FROM nutrition_logs
             WHERE user_id IN (?, ?, 'default') OR ? = 'default';
         """, (user_id, alt_user_id, user_id))
@@ -2799,9 +2896,10 @@ def sync_nutrition_meals(
             sig = (m_date, str(m.meal_name).strip().lower(), round(float(m.calories or 0)))
             
             if sig not in existing_signatures:
+                ing_str = serialize_ingredients_field(m.ingredients)
                 cursor.execute("""
-                    INSERT INTO nutrition_logs (user_id, date, meal_name, calories, protein, fat, carbs, portion_grams, image_url)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    INSERT INTO nutrition_logs (user_id, date, meal_name, calories, protein, fat, carbs, portion_grams, image_url, ingredients)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 """, (
                     user_id,
                     m_date,
@@ -2811,18 +2909,21 @@ def sync_nutrition_meals(
                     round(m.fat, 1),
                     round(m.carbs, 1),
                     round(float(m.portion_grams) if m.portion_grams is not None else 0.0, 1),
-                    ""
+                    "",
+                    ing_str
                 ))
                 existing_signatures.add(sig)
                 synced_count += 1
 
         cursor.execute("""
-            SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, created_at
+            SELECT id, date, meal_name, calories, protein, fat, carbs, portion_grams, ingredients, created_at
             FROM nutrition_logs
             WHERE user_id IN (?, ?, 'default') OR ? = 'default'
             ORDER BY date DESC, id DESC;
         """, (user_id, alt_user_id, user_id))
         all_rows = [dict(r) for r in cursor.fetchall()]
+        for r in all_rows:
+            r["ingredients"] = parse_ingredients_field(r.get("ingredients"))
 
         profile = get_user_profile_dict(cursor, user_id=user_id, user_name=user_name)
         targets = calculate_daily_macro_targets(profile)
@@ -2898,6 +2999,7 @@ def analyze_food_image_with_gemini(image_data: str, hint: str = "", client_api_k
         "2. Реалистично оцени вес порции на фото в граммах (например: стандартная банка тунца ~130-185г, половинка огурца ~50-80г, порция горячего ~250-350г, напиток в чашке ~200-300г/мл).\n"
         "3. Рассчитай пищевую ценность: калории (ккал), белки (г), жиры (г), углеводы (г) на 100 грамм продукта и суммарно на всю порцию на фото.\n"
         "4. Предложи 2-4 похожих или альтернативных продукта/блюда/напитка с примерными КБЖУ.\n"
+        "5. Если блюдо составное (суп, салат, рагу, паста, сэндвич, второе блюдо с гарниром и соусом и т.д.) — обязательно перечисли его ингредиенты/состав в поле 'ingredients' (список объектов с полями name и weight_g, например: [{'name': 'Куриное филе', 'weight_g': 80}, {'name': 'Бульон', 'weight_g': 200}, {'name': 'Лапша', 'weight_g': 50}]). Если продукт простой — укажи 1 ингредиент.\n"
         "Ответь СТРОГО в формате JSON без markdown кодовых блоков (без ```json):\n"
         "{\n"
         '  "detected_dish": "Название",\n'
@@ -2907,6 +3009,9 @@ def analyze_food_image_with_gemini(image_data: str, hint: str = "", client_api_k
         '  "per_100g": {"calories": 116, "protein": 26.0, "fat": 1.0, "carbs": 0.0},\n'
         '  "total": {"calories": 151, "protein": 33.8, "fat": 1.3, "carbs": 0.0},\n'
         '  "breakdown": ["Тунец консервированный"],\n'
+        '  "ingredients": [\n'
+        '    {"name": "Тунец консервированный", "weight_g": 130}\n'
+        '  ],\n'
         '  "alternatives": [\n'
         '    {"name": "Куриная грудка отварная", "portion_grams": 150, "calories": 248, "protein": 46.5, "fat": 5.4, "carbs": 0.0}\n'
         '  ]\n'
@@ -3123,6 +3228,18 @@ def analyze_meal_photo(
                         "carbs": round(float(alt.get("carbs") or 0), 1)
                     })
 
+                raw_ings = ai_result.get("ingredients") or []
+                if not raw_ings:
+                    raw_ings = [{"name": b} for b in ai_result.get("breakdown", [dish_name]) if b]
+                clean_ings = []
+                for item in raw_ings:
+                    if isinstance(item, str) and item.strip():
+                        clean_ings.append({"name": item.strip()})
+                    elif isinstance(item, dict) and item.get("name"):
+                        clean_ings.append(item)
+                if not clean_ings:
+                    clean_ings = [{"name": dish_name}]
+
                 return {
                     "status": "success",
                     "source": "gemini_vision",
@@ -3133,6 +3250,7 @@ def analyze_meal_photo(
                     "per_100g": per_100,
                     "total": total,
                     "breakdown": ai_result.get("breakdown", [dish_name]),
+                    "ingredients": clean_ings,
                     "alternatives": alternatives
                 }
         except Exception as e:
@@ -3169,6 +3287,7 @@ def analyze_meal_photo(
                 "carbs": 9.0
             },
             "breakdown": [dish_title],
+            "ingredients": [{"name": dish_title}],
             "alternatives": [
                 {
                     "id": "tuna_alt",
@@ -3237,6 +3356,7 @@ def analyze_meal_photo(
             "fat": calc_fat,
             "carbs": calc_carbs
         },
+        "ingredients": [{"name": matched_food["name"]}],
         "alternatives": [
             {
                 "id": a["id"],
@@ -3285,6 +3405,14 @@ def estimate_meal_text(payload: TextMealEstimateRequest):
         ai_res = estimate_meal_from_text_with_gemini(text, payload.client_api_key or "")
         if ai_res and ai_res.get("detected_dish"):
             ai_res["source"] = "gemini_text_ai"
+            raw_ings = ai_res.get("ingredients") or ai_res.get("breakdown") or [ai_res.get("detected_dish")]
+            clean_ings = []
+            for item in raw_ings:
+                if isinstance(item, str) and item.strip():
+                    clean_ings.append({"name": item.strip()})
+                elif isinstance(item, dict) and item.get("name"):
+                    clean_ings.append(item)
+            ai_res["ingredients"] = clean_ings or [{"name": ai_res.get("detected_dish")}]
             return ai_res
     except Exception as e:
         print(f"[Text AI] error: {e}", file=sys.stderr)
@@ -3352,6 +3480,7 @@ def estimate_meal_text(payload: TextMealEstimateRequest):
             "fat": round(4.0 * mult, 1),
             "carbs": round(14.0 * mult, 1)
         },
+        "ingredients": [{"name": text.capitalize()}],
         "alternatives": [
             {
                 "id": a["id"],

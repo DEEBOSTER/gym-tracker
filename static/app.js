@@ -1389,6 +1389,375 @@ function AthleticNutritionWidget({ userProfile, onOpenScanner, refreshTrigger })
 }
 
 // ==========================================
+// ✏️ EDIT MEAL MODAL (Порции, КБЖУ, Состав)
+// ==========================================
+function EditMealModal({ meal, isOpen, onClose, onSave, onDelete }) {
+  if (!isOpen || !meal) return null;
+
+  const initialGrams = parseFloat(meal.portion_grams) || 100;
+  const initialKcal = parseFloat(meal.calories) || 0;
+  const initialProt = parseFloat(meal.protein) || 0;
+  const initialFat = parseFloat(meal.fat) || 0;
+  const initialCarbs = parseFloat(meal.carbs) || 0;
+
+  const [mealName, setMealName] = useState(meal.meal_name || '');
+  const [portionGrams, setPortionGrams] = useState(initialGrams);
+  const [calories, setCalories] = useState(String(Math.round(initialKcal)));
+  const [protein, setProtein] = useState(String(initialProt));
+  const [fat, setFat] = useState(String(initialFat));
+  const [carbs, setCarbs] = useState(String(initialCarbs));
+  
+  const [ingredients, setIngredients] = useState(() => {
+    if (Array.isArray(meal.ingredients)) {
+      return meal.ingredients.map(ing => (typeof ing === 'string' ? { name: ing } : ing)).filter(Boolean);
+    }
+    return [];
+  });
+  const [newIngName, setNewIngName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleGramsChange = (newG) => {
+    const parsed = parseFloat(newG);
+    const g = isNaN(parsed) ? 0 : Math.max(0, Math.round(parsed));
+    setPortionGrams(g);
+
+    if (initialGrams > 0) {
+      const mult = g / initialGrams;
+      setCalories(String(Math.round(initialKcal * mult)));
+      setProtein(String(Math.round(initialProt * mult * 10) / 10));
+      setFat(String(Math.round(initialFat * mult * 10) / 10));
+      setCarbs(String(Math.round(initialCarbs * mult * 10) / 10));
+    }
+  };
+
+  const handleAddPortion = () => {
+    triggerHaptic('light');
+    const baseServing = initialGrams > 0 ? initialGrams : 100;
+    const current = parseFloat(portionGrams) || 0;
+    handleGramsChange(current + baseServing);
+  };
+
+  const handleMultiplyPortion = (multFactor) => {
+    triggerHaptic('light');
+    const current = parseFloat(portionGrams) || initialGrams;
+    handleGramsChange(current * multFactor);
+  };
+
+  const handleAdjustGrams = (delta) => {
+    triggerHaptic('light');
+    const current = parseFloat(portionGrams) || 0;
+    handleGramsChange(Math.max(0, current + delta));
+  };
+
+  const handleAddIngredient = (e) => {
+    if (e) e.preventDefault();
+    const name = newIngName.trim();
+    if (!name) return;
+    triggerHaptic('light');
+    setIngredients(prev => [...prev, { name }]);
+    setNewIngName('');
+  };
+
+  const handleRemoveIngredient = (idx) => {
+    triggerHaptic('light');
+    setIngredients(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!mealName.trim()) {
+      alert('Укажите название блюда');
+      return;
+    }
+    setIsSaving(true);
+    triggerHaptic('success');
+    try {
+      await onSave({
+        id: meal.id,
+        meal_name: mealName.trim(),
+        portion_grams: parseFloat(portionGrams) || 0,
+        calories: parseFloat(calories) || 0,
+        protein: parseFloat(protein) || 0,
+        fat: parseFloat(fat) || 0,
+        carbs: parseFloat(carbs) || 0,
+        ingredients: ingredients
+      });
+      onClose();
+    } catch (err) {
+      alert('Ошибка при сохранении: ' + (err.message || 'Сбой соединения'));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('Удалить эту запись приема пищи?')) return;
+    setIsDeleting(true);
+    triggerHaptic('warning');
+    try {
+      await onDelete(meal.id);
+      onClose();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 z-[70] bg-black/85 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div 
+        className="w-full max-w-lg bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-4 border-b border-[var(--neu-border-subtle)] flex items-center justify-between bg-[var(--neu-inset-bg)]">
+          <div className="flex items-center space-x-2">
+            <span className="text-xl">✏️</span>
+            <div>
+              <h3 className="text-sm font-black text-slate-800 dark:text-white leading-tight">Редактирование блюда</h3>
+              <p className="text-[10.5px] text-slate-500 dark:text-zinc-400">Измените вес порции, КБЖУ или состав ингредиентов</p>
+            </div>
+          </div>
+          <button 
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-[var(--neu-surface)] text-slate-400 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white flex items-center justify-center transition active:scale-95"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="overflow-y-auto p-4 space-y-4 flex-1">
+          {/* 1. Dish Name */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider block">
+              Название блюда
+            </label>
+            <input 
+              type="text"
+              value={mealName}
+              onChange={(e) => setMealName(e.target.value)}
+              className="w-full bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] rounded-2xl px-3.5 py-2.5 text-sm font-black text-slate-800 dark:text-white focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          {/* 2. Portion & Grams */}
+          <div className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] rounded-2xl p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[10.5px] font-bold text-slate-700 dark:text-zinc-300 uppercase tracking-wide">
+                ⚖️ Вес порции (грамм)
+              </label>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-bold">
+                Базовый вес: {initialGrams}г
+              </span>
+            </div>
+
+            {/* Stepper */}
+            <div className="flex items-center justify-between bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-xl p-1.5">
+              <button
+                type="button"
+                onClick={() => handleAdjustGrams(-50)}
+                className="w-9 h-9 rounded-lg bg-[var(--neu-inset-bg)] text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white font-black text-sm flex items-center justify-center active:scale-90 transition"
+              >
+                -50
+              </button>
+              <div className="flex items-baseline space-x-1">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={portionGrams}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => handleGramsChange(cleanNumericInput(e.target.value, false))}
+                  className="w-20 text-center bg-transparent text-xl font-black font-mono text-slate-800 dark:text-white focus:outline-none"
+                />
+                <span className="text-xs text-slate-500 dark:text-zinc-400 font-bold font-mono">г</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleAdjustGrams(50)}
+                className="w-9 h-9 rounded-lg bg-[var(--neu-inset-bg)] text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white font-black text-sm flex items-center justify-center active:scale-90 transition"
+              >
+                +50
+              </button>
+            </div>
+
+            {/* Quick Actions (Повторная порция / удвоение) */}
+            <div className="grid grid-cols-4 gap-1.5 pt-0.5">
+              <button
+                type="button"
+                onClick={handleAddPortion}
+                className="py-1.5 px-1 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-black active:scale-95 transition col-span-2"
+                title="Добавить еще одну такую же порцию"
+              >
+                +1 порция (+{initialGrams}г)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleMultiplyPortion(2)}
+                className="py-1.5 px-1 rounded-xl bg-[var(--neu-surface)] hover:bg-white/10 text-slate-700 dark:text-zinc-300 border border-[var(--neu-border)] text-xs font-bold active:scale-95 transition"
+                title="Удвоить вес"
+              >
+                ×2
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAdjustGrams(100)}
+                className="py-1.5 px-1 rounded-xl bg-[var(--neu-surface)] hover:bg-white/10 text-slate-700 dark:text-zinc-300 border border-[var(--neu-border)] text-xs font-bold active:scale-95 transition"
+              >
+                +100г
+              </button>
+            </div>
+            <p className="text-[9.5px] text-slate-500 dark:text-zinc-400 leading-tight">
+              💡 Если за день съели еще одну порцию этого же блюда — просто нажмите <strong>«+1 порция»</strong> или укажите новый вес. КБЖУ пересчитаются автоматически.
+            </p>
+          </div>
+
+          {/* 3. Macros Grid (КБЖУ) */}
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider block">
+              Пищевая ценность (КБЖУ)
+            </span>
+            <div className="grid grid-cols-4 gap-2 text-center font-mono">
+              <div className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] p-2 rounded-2xl">
+                <span className="text-[9px] text-[#fc4c02] font-bold uppercase block">Ккал</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={calories}
+                  onChange={(e) => setCalories(cleanNumericInput(e.target.value, false))}
+                  className="w-full text-center bg-transparent text-sm font-black text-slate-800 dark:text-white focus:outline-none"
+                />
+              </div>
+              <div className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] p-2 rounded-2xl">
+                <span className="text-[9px] text-emerald-500 font-bold uppercase block">Белки (г)</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={protein}
+                  onChange={(e) => setProtein(cleanNumericInput(e.target.value, true))}
+                  className="w-full text-center bg-transparent text-sm font-black text-slate-800 dark:text-white focus:outline-none"
+                />
+              </div>
+              <div className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] p-2 rounded-2xl">
+                <span className="text-[9px] text-amber-500 font-bold uppercase block">Жиры (г)</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={fat}
+                  onChange={(e) => setFat(cleanNumericInput(e.target.value, true))}
+                  className="w-full text-center bg-transparent text-sm font-black text-slate-800 dark:text-white focus:outline-none"
+                />
+              </div>
+              <div className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] p-2 rounded-2xl">
+                <span className="text-[9px] text-sky-500 font-bold uppercase block">Углев. (г)</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={carbs}
+                  onChange={(e) => setCarbs(cleanNumericInput(e.target.value, true))}
+                  className="w-full text-center bg-transparent text-sm font-black text-slate-800 dark:text-white focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Ingredients Composition (Состав блюда) */}
+          <div className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] rounded-2xl p-3.5 space-y-2.5">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10.5px] font-bold text-slate-700 dark:text-zinc-300 uppercase tracking-wide">
+                  🍲 Состав блюда (ингредиенты)
+                </span>
+                <span className="text-[10px] text-slate-500 dark:text-zinc-400 font-mono">
+                  {ingredients.length} {ingredients.length === 1 ? 'ингредиент' : 'ингредиентов'}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-0.5">
+                Убирайте лишнее или добавляйте то, что есть в блюде (например, в супе: убрать лапшу, добавить сметану)
+              </p>
+            </div>
+
+            {/* Current Ingredients Chips */}
+            <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-xl">
+              {ingredients.length === 0 ? (
+                <span className="text-[11px] text-slate-400 dark:text-zinc-500 italic py-0.5">
+                  Состав пока пуст. Добавьте ингредиенты ниже:
+                </span>
+              ) : (
+                ingredients.map((ing, idx) => {
+                  const title = typeof ing === 'string' ? ing : (ing.name || '');
+                  return (
+                    <span 
+                      key={idx}
+                      className="inline-flex items-center space-x-1.5 text-xs bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] text-slate-800 dark:text-zinc-200 px-2.5 py-1 rounded-xl shadow-xs"
+                    >
+                      <span className="font-medium">{title}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveIngredient(idx)}
+                        className="text-slate-400 hover:text-rose-500 font-black text-xs ml-0.5 transition cursor-pointer"
+                        title="Убрать ингредиент"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Add Ingredient Input */}
+            <form onSubmit={handleAddIngredient} className="flex space-x-1.5 pt-0.5">
+              <input 
+                type="text" 
+                value={newIngName}
+                onChange={(e) => setNewIngName(e.target.value)}
+                placeholder="Добавить ингредиент (например, сметана, сухарики)..."
+                className="flex-1 bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+              />
+              <button
+                type="submit"
+                disabled={!newIngName.trim()}
+                className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-gym-950 font-black text-xs active:scale-95 transition cursor-pointer disabled:cursor-not-allowed shrink-0"
+              >
+                + Добавить
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="p-4 border-t border-[var(--neu-border-subtle)] bg-[var(--neu-inset-bg)] space-y-2">
+          <button
+            type="button"
+            disabled={isSaving || !mealName.trim()}
+            onClick={handleSubmit}
+            className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-gym-950 font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/25 active:scale-98 transition flex items-center justify-center space-x-2 cursor-pointer"
+          >
+            <span>✓</span>
+            <span>{isSaving ? 'Сохранение...' : 'Сохранить изменения'}</span>
+          </button>
+          
+          <button
+            type="button"
+            disabled={isDeleting}
+            onClick={handleDelete}
+            className="w-full py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 text-xs font-bold active:scale-98 transition flex items-center justify-center space-x-1.5 cursor-pointer"
+          >
+            <span>🗑️</span>
+            <span>{isDeleting ? 'Удаление...' : 'Удалить этот прием пищи'}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
 // 📸 FOOD PHOTO ANALYSIS & KBJU MODAL
 // ==========================================
 function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, initialTab = 'manual' }) {
@@ -1411,11 +1780,20 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
   const [manualFat, setManualFat] = useState('');
   const [manualCarbs, setManualCarbs] = useState('');
   const [manualPer100g, setManualPer100g] = useState(null);
+  const [manualIngredients, setManualIngredients] = useState([]);
+  const [newManualIng, setNewManualIng] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [isEstimating, setIsEstimating] = useState(false);
   const [estimateNotice, setEstimateNotice] = useState('');
   const [isSavingManual, setIsSavingManual] = useState(false);
   const searchDebounceRef = useRef(null);
+
+  // Photo ingredients states
+  const [photoIngredients, setPhotoIngredients] = useState([]);
+  const [newPhotoIng, setNewPhotoIng] = useState('');
+
+  // Editing meal modal in History tab
+  const [editingMeal, setEditingMeal] = useState(null);
 
   const resetManualState = () => {
     setManualDishName('');
@@ -1425,6 +1803,8 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
     setManualFat('');
     setManualCarbs('');
     setManualPer100g(null);
+    setManualIngredients([]);
+    setNewManualIng('');
     setSuggestions([]);
     setIsEstimating(false);
     setEstimateNotice('');
@@ -1456,6 +1836,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
   const handleSelectSuggestion = (item) => {
     triggerHaptic('light');
     setManualDishName(item.name);
+    setManualIngredients([{ name: item.name }]);
     const defaultServing = item.serving_default_g || 150;
     setManualPortionGrams(defaultServing);
 
@@ -1474,6 +1855,34 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
     setManualCarbs(String(Math.round(per100.carbs * mult * 10) / 10));
     setSuggestions([]);
     setEstimateNotice('Выбрано из справочника');
+  };
+
+  const handleAddManualIngredient = (e) => {
+    if (e) e.preventDefault();
+    const name = newManualIng.trim();
+    if (!name) return;
+    triggerHaptic('light');
+    setManualIngredients(prev => [...prev, { name }]);
+    setNewManualIng('');
+  };
+
+  const handleRemoveManualIngredient = (idx) => {
+    triggerHaptic('light');
+    setManualIngredients(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleAddPhotoIngredient = (e) => {
+    if (e) e.preventDefault();
+    const name = newPhotoIng.trim();
+    if (!name) return;
+    triggerHaptic('light');
+    setPhotoIngredients(prev => [...prev, { name }]);
+    setNewPhotoIng('');
+  };
+
+  const handleRemovePhotoIngredient = (idx) => {
+    triggerHaptic('light');
+    setPhotoIngredients(prev => prev.filter((_, i) => i !== idx));
   };
 
   const handlePortionChange = (newGrams) => {
@@ -1531,6 +1940,12 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
         const g = !isNaN(parsedG) ? Math.max(0, parsedG) : (parseFloat(manualPortionGrams) || 0);
         setManualPortionGrams(g);
 
+        if (Array.isArray(data.ingredients) && data.ingredients.length > 0) {
+          setManualIngredients(data.ingredients.map(i => typeof i === 'string' ? { name: i } : i));
+        } else if (data.detected_dish) {
+          setManualIngredients([{ name: data.detected_dish }]);
+        }
+
         if (data.per_100g) {
           setManualPer100g(data.per_100g);
         }
@@ -1584,6 +1999,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
           fat: f,
           carbs: c,
           portion_grams: g,
+          ingredients: manualIngredients,
           image_url: ''
         })
       });
@@ -1602,6 +2018,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
         fat: f,
         carbs: c,
         portion_grams: g,
+        ingredients: manualIngredients,
         created_at: new Date().toISOString()
       };
 
@@ -1668,6 +2085,8 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
     setCustomDishName('');
     setPortionGrams(150);
     setUserHint('');
+    setPhotoIngredients([]);
+    setNewPhotoIng('');
     if (cameraInputRef.current) cameraInputRef.current.value = '';
     if (galleryInputRef.current) galleryInputRef.current.value = '';
   };
@@ -1729,6 +2148,10 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
           setAnalysisResult(result);
           setCustomDishName(result.detected_dish || 'Блюдо');
           setPortionGrams(Math.round(result.portion_grams) || 150);
+          const ings = Array.isArray(result.ingredients) && result.ingredients.length > 0
+            ? result.ingredients.map(i => typeof i === 'string' ? { name: i } : i)
+            : (result.detected_dish ? [{ name: result.detected_dish }] : []);
+          setPhotoIngredients(ings);
         } else {
           // Graceful fallback if server error
           const fallback = {
@@ -1742,6 +2165,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
           setAnalysisResult(fallback);
           setCustomDishName(fallback.detected_dish);
           setPortionGrams(150);
+          setPhotoIngredients([{ name: 'Белок + гарнир' }]);
         }
       } catch (err) {
         console.error('Scan error:', err);
@@ -1756,6 +2180,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
         setAnalysisResult(fallback);
         setCustomDishName(fallback.detected_dish);
         setPortionGrams(150);
+        setPhotoIngredients([{ name: 'Белок + гарнир' }]);
       } finally {
         setTimeout(() => setIsScanning(false), 500);
       }
@@ -1768,6 +2193,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
     triggerHaptic('light');
     setCustomDishName(alt.name);
     setPortionGrams(alt.portion_grams || 250);
+    setPhotoIngredients([{ name: alt.name }]);
     if (analysisResult) {
       setAnalysisResult({
         ...analysisResult,
@@ -1819,6 +2245,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
           fat: finalF,
           carbs: finalC,
           portion_grams: portionGrams,
+          ingredients: photoIngredients,
           image_url: ''
         })
       });
@@ -1838,6 +2265,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
         fat: finalF,
         carbs: finalC,
         portion_grams: portionGrams,
+        ingredients: photoIngredients,
         created_at: new Date().toISOString()
       };
       const existingMeals = getStoredNutritionMeals(uId);
@@ -1870,6 +2298,53 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
         headers: { 'x-telegram-user-id': uId }
       }).catch(() => {});
     } catch (e) {}
+  };
+
+  const handleUpdateMeal = async (updatedData) => {
+    try {
+      const u = getTelegramUser();
+      const uId = u?.id || 'default';
+      const res = await fetch(`/api/nutrition/meals/${updatedData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-telegram-user-id': uId
+        },
+        body: JSON.stringify(updatedData)
+      });
+      let saved = updatedData;
+      if (res.ok) {
+        const fromServer = await res.json();
+        if (fromServer && fromServer.id) saved = fromServer;
+      }
+      setTodayMeals(prev => prev.map(m => String(m.id) === String(saved.id) ? saved : m));
+      const existingMeals = getStoredNutritionMeals(uId);
+      const updatedMeals = existingMeals.map(m => String(m.id) === String(saved.id) ? saved : m);
+      saveStoredNutritionMeals(uId, updatedMeals);
+      if (typeof onMealLogged === 'function') onMealLogged();
+    } catch (e) {
+      alert('Ошибка при обновлении: ' + (e.message || ''));
+    }
+  };
+
+  const handleQuickAddPortionToMeal = async (meal) => {
+    triggerHaptic('light');
+    const baseG = parseFloat(meal.portion_grams) || 100;
+    const currentG = parseFloat(meal.portion_grams) || 100;
+    const newG = currentG + (baseG > 0 ? baseG : 100);
+    const mult = currentG > 0 ? newG / currentG : 2;
+
+    const updatedData = {
+      id: meal.id,
+      meal_name: meal.meal_name,
+      portion_grams: newG,
+      calories: Math.round((parseFloat(meal.calories) || 0) * mult),
+      protein: Math.round((parseFloat(meal.protein) || 0) * mult * 10) / 10,
+      fat: Math.round((parseFloat(meal.fat) || 0) * mult * 10) / 10,
+      carbs: Math.round((parseFloat(meal.carbs) || 0) * mult * 10) / 10,
+      ingredients: meal.ingredients || []
+    };
+    await handleUpdateMeal(updatedData);
   };
 
   const handleQuickAdd = async (food) => {
@@ -2229,6 +2704,64 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
                 </div>
               </div>
 
+              {/* Ingredients Composition Manager */}
+              <div className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] rounded-2xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10.5px] font-bold text-slate-700 dark:text-zinc-300 uppercase tracking-wide">
+                    🍲 Состав блюда (ингредиенты)
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-zinc-400 font-mono">
+                    {manualIngredients.length} {manualIngredients.length === 1 ? 'ингредиент' : 'ингредиентов'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-zinc-400">
+                  Добавьте составные части блюда (например, для супа: курица, лапша, зелень)
+                </p>
+
+                {manualIngredients.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 p-2 bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-xl">
+                    {manualIngredients.map((ing, idx) => {
+                      const title = typeof ing === 'string' ? ing : (ing.name || '');
+                      return (
+                        <span 
+                          key={idx}
+                          className="inline-flex items-center space-x-1.5 text-xs bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] text-slate-800 dark:text-zinc-200 px-2.5 py-1 rounded-xl shadow-xs"
+                        >
+                          <span className="font-medium">{title}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveManualIngredient(idx)}
+                            className="text-slate-400 hover:text-rose-500 font-black text-xs ml-0.5 transition cursor-pointer"
+                            title="Убрать ингредиент"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="flex space-x-1.5 pt-0.5">
+                  <input 
+                    type="text" 
+                    value={newManualIng}
+                    onChange={(e) => setNewManualIng(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddManualIngredient(); } }}
+                    placeholder="Добавить ингредиент (например, курица, сыр, зелень)..."
+                    className="flex-1 bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddManualIngredient}
+                    disabled={!newManualIng.trim()}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-gym-950 font-black text-xs active:scale-95 transition cursor-pointer disabled:cursor-not-allowed shrink-0"
+                  >
+                    + Добавить
+                  </button>
+                </div>
+              </div>
+
               {/* Primary Save Button */}
               <button
                 type="button"
@@ -2496,6 +3029,68 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
                         </div>
                       </div>
 
+                      {/* Photo Ingredients Manager */}
+                      <div className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] rounded-2xl p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10.5px] font-bold text-slate-700 dark:text-zinc-300 uppercase tracking-wide">
+                            🍲 Состав блюда (ингредиенты)
+                          </span>
+                          <span className="text-[10px] text-slate-500 dark:text-zinc-400 font-mono">
+                            {photoIngredients.length} {photoIngredients.length === 1 ? 'ингредиент' : 'ингредиентов'}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 dark:text-zinc-400">
+                          Убирайте лишнее или добавляйте то, что есть в блюде (например, в супе: убрать лапшу, добавить сметану)
+                        </p>
+
+                        <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-xl">
+                          {photoIngredients.length === 0 ? (
+                            <span className="text-[11px] text-slate-400 dark:text-zinc-500 italic py-0.5">
+                              Состав пока пуст. Добавьте ингредиенты ниже:
+                            </span>
+                          ) : (
+                            photoIngredients.map((ing, idx) => {
+                              const title = typeof ing === 'string' ? ing : (ing.name || '');
+                              return (
+                                <span 
+                                  key={idx}
+                                  className="inline-flex items-center space-x-1.5 text-xs bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] text-slate-800 dark:text-zinc-200 px-2.5 py-1 rounded-xl shadow-xs"
+                                >
+                                  <span className="font-medium">{title}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemovePhotoIngredient(idx)}
+                                    className="text-slate-400 hover:text-rose-500 font-black text-xs ml-0.5 transition cursor-pointer"
+                                    title="Убрать ингредиент"
+                                  >
+                                    ✕
+                                  </button>
+                                </span>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        <div className="flex space-x-1.5 pt-0.5">
+                          <input 
+                            type="text" 
+                            value={newPhotoIng}
+                            onChange={(e) => setNewPhotoIng(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddPhotoIngredient(); } }}
+                            placeholder="Добавить ингредиент (например, сметана, сухарики)..."
+                            className="flex-1 bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddPhotoIngredient}
+                            disabled={!newPhotoIng.trim()}
+                            className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-gym-950 font-black text-xs active:scale-95 transition cursor-pointer disabled:cursor-not-allowed shrink-0"
+                          >
+                            + Добавить
+                          </button>
+                        </div>
+                      </div>
+
                       {/* Alternatives */}
                       {analysisResult.alternatives?.length > 0 && (
                         <div>
@@ -2575,20 +3170,51 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
                     key={meal.id}
                     className="bg-[var(--neu-inset-bg)] border border-[var(--neu-border-subtle)] p-3 rounded-2xl flex items-center justify-between"
                   >
-                    <div className="min-w-0 pr-2 flex-1">
+                    <div className="min-w-0 pr-2 flex-1 space-y-1">
                       <div className="text-xs font-black text-slate-800 dark:text-white truncate">{meal.meal_name}</div>
                       <div className="text-[10px] text-slate-500 dark:text-zinc-400 font-mono mt-0.5">
-                        {meal.portion_grams}г · {meal.calories} ккал (Б:{meal.protein}г · Ж:{meal.fat}г · У:{meal.carbs}г)
+                        {meal.portion_grams || 100}г · {Math.round(meal.calories)} ккал (Б:{meal.protein}г · Ж:{meal.fat}г · У:{meal.carbs}г)
                       </div>
+                      {Array.isArray(meal.ingredients) && meal.ingredients.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-0.5">
+                          {meal.ingredients.map((ing, iIdx) => {
+                            const title = typeof ing === 'string' ? ing : ing?.name;
+                            if (!title) return null;
+                            return (
+                              <span key={iIdx} className="text-[9.5px] bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-zinc-300 px-2 py-0.5 rounded-md font-sans">
+                                {title}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteMeal(meal.id)}
-                      className="text-slate-400 hover:text-rose-500 dark:text-zinc-500 dark:hover:text-rose-400 p-1.5 text-xs transition cursor-pointer active:scale-90"
-                      title="Удалить"
-                    >
-                      🗑️
-                    </button>
+                    <div className="flex items-center space-x-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleQuickAddPortionToMeal(meal)}
+                        className="px-2 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black active:scale-90 transition cursor-pointer"
+                        title="Добавить еще одну порцию этого блюда"
+                      >
+                        +1 порц.
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingMeal(meal)}
+                        className="w-8 h-8 rounded-xl bg-[var(--neu-surface)] hover:bg-slate-200 dark:hover:bg-white/10 border border-[var(--neu-border-subtle)] text-slate-700 dark:text-zinc-300 flex items-center justify-center text-xs active:scale-90 transition cursor-pointer"
+                        title="Редактировать порцию, КБЖУ и состав"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMeal(meal.id)}
+                        className="w-8 h-8 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 flex items-center justify-center text-xs transition cursor-pointer active:scale-90"
+                        title="Удалить"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
@@ -2596,6 +3222,17 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
           )}
         </div>
       </div>
+
+      {/* Edit Meal Modal for editing grams, KBJU, composition */}
+      {editingMeal && (
+        <EditMealModal
+          meal={editingMeal}
+          isOpen={!!editingMeal}
+          onClose={() => setEditingMeal(null)}
+          onSave={handleUpdateMeal}
+          onDelete={handleDeleteMeal}
+        />
+      )}
     </div>
   );
 }
@@ -8671,6 +9308,59 @@ function NutritionHistoryTab() {
   const [deletingId, setDeletingId] = useState(null);
   const [collapsedDays, setCollapsedDays] = useState({});
   const [showAddMealModal, setShowAddMealModal] = useState(false);
+  const [editingMeal, setEditingMeal] = useState(null);
+
+  const handleUpdateMeal = async (updatedData) => {
+    try {
+      const curUser = getTelegramUser();
+      const curUserId = curUser?.id || 'default';
+      
+      const res = await fetch(`/api/nutrition/meals/${updatedData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-telegram-user-id': curUserId
+        },
+        body: JSON.stringify(updatedData)
+      });
+      let saved = updatedData;
+      if (res.ok) {
+        const fromServer = await res.json();
+        if (fromServer && fromServer.id) saved = fromServer;
+      }
+      
+      const localMeals = getStoredNutritionMeals(curUserId);
+      const updatedLocal = localMeals.map(m => String(m.id) === String(saved.id) ? saved : m);
+      saveStoredNutritionMeals(curUserId, updatedLocal);
+
+      setHistoryData(prev => ({
+        ...prev,
+        days: groupMealsIntoDays(updatedLocal)
+      }));
+    } catch (e) {
+      alert('Ошибка при обновлении блюда: ' + (e.message || ''));
+    }
+  };
+
+  const handleQuickAddPortion = async (meal) => {
+    triggerHaptic('light');
+    const baseG = parseFloat(meal.portion_grams) || 100;
+    const currentG = parseFloat(meal.portion_grams) || 100;
+    const newG = currentG + (baseG > 0 ? baseG : 100);
+    const mult = currentG > 0 ? newG / currentG : 2;
+
+    const updatedData = {
+      id: meal.id,
+      meal_name: meal.meal_name,
+      portion_grams: newG,
+      calories: Math.round((parseFloat(meal.calories) || 0) * mult),
+      protein: Math.round((parseFloat(meal.protein) || 0) * mult * 10) / 10,
+      fat: Math.round((parseFloat(meal.fat) || 0) * mult * 10) / 10,
+      carbs: Math.round((parseFloat(meal.carbs) || 0) * mult * 10) / 10,
+      ingredients: meal.ingredients || []
+    };
+    await handleUpdateMeal(updatedData);
+  };
 
   const fetchHistory = async () => {
     try {
@@ -9013,18 +9703,49 @@ function NutritionHistoryTab() {
                             У: {meal.carbs}г
                           </span>
                         </div>
+                        {Array.isArray(meal.ingredients) && meal.ingredients.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-0.5">
+                            {meal.ingredients.map((ing, iIdx) => {
+                              const title = typeof ing === 'string' ? ing : ing?.name;
+                              if (!title) return null;
+                              return (
+                                <span key={iIdx} className="text-[9.5px] bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-zinc-300 px-2 py-0.5 rounded-md font-sans">
+                                  {title}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
 
-                      {/* Delete meal button (Strictly NO photo shown anywhere!) */}
-                      <button
-                        type="button"
-                        disabled={deletingId === meal.id}
-                        onClick={() => handleDeleteMeal(meal.id)}
-                        className="w-8 h-8 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-500 flex items-center justify-center shrink-0 active:scale-90 transition cursor-pointer"
-                        title="Удалить этот прием пищи"
-                      >
-                        {deletingId === meal.id ? '…' : '🗑️'}
-                      </button>
+                      {/* Action buttons: +1 portion, Edit, Delete */}
+                      <div className="flex items-center space-x-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleQuickAddPortion(meal)}
+                          className="px-2 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black active:scale-90 transition cursor-pointer"
+                          title="Добавить еще одну такую же порцию"
+                        >
+                          +1 порц.
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingMeal(meal)}
+                          className="w-8 h-8 rounded-xl bg-[var(--neu-surface)] hover:bg-slate-200 dark:hover:bg-white/10 border border-[var(--neu-border-subtle)] text-slate-700 dark:text-zinc-300 flex items-center justify-center text-xs active:scale-90 transition cursor-pointer"
+                          title="Редактировать граммы, КБЖУ или состав"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deletingId === meal.id}
+                          onClick={() => handleDeleteMeal(meal.id)}
+                          className="w-8 h-8 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-500 flex items-center justify-center shrink-0 active:scale-90 transition cursor-pointer"
+                          title="Удалить этот прием пищи"
+                        >
+                          {deletingId === meal.id ? '…' : '🗑️'}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -9040,6 +9761,17 @@ function NutritionHistoryTab() {
           onClose={() => setShowAddMealModal(false)}
           initialTab="manual"
           onMealLogged={fetchHistory}
+        />
+      )}
+
+      {/* Edit Meal Modal for editing grams, KBJU, composition */}
+      {editingMeal && (
+        <EditMealModal
+          meal={editingMeal}
+          isOpen={!!editingMeal}
+          onClose={() => setEditingMeal(null)}
+          onSave={handleUpdateMeal}
+          onDelete={handleDeleteMeal}
         />
       )}
     </div>

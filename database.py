@@ -176,9 +176,14 @@ def init_database():
                 carbs REAL NOT NULL DEFAULT 0,
                 portion_grams REAL DEFAULT 100,
                 image_url TEXT DEFAULT '',
+                ingredients TEXT DEFAULT '[]',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+        try:
+            cursor.execute("ALTER TABLE nutrition_logs ADD COLUMN ingredients TEXT DEFAULT '[]';")
+        except Exception:
+            pass
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_nutrition_user_date ON nutrition_logs(user_id, date);")
 
         # Retroactively calculate and sync gamification progress for all users
