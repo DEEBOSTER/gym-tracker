@@ -5336,17 +5336,6 @@ function App() {
     setIsSwiping(false);
   }, [activeTab, MAIN_TABS, switchTab]);
 
-  const userInitial = useMemo(() => {
-    try {
-      const n = (userProfile?.name || getTelegramUser()?.name || '').trim();
-      if (!n || n === 'Gym Athlete' || n === 'Атлет') return 'Д';
-      if (n.toUpperCase().startsWith('D')) return 'Д';
-      return n.charAt(0).toUpperCase();
-    } catch (e) {
-      return 'Д';
-    }
-  }, [userProfile?.name]);
-
   const navItems = useMemo(() => [
     {
       id: 'workout',
@@ -5425,14 +5414,20 @@ function App() {
       id: 'profile',
       label: 'О себе',
       render: (active) => (
-        <div className={`w-7 h-7 rounded-full bg-[#0284c7] text-white flex items-center justify-center font-black text-xs shadow-sm transition-transform ${
-          active ? 'ring-2 ring-white/90 scale-105' : 'opacity-90 hover:opacity-100'
-        }`}>
-          {userInitial}
-        </div>
+        <svg 
+          className="w-5 h-5 transition-transform" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth={active ? "2.5" : "2"} 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
       )
     }
-  ], [activeWorkout, userInitial]);
+  ], [activeWorkout]);
 
   const isLocalOnboarded = (initialCachedProfile && initialCachedProfile.onboarding_completed === 1) || 
                            localStorage.getItem('gym_tracker_onboarded_' + currentUserId) === '1';
