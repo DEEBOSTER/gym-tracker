@@ -128,20 +128,105 @@
     }
     .safe-dock-bar {
       position: fixed !important;
-      bottom: 0 !important;
-      left: 0 !important;
-      right: 0 !important;
-      width: 100% !important;
-      background-color: var(--neu-dock-bg) !important;
-      border-top: 1px solid var(--neu-border) !important;
-      box-shadow: 0 -4px 20px -2px var(--neu-shadow-dark) !important;
-      backdrop-filter: blur(20px) !important;
-      -webkit-backdrop-filter: blur(20px) !important;
-      padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px)) !important;
-      z-index: 40 !important;
+      bottom: max(0.65rem, env(safe-area-inset-bottom, 0px)) !important;
+      left: 0.75rem !important;
+      right: 0.75rem !important;
+      max-width: 400px !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+      height: 52px !important;
+      border-radius: 9999px !important;
+      z-index: 50 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-around !important;
+      padding: 0 0.5rem !important;
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease !important;
     }
-    .safe-nav-container {
-      bottom: max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.35rem)) !important;
+
+    body.dark .safe-dock-bar,
+    body.theme-neu-dark .safe-dock-bar,
+    html.dark .safe-dock-bar,
+    html.theme-neu-dark .safe-dock-bar {
+      background: rgba(15, 16, 20, 0.88) !important;
+      -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+      backdrop-filter: blur(24px) saturate(180%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.65), inset 0 1px 0 0 rgba(255, 255, 255, 0.16) !important;
+    }
+
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .safe-dock-bar,
+    html.theme-neu-light:not(.dark):not(.theme-neu-dark) .safe-dock-bar {
+      background: rgba(255, 255, 255, 0.88) !important;
+      -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+      backdrop-filter: blur(24px) saturate(180%) !important;
+      border: 1px solid rgba(0, 0, 0, 0.08) !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.9) !important;
+    }
+
+    /* 🔴 YOUTUBE-STYLE ACTIVE PILL INSIDE FLOATING DOCK */
+    .yt-nav-active-pill {
+      border-radius: 9999px !important;
+      transform: scale(1.04) !important;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+
+    body.dark .yt-nav-active-pill,
+    body.theme-neu-dark .yt-nav-active-pill,
+    html.dark .yt-nav-active-pill,
+    html.theme-neu-dark .yt-nav-active-pill {
+      background: rgba(255, 255, 255, 0.18) !important;
+      border: 1px solid rgba(255, 255, 255, 0.14) !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+    }
+    body.dark .yt-nav-active-pill *,
+    body.theme-neu-dark .yt-nav-active-pill * {
+      color: #ffffff !important;
+    }
+
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .yt-nav-active-pill,
+    html.theme-neu-light:not(.dark):not(.theme-neu-dark) .yt-nav-active-pill {
+      background: #121316 !important;
+      border: 1px solid rgba(0, 0, 0, 0.15) !important;
+      color: #ffffff !important;
+      box-shadow: 0 3px 10px rgba(18, 19, 22, 0.25) !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .yt-nav-active-pill * {
+      color: #ffffff !important;
+    }
+
+    /* ↔️ SCREEN SLIDE ANIMATIONS FOR SWIPE & TAB SWITCH */
+    @keyframes ytSlideInForward {
+      0% {
+        transform: translate3d(28px, 0, 0);
+        opacity: 0.7;
+      }
+      100% {
+        transform: translate3d(0, 0, 0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes ytSlideInBackward {
+      0% {
+        transform: translate3d(-28px, 0, 0);
+        opacity: 0.7;
+      }
+      100% {
+        transform: translate3d(0, 0, 0);
+        opacity: 1;
+      }
+    }
+
+    .yt-slide-forward {
+      animation: ytSlideInForward 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      will-change: transform, opacity;
+    }
+
+    .yt-slide-backward {
+      animation: ytSlideInBackward 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      will-change: transform, opacity;
     }
 
     * {
@@ -724,6 +809,6 @@
   </script>
 
   <!-- React App -->
-  <script type="text/babel" src="/static/app.js?v=62"></script>
+  <script type="text/babel" src="/static/app.js?v=63"></script>
 </body>
 </html>

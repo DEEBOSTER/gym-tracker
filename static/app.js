@@ -219,7 +219,7 @@ window.fetch = function(input, init = {}) {
   return _origFetch(input, init);
 };
 
-const { useState, useEffect, useRef, useMemo } = React;
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
 // --- TELEGRAM WEBAPP & HAPTIC HELPERS ---
 const tg = window.Telegram?.WebApp;
@@ -313,6 +313,11 @@ const cleanNumericInput = (val, isFloat = false) => {
 
 // --- ICONS (SVG) ---
 const Icons = {
+  Home: ({ active }) => (
+    <svg className="w-6 h-6" viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth={active ? "0" : "2"} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1v-9.5z" />
+    </svg>
+  ),
   Dumbbell: () => (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10M8 5v14M16 5v14M20 7v10M8 12h8" />
@@ -5204,6 +5209,231 @@ function App() {
   const [showGamificationModal, setShowGamificationModal] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
 
+  const isInWorkoutFocus = !!activeWorkout && !isMinimized && activeTab === 'workout';
+
+  const MAIN_TABS = useMemo(() => ['workout', 'analytics', 'history', 'exercises', 'profile'], []);
+  const [slideDirection, setSlideDirection] = useState('forward'); // 'forward' | 'backward'
+  const [touchOffset, setTouchOffset] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
+  const touchStateRef = useRef(null);
+
+  const switchTab = useCallback((newTab) => {
+    if (!['workout', 'analytics', 'history', 'exercises', 'profile'].includes(newTab)) return;
+    if (newTab === activeTab) return;
+    const tabs = ['workout', 'analytics', 'history', 'exercises', 'profile'];
+    const oldIdx = tabs.indexOf(activeTab);
+    const newIdx = tabs.indexOf(newTab);
+    if (oldIdx !== -1 && newIdx !== -1) {
+      setSlideDirection(newIdx > oldIdx ? 'forward' : 'backward');
+    }
+    setActiveTab(newTab);
+    try {
+      window.location.hash = newTab;
+    } catch (e) {}
+  }, [activeTab]);
+
+  useEffect(() => {
+    const handleHash = () => {
+      try {
+        const hash = window.location.hash.replace('#', '').toLowerCase();
+        if (['workout', 'analytics', 'history', 'exercises', 'profile'].includes(hash) && hash !== activeTab) {
+          switchTab(hash);
+        }
+      } catch (e) {}
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, [activeTab, switchTab]);
+
+  const handleTouchStart = useCallback((e) => {
+    if (isInWorkoutFocus || showAccountModal || showGamificationModal || showOnboardingModal) return;
+    if (!e.touches || e.touches.length !== 1) return;
+
+    const touch = e.touches[0];
+    const target = e.target;
+
+    // Ignore horizontal swipe if initiated on interactive/scrollable controls or dialogs
+    if (target && target.closest && target.closest('input, textarea, select, range, [data-no-swipe], .no-swipe, .overflow-x-auto, .overflow-x-scroll, .recharts-responsive-container, .recharts-wrapper, [role="dialog"], .modal-backdrop')) {
+      touchStateRef.current = { isIgnored: true };
+      return;
+    }
+
+    touchStateRef.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      currentX: touch.clientX,
+      currentY: touch.clientY,
+      startTime: Date.now(),
+      isHorizontal: false,
+      isVertical: false,
+      isIgnored: false,
+    };
+  }, [isInWorkoutFocus, showAccountModal, showGamificationModal, showOnboardingModal]);
+
+  const handleTouchMove = useCallback((e) => {
+    const state = touchStateRef.current;
+    if (!state || state.isIgnored || !e.touches || e.touches.length !== 1) return;
+
+    const touch = e.touches[0];
+    state.currentX = touch.clientX;
+    state.currentY = touch.clientY;
+
+    const dx = state.currentX - state.startX;
+    const dy = state.currentY - state.startY;
+
+    // Determine gesture direction
+    if (!state.isHorizontal && !state.isVertical) {
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) {
+        state.isVertical = true;
+        return;
+      }
+      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        state.isHorizontal = true;
+        setIsSwiping(true);
+      }
+    }
+
+    if (state.isHorizontal) {
+      const currentIdx = MAIN_TABS.indexOf(activeTab);
+      let offset = dx;
+      // Rubber-band resistance at edges
+      if ((currentIdx === 0 && dx > 0) || (currentIdx === MAIN_TABS.length - 1 && dx < 0)) {
+        offset = dx * 0.25;
+      } else {
+        offset = dx * 0.75;
+      }
+      offset = Math.max(-130, Math.min(130, offset));
+      setTouchOffset(offset);
+    }
+  }, [activeTab, MAIN_TABS]);
+
+  const handleTouchEnd = useCallback(() => {
+    const state = touchStateRef.current;
+    if (!state || state.isIgnored) {
+      touchStateRef.current = null;
+      setTouchOffset(0);
+      setIsSwiping(false);
+      return;
+    }
+
+    if (state.isHorizontal) {
+      const dx = state.currentX - state.startX;
+      const elapsed = Date.now() - state.startTime;
+      const velocity = dx / Math.max(1, elapsed); // px/ms
+      const currentIdx = MAIN_TABS.indexOf(activeTab);
+
+      if ((dx < -45 || velocity < -0.3) && currentIdx < MAIN_TABS.length - 1) {
+        switchTab(MAIN_TABS[currentIdx + 1]);
+        try { triggerHaptic('light'); } catch (e) {}
+      } else if ((dx > 45 || velocity > 0.3) && currentIdx > 0) {
+        switchTab(MAIN_TABS[currentIdx - 1]);
+        try { triggerHaptic('light'); } catch (e) {}
+      }
+    }
+
+    touchStateRef.current = null;
+    setTouchOffset(0);
+    setIsSwiping(false);
+  }, [activeTab, MAIN_TABS, switchTab]);
+
+  const userInitial = useMemo(() => {
+    try {
+      const n = (userProfile?.name || getTelegramUser()?.name || '').trim();
+      if (!n || n === 'Gym Athlete' || n === 'Атлет') return 'Д';
+      if (n.toUpperCase().startsWith('D')) return 'Д';
+      return n.charAt(0).toUpperCase();
+    } catch (e) {
+      return 'Д';
+    }
+  }, [userProfile?.name]);
+
+  const navItems = useMemo(() => [
+    {
+      id: 'workout',
+      label: 'Главная',
+      render: (active) => (
+        <svg 
+          className="w-6 h-6 transition-transform" 
+          viewBox="0 0 24 24" 
+          fill={active ? "currentColor" : "none"} 
+          stroke="currentColor" 
+          strokeWidth={active ? "0" : "2"} 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          <path d="M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1v-9.5z" />
+        </svg>
+      )
+    },
+    {
+      id: 'analytics',
+      label: 'Анализ',
+      render: (active) => (
+        <svg 
+          className="w-5 h-5 transition-transform" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth={active ? "2.5" : "2"} 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          <path d="M18 20V10M12 20V4M6 20v-6" />
+        </svg>
+      )
+    },
+    {
+      id: 'history',
+      label: 'История',
+      render: (active) => (
+        <svg 
+          className="w-5 h-5 transition-transform" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth={active ? "2.5" : "2"} 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      )
+    },
+    {
+      id: 'exercises',
+      label: 'База',
+      render: (active) => (
+        <div className="relative flex items-center justify-center">
+          <svg 
+            className="w-5 h-5 transition-transform" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth={active ? "2.5" : "2"} 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+          >
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15zM8 7h8M8 11h6" />
+          </svg>
+          {activeWorkout && (
+            <span className="absolute -top-1.5 -right-2 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse ring-2 ring-[var(--neu-surface)]" />
+          )}
+        </div>
+      )
+    },
+    {
+      id: 'profile',
+      label: 'О себе',
+      render: (active) => (
+        <div className={`w-7 h-7 rounded-full bg-[#0284c7] text-white flex items-center justify-center font-black text-xs shadow-sm transition-transform ${
+          active ? 'ring-2 ring-white/90 scale-105' : 'opacity-90 hover:opacity-100'
+        }`}>
+          {userInitial}
+        </div>
+      )
+    }
+  ], [activeWorkout, userInitial]);
+
   const isLocalOnboarded = (initialCachedProfile && initialCachedProfile.onboarding_completed === 1) || 
                            localStorage.getItem('gym_tracker_onboarded_' + currentUserId) === '1';
 
@@ -5421,8 +5651,6 @@ function App() {
       setLoading(false);
     }
   };
-
-  const isInWorkoutFocus = !!activeWorkout && !isMinimized && activeTab === 'workout';
   
   const hasOnboarded = isLocalOnboarded || (userProfile && userProfile.onboarding_completed === 1);
   const needsOnboarding = showOnboardingModal || !hasOnboarded;
@@ -5486,7 +5714,7 @@ function App() {
           <div className="flex items-center space-x-1.5 shrink-0">
             {activeWorkout ? (
               <button 
-                onClick={() => { setIsMinimized(false); setActiveTab('workout'); }}
+                onClick={() => { setIsMinimized(false); switchTab('workout'); }}
                 className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-[#fc4c02] text-white font-black text-xs shadow-md shadow-[#fc4c02]/30 active:scale-95 transition"
               >
                 <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
@@ -5513,7 +5741,7 @@ function App() {
             {/* Profile & Settings Pill */}
             <button
               type="button"
-              onClick={() => setActiveTab('profile')}
+              onClick={() => switchTab('profile')}
               className="px-2.5 py-1 rounded-full neu-btn flex items-center space-x-1 font-mono transition active:scale-95 text-[var(--neu-text-primary)]"
               title="Профиль и настройки"
             >
@@ -5524,9 +5752,21 @@ function App() {
         </header>
       )}
 
-      {/* Main Content Area */}
-      <main className={`flex-1 max-w-lg mx-auto w-full px-3.5 ${isInWorkoutFocus ? 'pt-safe-top pt-2' : 'pt-2'}`}>
-        <>
+      {/* Main Content Area with Swipe Gestures & Slide Animations */}
+      <main 
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        className={`flex-1 max-w-lg mx-auto w-full px-3.5 ${isInWorkoutFocus ? 'pt-safe-top pt-2' : 'pt-2'} overflow-x-hidden`}
+        style={touchOffset !== 0 ? {
+          transform: `translate3d(${touchOffset}px, 0, 0)`,
+          transition: isSwiping ? 'none' : 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
+        } : (isSwiping ? undefined : {
+          transition: 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
+        })}
+      >
+        <div key={activeTab} className={slideDirection === 'forward' ? 'yt-slide-forward' : 'yt-slide-backward'}>
           {activeTab === 'workout' && (
             <GuidedWorkoutScreen 
               activeWorkout={activeWorkout} 
@@ -5541,7 +5781,7 @@ function App() {
               theme={theme}
               onToggleTheme={toggleTheme}
               workouts={historyWorkouts}
-              onNavigateTab={setActiveTab}
+              onNavigateTab={switchTab}
               onOpenGamification={() => setShowGamificationModal(true)}
             />
           )}
@@ -5581,47 +5821,39 @@ function App() {
               }}
             />
           )}
-        </>
+        </div>
       </main>
 
-      {/* Bottom Fixed Navigation Bar (Hidden during active workout focus) */}
+      {/* Bottom Fixed Navigation Bar (YouTube Floating Pill Style, Hidden during active workout focus) */}
       {!isInWorkoutFocus && (
-        <nav className="safe-dock-bar">
-          <div className="max-w-lg mx-auto px-2 pt-1 pb-0.5">
-            <div className="grid grid-cols-5 items-center w-full gap-1">
-              <NavButton 
-                active={activeTab === 'workout'} 
-                onClick={() => { setIsMinimized(false); setActiveTab('workout'); }}
-                icon={<Icons.Dumbbell />}
-                label="Тренинг"
-                badge={activeWorkout ? "•" : null}
-              />
-              <NavButton 
-                active={activeTab === 'analytics'} 
-                onClick={() => setActiveTab('analytics')}
-                icon={<Icons.Chart />}
-                label="Анализ"
-              />
-              <NavButton 
-                active={activeTab === 'history'} 
-                onClick={() => setActiveTab('history')}
-                icon={<Icons.History />}
-                label="История"
-              />
-              <NavButton 
-                active={activeTab === 'exercises'} 
-                onClick={() => setActiveTab('exercises')}
-                icon={<Icons.List />}
-                label="База"
-              />
-              <NavButton 
-                active={activeTab === 'profile'} 
-                onClick={() => setActiveTab('profile')}
-                icon={<Icons.User />}
-                label="О себе"
-              />
-            </div>
-          </div>
+        <nav className="safe-dock-bar" aria-label="YouTube Navigation Dock">
+          {navItems.map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  if (item.id === 'workout') {
+                    setIsMinimized(false);
+                  }
+                  switchTab(item.id);
+                  try { triggerHaptic('light'); } catch (e) {}
+                }}
+                className="relative flex-1 h-full flex items-center justify-center py-1 cursor-pointer focus:outline-none select-none"
+                title={item.label}
+                aria-label={item.label}
+              >
+                <div className={`flex items-center justify-center w-14 h-9 rounded-full transition-all duration-200 ${
+                  isActive 
+                    ? 'yt-nav-active-pill' 
+                    : 'text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white opacity-70 hover:opacity-100 active:scale-95'
+                }`}>
+                  {item.render(isActive)}
+                </div>
+              </button>
+            );
+          })}
         </nav>
       )}
 
@@ -5648,26 +5880,22 @@ function NavButton({ active, onClick, icon, label, badge }) {
     <button
       type="button"
       onClick={onClick}
-      className={`relative w-full flex flex-col items-center justify-center py-1.5 px-0.5 rounded-2xl transition-all duration-150 active:scale-95 group cursor-pointer ${
-        active
-          ? 'nav-btn-active font-black'
-          : 'text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 font-medium'
-      }`}
+      className="relative flex-1 h-full flex items-center justify-center py-1 cursor-pointer focus:outline-none select-none"
+      title={label}
+      aria-label={label}
     >
-      <div className="relative">
-        <div className={`transition-transform duration-150 ${active ? 'scale-110 text-[#fc4c02]' : 'group-hover:scale-105'}`}>
+      <div className={`flex items-center justify-center w-14 h-9 rounded-full transition-all duration-200 ${
+        active
+          ? 'yt-nav-active-pill'
+          : 'text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white opacity-70 hover:opacity-100 active:scale-95'
+      }`}>
+        <div className="relative flex items-center justify-center">
           {icon}
+          {badge && (
+            <span className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse ring-2 ring-[var(--neu-surface)]" />
+          )}
         </div>
-        {badge && (
-          <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-[#fc4c02] animate-pulse ring-2 ring-white dark:ring-gym-900" />
-        )}
       </div>
-      <span className={`text-[10px] mt-0.5 tracking-tight truncate max-w-full ${active ? 'font-black' : 'font-semibold'}`}>
-        {label}
-      </span>
-      {active && (
-        <span className="w-1.5 h-1 rounded-full bg-[#fc4c02] mt-0.5 shadow-sm shadow-[#fc4c02]" />
-      )}
     </button>
   );
 }
