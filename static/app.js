@@ -1508,7 +1508,7 @@ function EditMealModal({ meal, isOpen, onClose, onSave, onDelete }) {
     }
   };
 
-  return (
+  const modalContent = (
     <div 
       className="fixed inset-0 z-[70] bg-black/85 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-150"
       onClick={onClose}
@@ -1760,6 +1760,10 @@ function EditMealModal({ meal, isOpen, onClose, onSave, onDelete }) {
       </div>
     </div>
   );
+
+  return typeof ReactDOM !== 'undefined' && ReactDOM.createPortal
+    ? ReactDOM.createPortal(modalContent, document.body)
+    : modalContent;
 }
 
 // ==========================================
@@ -2438,7 +2442,7 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
   const currentCalcF = analysisResult ? Math.round((parseFloat(analysisResult.per_100g?.fat) || (parseFloat(analysisResult.total?.fat) / ((analysisResult.portion_grams || 100) / 100))) * currentMult * 10) / 10 : 0;
   const currentCalcC = analysisResult ? Math.round((parseFloat(analysisResult.per_100g?.carbs) || (parseFloat(analysisResult.total?.carbs) / ((analysisResult.portion_grams || 100) / 100))) * currentMult * 10) / 10 : 0;
 
-  return (
+  const modalContent = (
     <div 
       className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-md flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-150"
       onClick={handleClose}
@@ -3320,6 +3324,10 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
       )}
     </div>
   );
+
+  return typeof ReactDOM !== 'undefined' && ReactDOM.createPortal
+    ? ReactDOM.createPortal(modalContent, document.body)
+    : modalContent;
 }
 
 // 6. Circular Streak Dial Widget (Accurate Calculation + Interactive Details)
@@ -5757,9 +5765,7 @@ function App() {
         style={touchOffset !== 0 ? {
           transform: `translate3d(${touchOffset}px, 0, 0)`,
           transition: isSwiping ? 'none' : 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
-        } : (isSwiping ? undefined : {
-          transition: 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
-        })}
+        } : undefined}
       >
         <div key={activeTab} className={slideDirection === 'forward' ? 'yt-slide-forward' : 'yt-slide-backward'}>
           {activeTab === 'workout' && (

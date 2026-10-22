@@ -203,7 +203,7 @@
         opacity: 0.7;
       }
       100% {
-        transform: translate3d(0, 0, 0);
+        transform: none;
         opacity: 1;
       }
     }
@@ -214,19 +214,17 @@
         opacity: 0.7;
       }
       100% {
-        transform: translate3d(0, 0, 0);
+        transform: none;
         opacity: 1;
       }
     }
 
     .yt-slide-forward {
-      animation: ytSlideInForward 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      will-change: transform, opacity;
+      animation: ytSlideInForward 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
 
     .yt-slide-backward {
-      animation: ytSlideInBackward 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      will-change: transform, opacity;
+      animation: ytSlideInBackward 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
 
     * {
@@ -809,6 +807,6 @@
   </script>
 
   <!-- React App -->
-  <script type="text/babel" src="/static/app.js?v=64"></script>
+  <script type="text/babel" src="/static/app.js?v=65"></script>
 </body>
 </html>
