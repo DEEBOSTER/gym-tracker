@@ -5908,6 +5908,22 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   // Navigation inside the plan
   const [currentPlanIndex, setCurrentPlanIndex] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState('a');
+  const [selectedPeriodizationWeek, setSelectedPeriodizationWeek] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gym_tracker_periodization_week');
+      return saved ? parseInt(saved, 10) : 1;
+    } catch (e) {
+      return 1;
+    }
+  });
+
+  const handleSelectWeek = (w) => {
+    setSelectedPeriodizationWeek(w);
+    try {
+      localStorage.setItem('gym_tracker_periodization_week', String(w));
+    } catch (e) {}
+  };
+
   const [selectedDayType, setSelectedDayType] = useState(() => {
     const rec = coachDays.find(d => d.is_recommended);
     return rec?.type || 'push';
@@ -5937,6 +5953,11 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
     }
     if (rec?.variant) {
       setSelectedVariant(rec.variant);
+    }
+    if (rec?.recommended_periodization_week && rec?.variant === 'c') {
+      if (rec.periodization_week) {
+        setSelectedPeriodizationWeek(rec.periodization_week);
+      }
     }
   }, [coachDays]);
 
@@ -6287,13 +6308,13 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
     } catch (e) {}
   };
 
-  // Start selected day with variant
-  const handleStartDay = async (dayType, variant = 'a') => {
+  // Start selected day with variant and periodization week
+  const handleStartDay = async (dayType, variant = 'a', week = 1) => {
     try {
       const res = await fetch('/api/coach/start-day', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ day_type: dayType, variant: variant })
+        body: JSON.stringify({ day_type: dayType, variant: variant, week: week })
       });
       if (res.ok) {
         setCurrentPlanIndex(0);
@@ -6585,7 +6606,13 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   // ==========================================
   if (!activeWorkout || isMinimized) {
     const recommendedDay = coachDays.find(d => d.is_recommended) || coachDays[0];
-    const filteredDays = coachDays.filter(d => d.variant === selectedVariant);
+    const filteredDays = coachDays.filter(d => {
+      if (d.variant !== selectedVariant) return false;
+      if (selectedVariant === 'c') {
+        return d.periodization_week === selectedPeriodizationWeek;
+      }
+      return true;
+    });
     const displayDays = filteredDays.length > 0 ? filteredDays : coachDays.slice(0, 3);
 
     return (
@@ -6663,40 +6690,57 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           </p>
         </div>
 
-        {/* Strava Segment Control: Variant A vs Variant B */}
+        {/* Strava Segment Control: Variant A vs Variant B vs Variant C */}
         <div className="bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-2xl p-1.5 shadow-md">
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-3 gap-1.5">
             <button
               onClick={() => setSelectedVariant('a')}
-              className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 cursor-pointer ${
+              className={`py-2 px-2 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 cursor-pointer ${
                 selectedVariant === 'a'
                   ? 'bg-[#fc4c02] text-white font-black shadow-md shadow-[#fc4c02]/25'
                   : 'bg-transparent text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200'
               }`}
             >
               <div className="flex items-center space-x-1">
-                <span>⚡ Вариант А</span>
+                <span>⚡ Вар. А</span>
                 {recommendedDay?.variant === 'a' && <span className="text-[10px]">🔥</span>}
               </div>
-              <span className={`text-[9px] uppercase tracking-wider mt-0.5 ${selectedVariant === 'a' ? 'text-white/85' : 'text-slate-400 dark:text-zinc-500'}`}>
-                Базовый силовой
+              <span className={`text-[9px] uppercase tracking-wider mt-0.5 truncate ${selectedVariant === 'a' ? 'text-white/85' : 'text-slate-400 dark:text-zinc-500'}`}>
+                Базовый
               </span>
             </button>
 
             <button
               onClick={() => setSelectedVariant('b')}
-              className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 cursor-pointer ${
+              className={`py-2 px-2 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 cursor-pointer ${
                 selectedVariant === 'b'
                   ? 'bg-[#fc4c02] text-white font-black shadow-md shadow-[#fc4c02]/25'
                   : 'bg-transparent text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200'
               }`}
             >
               <div className="flex items-center space-x-1">
-                <span>🔄 Вариант Б</span>
+                <span>🔄 Вар. Б</span>
                 {recommendedDay?.variant === 'b' && <span className="text-[10px]">🔥</span>}
               </div>
-              <span className={`text-[9px] uppercase tracking-wider mt-0.5 ${selectedVariant === 'b' ? 'text-white/85' : 'text-slate-400 dark:text-zinc-500'}`}>
-                Смена углов & памп
+              <span className={`text-[9px] uppercase tracking-wider mt-0.5 truncate ${selectedVariant === 'b' ? 'text-white/85' : 'text-slate-400 dark:text-zinc-500'}`}>
+                Углы & Памп
+              </span>
+            </button>
+
+            <button
+              onClick={() => setSelectedVariant('c')}
+              className={`py-2 px-2 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center active:scale-95 cursor-pointer ${
+                selectedVariant === 'c'
+                  ? 'bg-[#fc4c02] text-white font-black shadow-md shadow-[#fc4c02]/25'
+                  : 'bg-transparent text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200'
+              }`}
+            >
+              <div className="flex items-center space-x-1">
+                <span>📈 Вар. В</span>
+                {recommendedDay?.variant === 'c' && <span className="text-[10px]">🔥</span>}
+              </div>
+              <span className={`text-[9px] uppercase tracking-wider mt-0.5 truncate ${selectedVariant === 'c' ? 'text-white/85' : 'text-slate-400 dark:text-zinc-500'}`}>
+                Периодизация
               </span>
             </button>
           </div>
@@ -6710,10 +6754,73 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
               </span>
             ) : (
               <span className="text-slate-500 dark:text-zinc-400 text-[10.5px]">
-                Чередование вариантов развивает мышцы под разными углами
+                {selectedVariant === 'c'
+                  ? 'Волновая периодизация: Неделя 1 (Лёгкая) → 2 (Средняя) → 3 (Тяжёлая)'
+                  : 'Чередование вариантов развивает мышцы под разными углами'}
               </span>
             )}
           </div>
+
+          {/* 3-Week Periodization Wave Selector (When Variant C is selected) */}
+          {selectedVariant === 'c' && (
+            <div className="mt-2 pt-2 border-t border-[var(--neu-border-subtle)] space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] px-0.5">
+                <span className="font-bold text-slate-700 dark:text-zinc-300 flex items-center space-x-1">
+                  <span>🌊 3-недельный цикл:</span>
+                </span>
+                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                  {coachDays.find(d => d.variant === 'c' && d.is_recommended)
+                    ? `План тренера: Неделя ${coachDays.find(d => d.variant === 'c' && d.is_recommended)?.periodization_week}`
+                    : 'Цикл: Лёгкая → Средняя → Тяжёлая'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { week: 1, label: 'Нед. 1', title: 'Лёгкая', icon: '🟢', reps: '12–15 повт.', rir: 'RIR 3–4' },
+                  { week: 2, label: 'Нед. 2', title: 'Средняя', icon: '🟡', reps: '8–10 повт.', rir: 'RIR 2' },
+                  { week: 3, label: 'Нед. 3', title: 'Тяжёлая', icon: '🔴', reps: '5–6 повт.', rir: 'RIR 0–1' }
+                ].map((w) => {
+                  const isWeekActive = selectedPeriodizationWeek === w.week;
+                  const isRecWeek = coachDays.some(d => d.variant === 'c' && d.periodization_week === w.week && d.is_recommended);
+
+                  return (
+                    <button
+                      key={w.week}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('light');
+                        handleSelectWeek(w.week);
+                      }}
+                      className={`py-2 px-1.5 rounded-xl text-center transition-all flex flex-col items-center justify-center active:scale-95 cursor-pointer relative ${
+                        isWeekActive
+                          ? 'bg-[#fc4c02]/15 border-2 border-[#fc4c02] shadow-md shadow-[#fc4c02]/20'
+                          : 'bg-[var(--neu-inset-bg)] hover:bg-white/[0.04] border border-[var(--neu-border-subtle)]'
+                      }`}
+                    >
+                      {isRecWeek && (
+                        <span className="absolute -top-1.5 -right-1 text-[8px] font-black px-1.5 py-0.2 rounded-full bg-[#fc4c02] text-white uppercase tracking-tighter shadow">
+                          План
+                        </span>
+                      )}
+                      <div className="flex items-center space-x-1 text-xs font-black">
+                        <span>{w.icon}</span>
+                        <span className={isWeekActive ? 'text-slate-900 dark:text-white font-black' : 'text-slate-600 dark:text-zinc-400 font-bold'}>
+                          {w.label}
+                        </span>
+                      </div>
+                      <span className={`text-[10px] font-black mt-0.5 ${isWeekActive ? 'text-[#fc4c02]' : 'text-slate-500 dark:text-zinc-400'}`}>
+                        {w.title}
+                      </span>
+                      <span className={`text-[9px] font-mono mt-0.5 ${isWeekActive ? 'text-slate-800 dark:text-zinc-200 font-bold' : 'text-slate-400 dark:text-zinc-500'}`}>
+                        {w.reps}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Athletic Day Selector Tabs (Strava Segment Picker) */}
@@ -6760,7 +6867,13 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
         {/* Selected Day Visual Program Card */}
         {(() => {
-          const activeDay = coachDays.find(d => d.type === selectedDayType && d.variant === selectedVariant) 
+          const activeDay = coachDays.find(d => {
+            if (d.type !== selectedDayType || d.variant !== selectedVariant) return false;
+            if (selectedVariant === 'c') {
+              return d.periodization_week === selectedPeriodizationWeek;
+            }
+            return true;
+          }) 
             || displayDays.find(d => d.type === selectedDayType) 
             || displayDays[0] 
             || coachDays[0];
@@ -6785,7 +6898,11 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
                       </span>
                     )}
                     <span className="text-[10px] font-mono font-black text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 uppercase">
-                      {activeDay.variant === 'a' ? 'Вариант А · Базовый' : 'Вариант Б · Памп'}
+                      {activeDay.variant === 'a' 
+                        ? 'Вариант А · Базовый' 
+                        : activeDay.variant === 'b' 
+                          ? 'Вариант Б · Смена углов' 
+                          : `Вариант В · Неделя ${activeDay.periodization_week || selectedPeriodizationWeek || 1} (${activeDay.load_type === 'light' ? 'Лёгкая' : activeDay.load_type === 'heavy' ? 'Тяжёлая' : 'Средняя'})`}
                     </span>
                   </div>
 
@@ -7025,11 +7142,13 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
 
               {/* Primary Start Workout Action (Strava CTA) */}
               <button
-                onClick={() => handleStartDay(activeDay.type, activeDay.variant)}
+                onClick={() => handleStartDay(activeDay.type, activeDay.variant, activeDay.periodization_week || selectedPeriodizationWeek || 1)}
                 className="w-full py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-xl shadow-[#fc4c02]/30 bg-[#fc4c02] hover:bg-[#e04302] text-white active:scale-98 cursor-pointer"
               >
                 <Icons.Play className="w-4 h-4 fill-current" />
-                <span>НАЧАТЬ ТРЕНИРОВКУ {activeDay.type.toUpperCase()} ({activeDay.variant.toUpperCase()})</span>
+                <span>
+                  НАЧАТЬ ТРЕНИРОВКУ {activeDay.type.toUpperCase()} ({activeDay.variant.toUpperCase()}{activeDay.variant === 'c' ? ` · НЕДЕЛЯ ${activeDay.periodization_week || selectedPeriodizationWeek || 1}` : ''})
+                </span>
               </button>
             </div>
           );
