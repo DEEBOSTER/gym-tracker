@@ -1224,14 +1224,26 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default", loa
                 days_ago = None
 
         # 3. Retrieve sets for progression analysis
+        # Prioritize completed workouts (w.end_time IS NOT NULL) so in-progress warmups don't distort baseline
         cursor.execute("""
             SELECT s.weight, s.reps, s.workout_id, COALESCE(s.set_type, 'normal') as set_type, s.created_at 
             FROM workout_sets s
             JOIN workouts w ON s.workout_id = w.id
-            WHERE s.exercise_id = ? AND w.user_id = ?
-            ORDER BY s.workout_id DESC, s.set_number ASC;
+            WHERE s.exercise_id = ? AND w.user_id = ? AND w.end_time IS NOT NULL
+            ORDER BY w.id DESC, s.set_number ASC;
         """, (ex_id, uid))
         sets = cursor.fetchall()
+        if not sets:
+            # Fallback to any workouts if no completed ones exist yet
+            cursor.execute("""
+                SELECT s.weight, s.reps, s.workout_id, COALESCE(s.set_type, 'normal') as set_type, s.created_at 
+                FROM workout_sets s
+                JOIN workouts w ON s.workout_id = w.id
+                WHERE s.exercise_id = ? AND w.user_id = ?
+                ORDER BY w.id DESC, s.set_number ASC;
+            """, (ex_id, uid))
+            sets = cursor.fetchall()
+
         if sets:
             last_wid = sets[0]["workout_id"]
             recent_sets = [s for s in sets if s["workout_id"] == last_wid]
@@ -1249,10 +1261,17 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default", loa
 
             last_sets_summary = [format_set_badge(s) for s in recent_sets]
             
-            # Use working sets for progression (exclude warmups)
+            # Use working sets for progression (strictly exclude warmups)
             working_sets = [s for s in recent_sets if s["set_type"] != "warmup"]
-            eval_sets = working_sets if working_sets else recent_sets
+            eval_sets = working_sets
+            if not eval_sets:
+                # If latest workout had only warmups, search for previous workout with working sets
+                other_sets = [s for s in sets if s["set_type"] != "warmup"]
+                if other_sets:
+                    old_wid = other_sets[0]["workout_id"]
+                    eval_sets = [s for s in other_sets if s["workout_id"] == old_wid]
 
+        if sets and eval_sets:
             max_w = max(s["weight"] for s in eval_sets)
             avg_reps = sum(s["reps"] for s in eval_sets) / len(eval_sets)
             last_weight = max_w

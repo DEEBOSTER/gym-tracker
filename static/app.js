@@ -3900,7 +3900,16 @@ function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = n
   const prE1rm = parseFloat(currentPlanEx.pr_e1rm) || 0;
 
   // Filter working sets
-  const workingSets = currentSets.filter(s => (s.set_type || 'normal') !== 'warmup');
+  // Smart warmup detection:
+  // 1) Explicit 'warmup' set type
+  // 2) If user forgot to select 'warmup' and logged set 1 with weight <= 60% of baseRecWeight (e.g. 20 kg bar when working weight is 60 kg)
+  const workingSets = currentSets.filter((s, idx) => {
+    if ((s.set_type || 'normal') === 'warmup') return false;
+    if (idx === 0 && baseRecWeight >= 30 && parseFloat(s.weight) <= baseRecWeight * 0.6) {
+      return false; // Auto-classify accidental normal as warmup!
+    }
+    return true;
+  });
   const completedCount = workingSets.length;
   const nextSetNum = completedCount + 1;
   const isFinalSet = nextSetNum === targetSets;
@@ -3923,11 +3932,17 @@ function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = n
   // If no working sets done yet (about to do Set 1)
   if (workingSets.length === 0) {
     const startE1rm = baseRecWeight > 0 ? Math.round(baseRecWeight * (1.0 + maxReps / 30.0) * 10) / 10 : 0;
-    let startMsg = isBodyweight && baseRecWeight === 0
-      ? `Подход 1 из ${targetSets}: свой вес (0 кг) на ${targetRepsStr} повт.`
-      : `Подход 1 из ${targetSets}: расчетный рабочий вес ${baseRecWeight} кг на ${targetRepsStr} повт. (расчетный 1ПМ: ~${startE1rm} кг).`;
-    if (currentPlanEx.recommendation_note) {
-      startMsg = `${currentPlanEx.recommendation_note} ${startMsg}`;
+    let startMsg = '';
+    if (currentSets.length > 0) {
+      const lastWarmup = currentSets[currentSets.length - 1];
+      startMsg = `Разминка зафиксирована (${lastWarmup.weight} кг × ${lastWarmup.reps} повт.). Переходим к рабочему подходу 1: расчетный вес ${baseRecWeight} кг на ${targetRepsStr} повт.`;
+    } else {
+      startMsg = isBodyweight && baseRecWeight === 0
+        ? `Подход 1 из ${targetSets}: свой вес (0 кг) на ${targetRepsStr} повт.`
+        : `Подход 1 из ${targetSets}: расчетный рабочий вес ${baseRecWeight} кг на ${targetRepsStr} повт. (расчетный 1ПМ: ~${startE1rm} кг).`;
+      if (currentPlanEx.recommendation_note) {
+        startMsg = `${currentPlanEx.recommendation_note} ${startMsg}`;
+      }
     }
     if (allTimePr > 0) {
       startMsg += ` 🏆 Ваш рекорд: ${allTimePr} кг.`;
@@ -3935,8 +3950,8 @@ function calculateNextSetAdvice(currentPlanEx, currentSets = [], userProfile = n
 
     return {
       status: 'START',
-      badge: isBodyweight && baseRecWeight === 0 ? 'СВОЙ ВЕС 🎯' : 'СТАРТОВЫЙ ВЕС 🎯',
-      badgeColor: 'bg-[#fc4c02]/15 text-[#fc4c02] border-[#fc4c02]/30',
+      badge: currentSets.length > 0 ? 'РАЗМИНКА ПРОЙДЕНА ✅' : (isBodyweight && baseRecWeight === 0 ? 'СВОЙ ВЕС 🎯' : 'СТАРТОВЫЙ ВЕС 🎯'),
+      badgeColor: currentSets.length > 0 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-black' : 'bg-[#fc4c02]/15 text-[#fc4c02] border-[#fc4c02]/30',
       recWeight: baseRecWeight,
       recReps: maxReps,
       recRest: isBarbellOrLegs ? 120 : isDumbbellOrSmall ? 60 : 90,
@@ -5994,7 +6009,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   // Current active exercise in the plan
   const currentPlanEx = plannedList[currentPlanIndex] || plannedList[0];
   const currentSets = setsByExercise[currentPlanEx?.name] || [];
-  const currentWorkingSets = currentSets.filter(s => (s.set_type || 'normal') !== 'warmup');
+  const currentWorkingSets = currentSets.filter((s, idx) => {
+    if ((s.set_type || 'normal') === 'warmup') return false;
+    const bW = parseFloat(currentPlanEx?.recommended_weight) || 20;
+    if (idx === 0 && bW >= 30 && parseFloat(s.weight) <= bW * 0.6) return false;
+    return true;
+  });
   const currentWorkingCount = currentWorkingSets.length;
 
   // Dynamic advice for the upcoming set based on performance in previous sets
@@ -6006,11 +6026,19 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
   useEffect(() => {
     if (currentPlanEx) {
       const curSets = setsByExercise[currentPlanEx.name] || [];
-      const wSets = curSets.filter(s => (s.set_type || 'normal') !== 'warmup');
+      const isBw = isBodyweightExercise(currentPlanEx.name);
+      const defaultW = (currentPlanEx.recommended_weight !== undefined && currentPlanEx.recommended_weight !== null)
+        ? currentPlanEx.recommended_weight
+        : (isBw ? 0 : 20);
+      const bW = parseFloat(defaultW) || 20;
+
+      const wSets = curSets.filter((s, idx) => {
+        if ((s.set_type || 'normal') === 'warmup') return false;
+        if (idx === 0 && bW >= 30 && parseFloat(s.weight) <= bW * 0.6) return false;
+        return true;
+      });
       
       setSetType('normal');
-
-      const isBw = isBodyweightExercise(currentPlanEx.name);
 
       if (wSets.length > 0) {
         const adv = calculateNextSetAdvice(currentPlanEx, curSets, userProfile);
@@ -6019,15 +6047,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, exerciseGuid
           setReps(adv.recReps);
         }
       } else {
-        const defaultW = (currentPlanEx.recommended_weight !== undefined && currentPlanEx.recommended_weight !== null)
-          ? currentPlanEx.recommended_weight
-          : (isBw ? 0 : 20);
         setWeight(defaultW);
         const targetRepsNum = parseInt(currentPlanEx.target_reps?.split('–')[1] || currentPlanEx.target_reps?.split('-')[0] || 10);
         setReps(targetRepsNum || 10);
       }
     }
-  }, [currentPlanIndex, activeWorkout?.id]);
+  }, [currentPlanIndex, activeWorkout?.id, setsByExercise[currentPlanEx?.name]?.length]);
 
   // Workout Session Duration Timer (Guaranteed 0-start & background persistent)
   useEffect(() => {
