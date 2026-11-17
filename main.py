@@ -1011,8 +1011,860 @@ PPL_PROGRAMS = {
                 "alternatives": ["Подъем ног в висе"]
             }
         ]
+    },
+# --- ONLYFITS SUITE ---
+    "fullbody_1": {
+        "key": "fullbody_1",
+        "program_id": "fullbody",
+        "program_title": "Onlyfits FullBody 3x",
+        "difficulty": "enthusiast",
+        "difficulty_badge": "🐥 Enthusiast",
+        "day_num": 1,
+        "type": "fullbody",
+        "variant": "a",
+        "title": "День 1: FullBody A (Базовый баланс)",
+        "focus": "Квадрицепс, грудь, спина в ширину, средняя дельта, пресс",
+        "exercises": [
+            {
+                "name": "Приседания со штангой на плечах",
+                "target_sets": 4,
+                "target_reps": "8–10",
+                "tip": "Базовый квадрицепс: колени по направлению носков, ровная спина",
+                "alternatives": ["Жим ногами в тренажере", "Приседания в Гакк-тренажере"]
+            },
+            {
+                "name": "Жим штанги лежа",
+                "target_sets": 3,
+                "target_reps": "8–10",
+                "tip": "Горизонтальный жим: сведение лопаток, контроль опускания",
+                "alternatives": ["Жим гантелей на горизонтальной скамье"]
+            },
+            {
+                "name": "Тяга верхнего блока к груди",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Вертикальная тяга: локти вниз к ребрам, раскрытие груди",
+                "alternatives": ["Подтягивания (турник / резина)", "Тяга верхнего блока параллельным хватом"]
+            },
+            {
+                "name": "Махи гантелями через стороны",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Изоляция средней дельты: подъем от локтей, секундная фиксация",
+                "alternatives": ["Тяга штанги к подбородку широким хватом"]
+            },
+            {
+                "name": "Скручивания на пресс в тренажере",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Выдох на скручивании, округление грудного отдела без рывков",
+                "alternatives": ["Подъем ног в висе"]
+            }
+        ]
+    },
+    "fullbody_2": {
+        "key": "fullbody_2",
+        "program_id": "fullbody",
+        "program_title": "Onlyfits FullBody 3x",
+        "difficulty": "enthusiast",
+        "difficulty_badge": "🐥 Enthusiast",
+        "day_num": 2,
+        "type": "fullbody",
+        "variant": "b",
+        "title": "День 2: FullBody B (Задняя линия & Руки)",
+        "focus": "Бицепс бедра, верх груди, широчайшие к поясу, руки",
+        "exercises": [
+            {
+                "name": "Румынская тяга",
+                "target_sets": 4,
+                "target_reps": "8–10",
+                "tip": "Таз отводится назад, гриф скользит по ногам, растяжение задней поверхности",
+                "alternatives": ["Сгибание ног сидя", "Сгибания ног в тренажере лежа"]
+            },
+            {
+                "name": "Жим гантелей на наклонной скамье (30°)",
+                "target_sets": 3,
+                "target_reps": "8–10",
+                "tip": "Акцент на верхний пучок груди: локти под 45 градусов",
+                "alternatives": ["Жим штанги на наклонной скамье"]
+            },
+            {
+                "name": "Горизонтальная тяга блока (V-хват)",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Тяга к поясу: сведение лопаток в пике, спина прямая",
+                "alternatives": ["Тяга гантели в наклоне одной рукой"]
+            },
+            {
+                "name": "Сгибания рук с EZ-грифом на бицепс стоя",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Локти зафиксированы у корпуса, подконтрольное опускание 2-3 сек",
+                "alternatives": ["Сгибания на скамье Скотта", "Молотки с гантелями"]
+            },
+            {
+                "name": "Разгибания рук на верхнем блоке с канатом",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Разведение каната внизу, фиксация латеральной головки трицепса",
+                "alternatives": ["Разгибания рук на блоке с V-рукоятью", "Французский жим со штангой лежа"]
+            }
+        ]
+    },
+    "fullbody_3": {
+        "key": "fullbody_3",
+        "program_id": "fullbody",
+        "program_title": "Onlyfits FullBody 3x",
+        "difficulty": "enthusiast",
+        "difficulty_badge": "🐥 Enthusiast",
+        "day_num": 3,
+        "type": "fullbody",
+        "variant": "c",
+        "title": "День 3: FullBody C (Углы, Плечи & Кор)",
+        "focus": "Унилатеральные ноги, жим на плечи, подтягивания, икры, кор",
+        "exercises": [
+            {
+                "name": "Болгарские сплит-приседания",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Опора на пятку передней ноги, наклон корпуса вперед для ягодиц",
+                "alternatives": ["Выпады вперед", "Гоблет-приседания"]
+            },
+            {
+                "name": "Жим гантелей сидя на плечи",
+                "target_sets": 3,
+                "target_reps": "8–10",
+                "tip": "Локти чуть вперед в плоскости лопаток, мощный жим вверх",
+                "alternatives": ["Армейский жим штанги стоя", "Жим на плечи в тренажере"]
+            },
+            {
+                "name": "Подтягивания (турник / резина)",
+                "target_sets": 3,
+                "target_reps": "6–8",
+                "tip": "Тяни грудью к перекладине, сводя лопатки",
+                "alternatives": ["Тяга верхнего блока параллельным хватом", "Тяга верхнего блока к груди"]
+            },
+            {
+                "name": "Подъем на носки стоя",
+                "target_sets": 3,
+                "target_reps": "15–20",
+                "tip": "Полная растяжка в нижней точке, 1 сек пауза на носках",
+                "alternatives": ["Подъем на носки в тренажере"]
+            },
+            {
+                "name": "Подъем ног в висе",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Подкручивание таза вверх, без махов и раскачки",
+                "alternatives": ["Скручивания на пресс в тренажере"]
+            }
+        ]
+    },
+    "upper_1": {
+        "key": "upper_1",
+        "program_id": "upper_lower",
+        "program_title": "Onlyfits Upper / Lower 4x",
+        "difficulty": "intermediate",
+        "difficulty_badge": "🐣 Intermediate",
+        "day_num": 1,
+        "type": "upper",
+        "variant": "a",
+        "title": "День 1: Верх A (Силовой жим & тяга)",
+        "focus": "Тяжелый горизонтальный жим, тяга штанги, плечи, руки",
+        "exercises": [
+            {
+                "name": "Жим штанги лежа",
+                "target_sets": 4,
+                "target_reps": "6–8",
+                "tip": "Силовой жим: жесткий мост, упор ногами в пол",
+                "alternatives": ["Жим гантелей на горизонтальной скамье"]
+            },
+            {
+                "name": "Тяга штанги в наклоне",
+                "target_sets": 4,
+                "target_reps": "6–8",
+                "tip": "Наклон корпуса 45°, тяга к низу живота",
+                "alternatives": ["Тяга Т-грифа с упором в грудь", "Тяга гантели в наклоне одной рукой"]
+            },
+            {
+                "name": "Армейский жим штанги стоя",
+                "target_sets": 3,
+                "target_reps": "8–10",
+                "tip": "Корпус как струна, штанга движется строго вверх",
+                "alternatives": ["Жим гантелей сидя на плечи"]
+            },
+            {
+                "name": "Французский жим со штангой лежа",
+                "target_sets": 3,
+                "target_reps": "8–10",
+                "tip": "Опускай гриф чуть за макушку головы, локти параллельны",
+                "alternatives": ["Разгибания рук на верхнем блоке с канатом"]
+            },
+            {
+                "name": "Сгибания рук с EZ-грифом на бицепс стоя",
+                "target_sets": 3,
+                "target_reps": "8–10",
+                "tip": "Чистая изоляция двуглавой мышцы, темп 2-0-1",
+                "alternatives": ["Сгибания на скамье Скотта"]
+            }
+        ]
+    },
+    "lower_1": {
+        "key": "lower_1",
+        "program_id": "upper_lower",
+        "program_title": "Onlyfits Upper / Lower 4x",
+        "difficulty": "intermediate",
+        "difficulty_badge": "🐣 Intermediate",
+        "day_num": 2,
+        "type": "lower",
+        "variant": "a",
+        "title": "День 2: Низ A (Квадрицепс & Пресс)",
+        "focus": "Присед со штангой, румынская тяга, выпады, икры, кор",
+        "exercises": [
+            {
+                "name": "Приседания со штангой на плечах",
+                "target_sets": 4,
+                "target_reps": "8–10",
+                "tip": "Глубина в параллель, пятки прижаты",
+                "alternatives": ["Жим ногами в тренажере"]
+            },
+            {
+                "name": "Румынская тяга",
+                "target_sets": 4,
+                "target_reps": "8–10",
+                "tip": "Таз назад, мощная растяжка задней поверхности",
+                "alternatives": ["Сгибание ног сидя"]
+            },
+            {
+                "name": "Выпады вперед",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Шаг назад, толчок пяткой опорной ноги",
+                "alternatives": ["Болгарские сплит-приседания"]
+            },
+            {
+                "name": "Подъем на носки в тренажере",
+                "target_sets": 3,
+                "target_reps": "15–20",
+                "tip": "Пауза в верхней точке на 2 счета",
+                "alternatives": ["Подъем на носки стоя"]
+            },
+            {
+                "name": "Скручивания на пресс в тренажере",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Мощный выдох при сокращении пресса",
+                "alternatives": ["Подъем ног в висе"]
+            }
+        ]
+    },
+    "upper_2": {
+        "key": "upper_2",
+        "program_id": "upper_lower",
+        "program_title": "Onlyfits Upper / Lower 4x",
+        "difficulty": "intermediate",
+        "difficulty_badge": "🐣 Intermediate",
+        "day_num": 3,
+        "type": "upper",
+        "variant": "b",
+        "title": "День 3: Верх B (Гипертрофия & Дельты)",
+        "focus": "Верх груди, вертикальная тяга, кроссовер, средняя дельта, руки",
+        "exercises": [
+            {
+                "name": "Жим гантелей на наклонной скамье (30°)",
+                "target_sets": 4,
+                "target_reps": "8–10",
+                "tip": "Скамья 30°, мощное сокращение верха груди",
+                "alternatives": ["Жим штанги на наклонной скамье"]
+            },
+            {
+                "name": "Тяга верхнего блока параллельным хватом",
+                "target_sets": 4,
+                "target_reps": "8–10",
+                "tip": "Нейтральный хват бережет плечи, локти к талии",
+                "alternatives": ["Тяга верхнего блока к груди"]
+            },
+            {
+                "name": "Сведение рук в кроссовере",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Пиковое сжатие грудных мышц на 1 сек",
+                "alternatives": ["Жим гантелей на горизонтальной скамье"]
+            },
+            {
+                "name": "Махи гантелями через стороны",
+                "target_sets": 4,
+                "target_reps": "12–15",
+                "tip": "Строгая изоляция средней дельты без читинга",
+                "alternatives": ["Тяга штанги к подбородку широким хватом"]
+            },
+            {
+                "name": "Молотки с гантелями",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Нейтральный хват развивает брахиалис и толщину руки",
+                "alternatives": ["Сгибания на скамье Скотта"]
+            }
+        ]
+    },
+    "lower_2": {
+        "key": "lower_2",
+        "program_id": "upper_lower",
+        "program_title": "Onlyfits Upper / Lower 4x",
+        "difficulty": "intermediate",
+        "difficulty_badge": "🐣 Intermediate",
+        "day_num": 4,
+        "type": "lower",
+        "variant": "b",
+        "title": "День 4: Низ B (Ягодичный мост & Гакк)",
+        "focus": "Ягодичный мостик, Гакк-присед, сгибания лежа, разгибания",
+        "exercises": [
+            {
+                "name": "Ягодичный мостик со штангой",
+                "target_sets": 4,
+                "target_reps": "10–12",
+                "tip": "Взгляд вперед, мощное сжатие ягодиц на 1-2 сек в верхней точке",
+                "alternatives": ["Румынская тяга", "Гиперэкстензия"]
+            },
+            {
+                "name": "Приседания в Гакк-тренажере",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Спина прижата к спинке, глубокий контролируемый сед",
+                "alternatives": ["Жим ногами в тренажере"]
+            },
+            {
+                "name": "Сгибания ног в тренажере лежа",
+                "target_sets": 4,
+                "target_reps": "10–12",
+                "tip": "Таз прижат к скамье, мощное сокращение бицепса бедра",
+                "alternatives": ["Сгибание ног сидя"]
+            },
+            {
+                "name": "Разгибания ног в тренажере",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Пиковое сокращение квадрицепса вверху",
+                "alternatives": ["Жим ногами в тренажере"]
+            },
+            {
+                "name": "Подъем ног в висе",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Подкручивание таза, мощный акцент на прямую мышцу живота",
+                "alternatives": ["Скручивания на пресс в тренажере"]
+            }
+        ]
+    },
+    "push_ppl": {
+        "key": "push_ppl",
+        "program_id": "ppl",
+        "program_title": "Onlyfits Push / Pull / Legs",
+        "difficulty": "advance",
+        "difficulty_badge": "🦅 Advance",
+        "day_num": 1,
+        "type": "push",
+        "variant": "a",
+        "title": "День 1: Push (Толкай) — Силовой стимул",
+        "focus": "Грудь, жим под углом, армейский жим, махи, трицепс",
+        "exercises": [
+            {
+                "name": "Жим штанги лежа",
+                "target_sets": 4,
+                "target_reps": "6–8",
+                "tip": "Базовый жим: мощный срыв с груди",
+                "alternatives": ["Жим гантелей на горизонтальной скамье"]
+            },
+            {
+                "name": "Жим гантелей на наклонной скамье (30°)",
+                "target_sets": 3,
+                "target_reps": "8–10",
+                "tip": "Верх груди: угол 30°, контроль негативной фазы",
+                "alternatives": ["Жим штанги на наклонной скамье"]
+            },
+            {
+                "name": "Армейский жим штанги стоя",
+                "target_sets": 3,
+                "target_reps": "6–8",
+                "tip": "Тяжелый жим над головой для силы плечевого пояса",
+                "alternatives": ["Жим гантелей сидя на плечи"]
+            },
+            {
+                "name": "Махи гантелями через стороны",
+                "target_sets": 4,
+                "target_reps": "12–15",
+                "tip": "Движение начинается от локтей",
+                "alternatives": ["Тяга штанги к подбородку широким хватом"]
+            },
+            {
+                "name": "Французский жим со штангой лежа",
+                "target_sets": 3,
+                "target_reps": "8–10",
+                "tip": "Опускание за макушку, максимальная растяжка",
+                "alternatives": ["Разгибания рук на верхнем блоке с канатом"]
+            }
+        ]
+    },
+    "pull_ppl": {
+        "key": "pull_ppl",
+        "program_id": "ppl",
+        "program_title": "Onlyfits Push / Pull / Legs",
+        "difficulty": "advance",
+        "difficulty_badge": "🦅 Advance",
+        "day_num": 2,
+        "type": "pull",
+        "variant": "a",
+        "title": "День 2: Pull (Тяни) — Ширина & Толщина спины",
+        "focus": "Подтягивания, тяга штанги в наклоне, V-блок, задняя дельта, бицепс",
+        "exercises": [
+            {
+                "name": "Подтягивания (турник / резина)",
+                "target_sets": 4,
+                "target_reps": "6–8",
+                "tip": "Подтягивания с чистой амплитудой до подбородка",
+                "alternatives": ["Тяга верхнего блока к груди"]
+            },
+            {
+                "name": "Тяга штанги в наклоне",
+                "target_sets": 4,
+                "target_reps": "8–10",
+                "tip": "Спина ровная, тяни локтями назад к талии",
+                "alternatives": ["Тяга Т-грифа с упором в грудь"]
+            },
+            {
+                "name": "Горизонтальная тяга блока (V-хват)",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Фиксация лопаток на 1 сек в пике сокращения",
+                "alternatives": ["Тяга гантели в наклоне одной рукой"]
+            },
+            {
+                "name": "Peck-Deck на заднюю дельту",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Изоляция задней дельты без включения трапеций",
+                "alternatives": ["Тяга каната к лицу (Face pulls)"]
+            },
+            {
+                "name": "Сгибания рук с EZ-грифом на бицепс стоя",
+                "target_sets": 3,
+                "target_reps": "8–10",
+                "tip": "Темп 2-0-1, без раскачки поясницей",
+                "alternatives": ["Сгибания на скамье Скотта"]
+            }
+        ]
+    },
+    "legs_ppl": {
+        "key": "legs_ppl",
+        "program_id": "ppl",
+        "program_title": "Onlyfits Push / Pull / Legs",
+        "difficulty": "advance",
+        "difficulty_badge": "🦅 Advance",
+        "day_num": 3,
+        "type": "legs",
+        "variant": "a",
+        "title": "День 3: Legs (Ноги & Пресс) — Базовая мощь",
+        "focus": "Присед, румынская тяга, выпады, икры, кор",
+        "exercises": [
+            {
+                "name": "Приседания со штангой на плечах",
+                "target_sets": 4,
+                "target_reps": "8–10",
+                "tip": "Параллель бедра, колени смотрят в стороны носков",
+                "alternatives": ["Жим ногами в тренажере"]
+            },
+            {
+                "name": "Румынская тяга",
+                "target_sets": 4,
+                "target_reps": "8–10",
+                "tip": "Растяжение задней поверхности, спина прямая",
+                "alternatives": ["Сгибание ног сидя"]
+            },
+            {
+                "name": "Выпады вперед",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Обратные выпады шаг назад, опора в пятку",
+                "alternatives": ["Болгарские сплит-приседания"]
+            },
+            {
+                "name": "Подъем на носки стоя",
+                "target_sets": 3,
+                "target_reps": "15–20",
+                "tip": "Глубокая растяжка голени внизу",
+                "alternatives": ["Подъем на носки в тренажере"]
+            },
+            {
+                "name": "Скручивания на пресс в тренажере",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Скручивание корпуса на резком выдохе",
+                "alternatives": ["Подъем ног в висе"]
+            }
+        ]
+    },
+    "glutes_1": {
+        "key": "glutes_1",
+        "program_id": "glutes_focus",
+        "program_title": "Onlyfits Glutes & Shape",
+        "difficulty": "enthusiast",
+        "difficulty_badge": "🐥 Enthusiast",
+        "day_num": 1,
+        "type": "glutes",
+        "variant": "a",
+        "title": "День 1: Ягодицы & Бицепс бедра",
+        "focus": "Ягодичный мост, румынская тяга, сгибания лежа, гиперэкстензия",
+        "exercises": [
+            {
+                "name": "Ягодичный мостик со штангой",
+                "target_sets": 4,
+                "target_reps": "10–12",
+                "tip": "Максимальное напряжение ягодиц в верхней точке, взгляд вперед",
+                "alternatives": ["Румынская тяга"]
+            },
+            {
+                "name": "Румынская тяга",
+                "target_sets": 4,
+                "target_reps": "10–12",
+                "tip": "Таз назад, штанга скользит вдоль голеней",
+                "alternatives": ["Сгибание ног сидя"]
+            },
+            {
+                "name": "Сгибания ног в тренажере лежа",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Таз прижат к подушке, сгибание усилием бицепса бедра",
+                "alternatives": ["Сгибание ног сидя"]
+            },
+            {
+                "name": "Гиперэкстензия",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Округлая спина и подъем только за счет сжатия ягодиц",
+                "alternatives": ["Подъем ног в висе"]
+            }
+        ]
+    },
+    "glutes_2": {
+        "key": "glutes_2",
+        "program_id": "glutes_focus",
+        "program_title": "Onlyfits Glutes & Shape",
+        "difficulty": "enthusiast",
+        "difficulty_badge": "🐥 Enthusiast",
+        "day_num": 2,
+        "type": "glutes",
+        "variant": "b",
+        "title": "День 2: Верх, Осанка & Узкая талия",
+        "focus": "Спина в ширину, дельты для V-силуэта, верх груди, кор",
+        "exercises": [
+            {
+                "name": "Тяга верхнего блока к груди",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Раскрытие груди, сведение лопаток для ровной осанки",
+                "alternatives": ["Тяга верхнего блока параллельным хватом"]
+            },
+            {
+                "name": "Жим гантелей на наклонной скамье (30°)",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Тонус верха грудных мышц и декольте",
+                "alternatives": ["Жим гантелей на горизонтальной скамье"]
+            },
+            {
+                "name": "Махи гантелями через стороны",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Округлые плечи визуально делают талию уже",
+                "alternatives": ["Тяга штанги к подбородку широким хватом"]
+            },
+            {
+                "name": "Тяга каната к лицу (Face pulls)",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Укрепление задней дельты и ротаторов плеча для идеальной осанки",
+                "alternatives": ["Peck-Deck на заднюю дельту"]
+            },
+            {
+                "name": "Скручивания на пресс в тренажере",
+                "target_sets": 3,
+                "target_reps": "15",
+                "tip": "Акцент на прямую мышцу живота без перенапряжения поясницы",
+                "alternatives": ["Подъем ног в висе"]
+            }
+        ]
+    },
+    "glutes_3": {
+        "key": "glutes_3",
+        "program_id": "glutes_focus",
+        "program_title": "Onlyfits Glutes & Shape",
+        "difficulty": "enthusiast",
+        "difficulty_badge": "🐥 Enthusiast",
+        "day_num": 3,
+        "type": "glutes",
+        "variant": "c",
+        "title": "День 3: Ягодицы & Квадрицепс",
+        "focus": "Гакк-присед, болгарские сплит-приседы, разгибания, пресс",
+        "exercises": [
+            {
+                "name": "Приседания в Гакк-тренажере",
+                "target_sets": 4,
+                "target_reps": "10–12",
+                "tip": "Постановка стоп ближе к верхнему краю платформы для ягодиц",
+                "alternatives": ["Жим ногами в тренажере"]
+            },
+            {
+                "name": "Болгарские сплит-приседания",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Глубокий наклон корпуса вперед, упор в пятку передней ноги",
+                "alternatives": ["Выпады вперед"]
+            },
+            {
+                "name": "Разгибания ног в тренажере",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Памп квадрицепса с фиксацией вверху 1 сек",
+                "alternatives": ["Жим ногами в тренажере"]
+            },
+            {
+                "name": "Подъем на носки стоя",
+                "target_sets": 3,
+                "target_reps": "15–20",
+                "tip": "Тонус икроножных мышц",
+                "alternatives": ["Подъем на носки в тренажере"]
+            },
+            {
+                "name": "Подъем ног в висе",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Подкручивание таза, без раскачивания",
+                "alternatives": ["Скручивания на пресс в тренажере"]
+            }
+        ]
+    },
+    "home_1": {
+        "key": "home_1",
+        "program_id": "home",
+        "program_title": "Onlyfits Home",
+        "difficulty": "beginner",
+        "difficulty_badge": "🪺 Beginner",
+        "day_num": 1,
+        "type": "home",
+        "variant": "a",
+        "title": "День 1: Home FullBody A (Базовый)",
+        "focus": "Гоблет-присед, жим гантелей, тяга гантели, пресс",
+        "exercises": [
+            {
+                "name": "Гоблет-приседания",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Гантель у груди, глубокий сед с прямой спиной",
+                "alternatives": ["Выпады вперед"]
+            },
+            {
+                "name": "Жим гантелей на горизонтальной скамье",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Жим на полу или скамье с контролем опускания",
+                "alternatives": ["Отжимания на брусьях / гравитрон"]
+            },
+            {
+                "name": "Тяга гантели в наклоне одной рукой",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Опора на скамью или колено, тяни гантель к поясу",
+                "alternatives": ["Тяга штанги в наклоне"]
+            },
+            {
+                "name": "Скручивания на пресс в тренажере",
+                "target_sets": 3,
+                "target_reps": "15–20",
+                "tip": "Скручивания на коврике на резком выдохе",
+                "alternatives": ["Подъем ног в висе"]
+            }
+        ]
+    },
+    "home_2": {
+        "key": "home_2",
+        "program_id": "home",
+        "program_title": "Onlyfits Home",
+        "difficulty": "beginner",
+        "difficulty_badge": "🪺 Beginner",
+        "day_num": 2,
+        "type": "home",
+        "variant": "b",
+        "title": "День 2: Home FullBody B (Ягодицы & Плечи)",
+        "focus": "Румынская тяга с гантелями, жим на плечи, махи, руки",
+        "exercises": [
+            {
+                "name": "Румынская тяга",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Отводи таз назад, растягивая заднюю поверхность бедра",
+                "alternatives": ["Гоблет-приседания"]
+            },
+            {
+                "name": "Жим гантелей сидя на плечи",
+                "target_sets": 3,
+                "target_reps": "10–12",
+                "tip": "Жим гантелей сидя на стуле с прямой спиной",
+                "alternatives": ["Армейский жим штанги стоя"]
+            },
+            {
+                "name": "Махи гантелями через стороны",
+                "target_sets": 3,
+                "target_reps": "15–20",
+                "tip": "Легкие гантели, подъем до параллели с полом",
+                "alternatives": ["Тяга штанги к подбородку широким хватом"]
+            },
+            {
+                "name": "Молотки с гантелями",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Нейтральный хват, локти прижаты к бокам",
+                "alternatives": ["Сгибания рук с EZ-грифом на бицепс стоя"]
+            }
+        ]
+    },
+    "home_3": {
+        "key": "home_3",
+        "program_id": "home",
+        "program_title": "Onlyfits Home",
+        "difficulty": "beginner",
+        "difficulty_badge": "🪺 Beginner",
+        "day_num": 3,
+        "type": "home",
+        "variant": "c",
+        "title": "День 3: Home FullBody C (Выпады & Кор)",
+        "focus": "Выпады с гантелями, французский жим, бицепс, пресс",
+        "exercises": [
+            {
+                "name": "Выпады вперед",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Чередуй ноги, опускай колено задней ноги близко к полу",
+                "alternatives": ["Болгарские сплит-приседания"]
+            },
+            {
+                "name": "Французский жим с гантелью из-за головы",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "Локти направлены вверх, растяжение длинной головки трицепса",
+                "alternatives": ["Французский жим со штангой лежа"]
+            },
+            {
+                "name": "Сгибания рук с EZ-грифом на бицепс стоя",
+                "target_sets": 3,
+                "target_reps": "12–15",
+                "tip": "С гантелями или бутылками с водой, чистый подъем",
+                "alternatives": ["Молотки с гантелями"]
+            },
+            {
+                "name": "Подъем ног в висе",
+                "target_sets": 3,
+                "target_reps": "15",
+                "tip": "Подъем прямых ног или коленей лежа на коврике",
+                "alternatives": ["Скручивания на пресс в тренажере"]
+            }
+        ]
     }
 }
+
+ONLYFITS_PROGRAMS_META = [
+    {
+        "id": "fullbody",
+        "title": "Onlyfits FullBody 3x",
+        "subtitle": "Флагманская программа Onlyfits",
+        "description": "Сбалансированная нагрузка на все тело 3 раза в неделю. Оптимально для гипертрофии и восстановления.",
+        "difficulty": "enthusiast",
+        "difficulty_badge": "🐥 Enthusiast",
+        "days_count": 3,
+        "days_label": "3 дня в неделю",
+        "focus": "Balanced",
+        "focus_label": "Все тело",
+        "image": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0025-a1.gif",
+        "days": [
+            {"key": "fullbody_1", "day_num": 1, "title": "День 1: FullBody A (Базовый баланс)", "sub": "Квадрицепс · Грудь · Спина"},
+            {"key": "fullbody_2", "day_num": 2, "title": "День 2: FullBody B (Задняя линия & Руки)", "sub": "Бицепс бедра · Верх груди · Руки"},
+            {"key": "fullbody_3", "day_num": 3, "title": "День 3: FullBody C (Углы & Плечи)", "sub": "Выпады · Дельты · Подтягивания"}
+        ]
+    },
+    {
+        "id": "upper_lower",
+        "title": "Onlyfits Upper / Lower 4x",
+        "subtitle": "Сила и объем без перетренированности",
+        "description": "Классический сплит верх/низ: максимальный синтез белка при частоте 2 раза в неделю на каждую мышечную группу.",
+        "difficulty": "intermediate",
+        "difficulty_badge": "🐣 Intermediate",
+        "days_count": 4,
+        "days_label": "4 дня в неделю",
+        "focus": "Balanced",
+        "focus_label": "Верх / Низ",
+        "image": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0047-a1.gif",
+        "days": [
+            {"key": "upper_1", "day_num": 1, "title": "День 1: Верх A (Силовой жим & тяга)", "sub": "Грудь · Спина · Плечи"},
+            {"key": "lower_1", "day_num": 2, "title": "День 2: Низ A (Квадрицепс & Пресс)", "sub": "Присед · Румынская тяга"},
+            {"key": "upper_2", "day_num": 3, "title": "День 3: Верх B (Гипертрофия & Дельты)", "sub": "Наклонный жим · Верхний блок"},
+            {"key": "lower_2", "day_num": 4, "title": "День 4: Низ B (Ягодицы & Бицепс бедра)", "sub": "Ягодичный мост · Гакк"}
+        ]
+    },
+    {
+        "id": "ppl",
+        "title": "Onlyfits Push / Pull / Legs",
+        "subtitle": "Классика тренажерного зала",
+        "description": "Проверенное разделение по биомеханическим векторам: жимовые мышцы, тяговые мышцы и ноги.",
+        "difficulty": "advance",
+        "difficulty_badge": "🦅 Advance",
+        "days_count": 3,
+        "days_label": "3–6 дней в неделю",
+        "focus": "Delts",
+        "focus_label": "Грудь / Спина / Ноги",
+        "image": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0025-a1.gif",
+        "days": [
+            {"key": "push_ppl", "day_num": 1, "title": "День 1: Push (Толкай)", "sub": "Грудь · Передняя дельта · Трицепс"},
+            {"key": "pull_ppl", "day_num": 2, "title": "День 2: Pull (Тяни)", "sub": "Спина · Задняя дельта · Бицепс"},
+            {"key": "legs_ppl", "day_num": 3, "title": "День 3: Legs (Ноги & Пресс)", "sub": "Квадрицепс · Ягодицы · Пресс"}
+        ]
+    },
+    {
+        "id": "glutes_focus",
+        "title": "Onlyfits Glutes & Shape",
+        "subtitle": "Акцент на ягодицы и узкую талию",
+        "description": "Специализация на нижнюю часть тела с сохранением тонкой талии и красивой осанки.",
+        "difficulty": "enthusiast",
+        "difficulty_badge": "🐥 Enthusiast",
+        "days_count": 3,
+        "days_label": "3 дня в неделю",
+        "focus": "Glutes",
+        "focus_label": "Ягодичный фокус",
+        "image": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0043-a1.gif",
+        "days": [
+            {"key": "glutes_1", "day_num": 1, "title": "День 1: Ягодицы & Бицепс бедра", "sub": "Мост · Румынская тяга"},
+            {"key": "glutes_2", "day_num": 2, "title": "День 2: Верх & Осанка / Талия", "sub": "Спина · Дельты · Кор"},
+            {"key": "glutes_3", "day_num": 3, "title": "День 3: Ягодицы & Квадрицепс", "sub": "Гакк-присед · Выпады"}
+        ]
+    },
+    {
+        "id": "home",
+        "title": "Onlyfits Home",
+        "subtitle": "Домашние тренировки с гантелями",
+        "description": "Эффективная программа для дома или путешествий с минимальным инвентарем.",
+        "difficulty": "beginner",
+        "difficulty_badge": "🪺 Beginner",
+        "days_count": 3,
+        "days_label": "3 дня в неделю",
+        "focus": "Balanced",
+        "focus_label": "Домашний тренинг",
+        "image": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0025-a1.gif",
+        "days": [
+            {"key": "home_1", "day_num": 1, "title": "День 1: Home FullBody A", "sub": "Приседания · Отжимания · Кор"},
+            {"key": "home_2", "day_num": 2, "title": "День 2: Home FullBody B", "sub": "Тяга гантелей · Плечи · Пресс"},
+            {"key": "home_3", "day_num": 3, "title": "День 3: Home FullBody C", "sub": "Выпады · Руки · Планка"}
+        ]
+    }
+]
+
 
 def get_user_profile_dict(cursor, user_id: str = "default", user_name: str = "Атлет") -> dict:
     try:
@@ -1407,13 +2259,14 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default", loa
     # 6. Scientific Warmup Pyramid Protocol (Brzycki / Poliquin method)
     if rec_weight >= 25.0:
         warmup_pyramid = [
-            {"weight": max(15.0, round((rec_weight * 0.4) / 2.5) * 2.5), "reps": 10, "stage": "Суставная разминка"},
-            {"weight": max(20.0, round((rec_weight * 0.6) / 2.5) * 2.5), "reps": 5, "stage": "Нейромышечная активация"},
-            {"weight": max(22.5, round((rec_weight * 0.8) / 2.5) * 2.5), "reps": 2, "stage": "Подводящий темповый"}
+            {"code": "W1", "weight": max(15.0, round((rec_weight * 0.4) / 2.5) * 2.5), "reps": 10, "stage": "Суставная разминка"},
+            {"code": "W2", "weight": max(20.0, round((rec_weight * 0.6) / 2.5) * 2.5), "reps": 5, "stage": "Нейромышечная активация"},
+            {"code": "W3", "weight": max(22.5, round((rec_weight * 0.8) / 2.5) * 2.5), "reps": 2, "stage": "Подводящий темповый"}
         ]
     elif rec_weight >= 12.0:
         warmup_pyramid = [
-            {"weight": max(6.0, round((rec_weight * 0.5) / 1.0) * 1.0), "reps": 10, "stage": "Легкая разминка"}
+            {"code": "W1", "weight": max(6.0, round((rec_weight * 0.5) / 1.0) * 1.0), "reps": 10, "stage": "Легкая разминка"},
+            {"code": "W2", "weight": max(8.0, round((rec_weight * 0.75) / 1.0) * 1.0), "reps": 5, "stage": "Подводящий сет"}
         ]
 
     estimated_1rm = round(rec_weight * (1.0 + (target_max / 30.0)), 1) if rec_weight > 0 else 0.0
@@ -1454,6 +2307,12 @@ def enrich_single_plan(plan_template, cursor, profile=None, user_id: str = "defa
         enriched_exercises.append(enrich_exercise_item(ex, cursor, profile=profile, user_id=user_id, load_type=plan_load_type))
 
     return {
+        "key": plan_template.get("key"),
+        "program_id": plan_template.get("program_id", "ppl"),
+        "program_title": plan_template.get("program_title", "Onlyfits PPL"),
+        "difficulty": plan_template.get("difficulty", "intermediate"),
+        "difficulty_badge": plan_template.get("difficulty_badge", "🐣 Intermediate"),
+        "day_num": plan_template.get("day_num", 1),
         "type": plan_template["type"],
         "variant": plan_template.get("variant", "a"),
         "variant_title": plan_template.get("variant_title", ""),
@@ -1501,6 +2360,13 @@ def get_active_workout(
         variant = "a"
         planned_exercises = None
         
+        day_key = None
+        if "day_key:" in notes_str:
+            try:
+                day_key = notes_str.split("day_key:")[1].split("|")[0].strip()
+            except Exception:
+                pass
+        
         if "day_type:" in notes_str:
             try:
                 day_type = notes_str.split("day_type:")[1].split("|")[0].strip()
@@ -1532,31 +2398,37 @@ def get_active_workout(
         elif "неделя 1" in w_row["title"].lower():
             week = 1
 
-        if day_type:
+        target_template = None
+        if day_key and day_key in PPL_PROGRAMS:
+            target_template = PPL_PROGRAMS[day_key]
+            day_type = target_template.get("type", day_type)
+        elif day_type:
             if variant == "c":
                 prog_key = f"{day_type}_c_{week}"
             else:
                 prog_key = f"{day_type}_{variant}"
             target_template = PPL_PROGRAMS.get(prog_key) or PPL_PROGRAMS.get(f"{day_type}_a")
-            if target_template:
-                template_copy = copy.deepcopy(target_template)
-                for part in notes_str.split("|"):
-                    if part.startswith("swap:"):
-                        swap_content = part[5:]
-                        if "->" in swap_content:
-                            old_name, new_name = swap_content.split("->", 1)
-                            for ex in template_copy["exercises"]:
-                                if ex["name"].strip().lower() == old_name.strip().lower():
-                                    ex["name"] = new_name.strip()
-                                    ex["tip"] = f"Замена на альтернативу: {new_name.strip()}"
-                profile = get_user_profile_dict(cursor, user_id=user_id, user_name=user_name)
-                planned_exercises = enrich_single_plan(template_copy, cursor, profile=profile, user_id=user_id)["exercises"]
+
+        if target_template:
+            template_copy = copy.deepcopy(target_template)
+            for part in notes_str.split("|"):
+                if part.startswith("swap:"):
+                    swap_content = part[5:]
+                    if "->" in swap_content:
+                        old_name, new_name = swap_content.split("->", 1)
+                        for ex in template_copy["exercises"]:
+                            if ex["name"].strip().lower() == old_name.strip().lower():
+                                ex["name"] = new_name.strip()
+                                ex["tip"] = f"Замена на альтернативу: {new_name.strip()}"
+            profile = get_user_profile_dict(cursor, user_id=user_id, user_name=user_name)
+            planned_exercises = enrich_single_plan(template_copy, cursor, profile=profile, user_id=user_id)["exercises"]
 
         # Auto-migrate any pullover in planned exercises if present
-        for p_ex in planned_exercises:
-            if "пуловер" in p_ex.get("name", "").lower():
-                p_ex["name"] = "Пуловер в тренажере"
-                p_ex["tip"] = "Упритесь локтями в подушки, плавно опускайте рычаг вниз усилием широчайших"
+        if planned_exercises:
+            for p_ex in planned_exercises:
+                if "пуловер" in p_ex.get("name", "").lower():
+                    p_ex["name"] = "Пуловер в тренажере"
+                    p_ex["tip"] = "Упритесь локтями в подушки, плавно опускайте рычаг вниз усилием широчайших"
 
         for s in sets:
             if "пуловер с гантелью" in s.get("exercise_name", "").lower():
@@ -2635,9 +3507,16 @@ def get_exercise_analytics(
 
 # --- COACH & PROGRESSIVE OVERLOAD ENDPOINTS ---
 
+@app.get("/api/coach/programs")
+def get_coach_programs():
+    """Returns Onlyfits program suite metadata."""
+    return ONLYFITS_PROGRAMS_META
+
 @app.get("/api/coach/days")
 def get_all_coach_days(
     variant: Optional[str] = None,
+    program_id: Optional[str] = None,
+    difficulty: Optional[str] = None,
     user_id: str = Depends(get_current_user_id),
     user_name: str = Depends(get_current_user_name)
 ):
@@ -2697,6 +3576,10 @@ def get_all_coach_days(
         profile = get_user_profile_dict(cursor, user_id=user_id, user_name=user_name)
         days_result = []
         for key, template in PPL_PROGRAMS.items():
+            if program_id and template.get("program_id") != program_id:
+                continue
+            if difficulty and template.get("difficulty") != difficulty:
+                continue
             if variant and variant.lower() in ["a", "b", "c"] and template.get("variant") != variant.lower():
                 continue
             day_data = enrich_single_plan(template, cursor, profile=profile, user_id=user_id)
@@ -2721,12 +3604,14 @@ def get_next_workout_plan(
     for d in days:
         if d.get("is_recommended"):
             return d
-    return days[0]
+    return days[0] if days else None
 
 class StartDayRequest(BaseModel):
-    day_type: str # 'push' | 'pull' | 'legs'
+    day_type: Optional[str] = "push" # 'push' | 'pull' | 'legs' | 'fullbody' | 'upper' | 'lower' | 'glutes' | 'home'
     variant: Optional[str] = "a" # 'a' | 'b' | 'c'
     week: Optional[int] = 1 # 1 | 2 | 3 for variant c
+    day_key: Optional[str] = None # e.g. "fullbody_1", "upper_1", "push_ppl"
+    program_id: Optional[str] = None # e.g. "fullbody", "upper_lower"
 
 @app.post("/api/coach/start-day")
 def start_day_workout(
@@ -2734,17 +3619,28 @@ def start_day_workout(
     user_id: str = Depends(get_current_user_id),
     user_name: str = Depends(get_current_user_name)
 ):
-    var = (payload.variant or "a").lower()
-    week_num = payload.week or 1
-    if var == "c":
-        prog_key = f"{payload.day_type.lower()}_c_{week_num}"
-        target_template = PPL_PROGRAMS.get(prog_key) or PPL_PROGRAMS.get(f"{payload.day_type.lower()}_c_1")
+    target_template = None
+    if payload.day_key and payload.day_key in PPL_PROGRAMS:
+        target_template = PPL_PROGRAMS[payload.day_key]
     else:
-        prog_key = f"{payload.day_type.lower()}_{var}"
-        target_template = PPL_PROGRAMS.get(prog_key) or PPL_PROGRAMS.get(f"{payload.day_type.lower()}_a")
+        var = (payload.variant or "a").lower()
+        week_num = payload.week or 1
+        day_type = (payload.day_type or "push").lower()
+        if var == "c":
+            prog_key = f"{day_type}_c_{week_num}"
+            target_template = PPL_PROGRAMS.get(prog_key) or PPL_PROGRAMS.get(f"{day_type}_c_1")
+        else:
+            prog_key = f"{day_type}_{var}"
+            target_template = PPL_PROGRAMS.get(prog_key) or PPL_PROGRAMS.get(f"{day_type}_a")
+            
+    if not target_template:
+        target_template = PPL_PROGRAMS.get("fullbody_1") or PPL_PROGRAMS["push_a"]
+
     title = target_template["title"]
-    week_part = f"|week:{week_num}" if var == "c" else ""
-    notes = f"day_type:{target_template['type']}|variant:{target_template['variant']}{week_part}|{target_template['focus']}"
+    day_key = target_template.get("key") or f"{target_template['type']}_{target_template.get('variant', 'a')}"
+    prog_id = target_template.get("program_id", "ppl")
+    week_part = f"|week:{payload.week or 1}" if target_template.get("variant") == "c" else ""
+    notes = f"day_key:{day_key}|program:{prog_id}|day_type:{target_template['type']}|variant:{target_template.get('variant', 'a')}{week_part}|{target_template.get('focus', '')}"
     return start_workout(WorkoutStart(title=title, notes=notes), user_id=user_id, user_name=user_name)
 
 @app.post("/api/coach/start-planned")
@@ -2753,9 +3649,13 @@ def start_planned_workout(
     user_name: str = Depends(get_current_user_name)
 ):
     plan = get_next_workout_plan(user_id=user_id, user_name=user_name)
+    if not plan:
+        return start_workout(WorkoutStart(title="Силовая тренировка", notes=""), user_id=user_id, user_name=user_name)
     title = plan["title"]
+    day_key = plan.get("key") or f"{plan['type']}_{plan.get('variant', 'a')}"
+    prog_id = plan.get("program_id", "ppl")
     week_part = f"|week:{plan.get('periodization_week', 1)}" if plan.get("variant") == "c" else ""
-    notes = f"day_type:{plan['type']}|variant:{plan.get('variant', 'a')}{week_part}|{plan['focus']}"
+    notes = f"day_key:{day_key}|program:{prog_id}|day_type:{plan['type']}|variant:{plan.get('variant', 'a')}{week_part}|{plan['focus']}"
     return start_workout(WorkoutStart(title=title, notes=notes), user_id=user_id, user_name=user_name)
 
 # --- USER PROFILE ENDPOINTS ---
