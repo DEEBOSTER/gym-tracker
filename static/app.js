@@ -3836,12 +3836,24 @@ const ONLYFITS_PROGRAMS_META = [
 ];
 
 // ==========================================
-// ⭕ ONLYFITS HEALTH RINGS WIDGET (STEPS, SLEEP, KCAL)
+// ⭕ ONLYFITS HEALTH RINGS WIDGET (STEPS, SLEEP, KCAL + APPLE HEALTH)
 // ==========================================
 function OnlyfitsHealthRingsWidget({ userProfile }) {
   const [showEditModal, setShowEditModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('manual'); // 'manual' | 'apple_health'
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [testSyncLoading, setTestSyncLoading] = useState(false);
+
   const now = new Date();
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  const getResolvedUserId = () => {
+    return userProfile?.telegram_chat_id || 
+           userProfile?.user_id || 
+           userProfile?.id || 
+           (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) || 
+           '591306946';
+  };
 
   const [metrics, setMetrics] = useState(() => {
     try {
@@ -3854,9 +3866,37 @@ function OnlyfitsHealthRingsWidget({ userProfile }) {
       sleep: 7.5,
       sleepTarget: 8.0,
       activeKcal: 520,
-      activeKcalTarget: 600
+      activeKcalTarget: 600,
+      source: 'manual',
+      updatedAt: null
     };
   });
+
+  // 🔄 Sync from Server / Apple Health on mount and profile change
+  useEffect(() => {
+    const uid = getResolvedUserId();
+    fetch(`/api/health/today?user_id=${encodeURIComponent(uid)}&date=${todayKey}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.is_synced) {
+          const serverMetrics = {
+            steps: data.steps,
+            stepsTarget: data.steps_target || 10000,
+            sleep: data.sleep_hours,
+            sleepTarget: data.sleep_target || 8.0,
+            activeKcal: data.active_calories,
+            activeKcalTarget: data.active_calories_target || 600,
+            source: data.source || 'apple_health',
+            updatedAt: data.updated_at
+          };
+          setMetrics(serverMetrics);
+          try {
+            localStorage.setItem('onlyfits_health_rings_' + todayKey, JSON.stringify(serverMetrics));
+          } catch (e) {}
+        }
+      })
+      .catch(() => {});
+  }, [userProfile]);
 
   const [editSteps, setEditSteps] = useState(metrics.steps);
   const [editSleep, setEditSleep] = useState(metrics.sleep);
@@ -3867,18 +3907,84 @@ function OnlyfitsHealthRingsWidget({ userProfile }) {
       ...metrics,
       steps: parseInt(editSteps, 10) || 0,
       sleep: parseFloat(editSleep) || 0,
-      activeKcal: parseInt(editActiveKcal, 10) || 0
+      activeKcal: parseInt(editActiveKcal, 10) || 0,
+      source: 'manual',
+      updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     setMetrics(updated);
     try {
       localStorage.setItem('onlyfits_health_rings_' + todayKey, JSON.stringify(updated));
     } catch (e) {}
+
+    // Send to backend
+    const uid = getResolvedUserId();
+    fetch('/api/health/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: uid,
+        steps: updated.steps,
+        sleep_hours: updated.sleep,
+        active_calories: updated.activeKcal,
+        source: 'manual'
+      })
+    }).catch(() => {});
+
     setShowEditModal(false);
+  };
+
+  const handleTestAppleHealthSync = () => {
+    setTestSyncLoading(true);
+    const uid = getResolvedUserId();
+    const testSteps = 10450;
+    const testSleep = 8.0;
+    const testCalories = 620;
+
+    fetch('/api/health/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: uid,
+        steps: testSteps,
+        sleep_hours: testSleep,
+        active_calories: testCalories,
+        source: 'apple_health',
+        notify: false
+      })
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        setTestSyncLoading(false);
+        if (data && data.data) {
+          const d = data.data;
+          const updated = {
+            steps: d.steps,
+            stepsTarget: d.steps_target || 10000,
+            sleep: d.sleep_hours,
+            sleepTarget: d.sleep_target || 8.0,
+            activeKcal: d.active_calories,
+            activeKcalTarget: d.active_calories_target || 600,
+            source: 'apple_health',
+            updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMetrics(updated);
+          setEditSteps(updated.steps);
+          setEditSleep(updated.sleep);
+          setEditActiveKcal(updated.activeKcal);
+          try {
+            localStorage.setItem('onlyfits_health_rings_' + todayKey, JSON.stringify(updated));
+          } catch (e) {}
+        }
+      })
+      .catch(() => setTestSyncLoading(false));
   };
 
   const stepsPct = Math.min(100, Math.round((metrics.steps / (metrics.stepsTarget || 10000)) * 100));
   const sleepPct = Math.min(100, Math.round((metrics.sleep / (metrics.sleepTarget || 8.0)) * 100));
   const activePct = Math.min(100, Math.round((metrics.activeKcal / (metrics.activeKcalTarget || 600)) * 100));
+
+  const resolvedUid = getResolvedUserId();
+  const shortcutWebhookUrl = `${window.location.origin}/api/health/sync?user_id=${encodeURIComponent(resolvedUid)}`;
 
   const renderCircle = (pct, color, size = 46, strokeWidth = 4) => {
     const radius = (size - strokeWidth) / 2;
@@ -3921,7 +4027,7 @@ function OnlyfitsHealthRingsWidget({ userProfile }) {
           setShowEditModal(true);
         }}
         className="neu-flat border border-white/10 hover:border-[#fc4c02]/40 rounded-3xl p-3 shadow-xl select-none cursor-pointer group transition-all"
-        title="Нажмите для настройки шагов, сна и активности"
+        title="Нажмите для настройки шагов, сна и синхронизации с Apple Health"
       >
         <div className="flex items-center justify-between pb-1.5 border-b border-white/5">
           <div className="flex items-center space-x-1.5">
@@ -3929,8 +4035,14 @@ function OnlyfitsHealthRingsWidget({ userProfile }) {
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 dark:text-zinc-200 font-mono">
               Onlyfits Daily Rings
             </span>
+            {metrics.source === 'apple_health' && (
+              <span className="inline-flex items-center gap-1 text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                Apple Health
+              </span>
+            )}
           </div>
-          <span className="text-[9px] font-mono text-[#fc4c02] font-bold">Изменить ✏️</span>
+          <span className="text-[9px] font-mono text-[#fc4c02] font-bold">Настроить ⚙️</span>
         </div>
 
         <div className="grid grid-cols-3 gap-2 pt-2 items-center text-center">
@@ -3973,48 +4085,146 @@ function OnlyfitsHealthRingsWidget({ userProfile }) {
       </div>
 
       {showEditModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-3xl p-5 max-w-xs w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black uppercase text-slate-900 dark:text-white">Активность дня</h3>
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-3xl p-5 max-w-sm w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between pb-1 border-b border-white/10">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base">⭕</span>
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white">Активность & Здоровье</h3>
+              </div>
               <button onClick={() => setShowEditModal(false)} className="text-zinc-400 hover:text-white text-lg">✕</button>
             </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-[11px] font-bold text-zinc-400 flex items-center gap-1">👟 Шаги</label>
-                <input
-                  type="number"
-                  value={editSteps}
-                  onChange={(e) => setEditSteps(e.target.value)}
-                  className="w-full mt-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] font-bold text-zinc-400 flex items-center gap-1">🌙 Сон (часов)</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={editSleep}
-                  onChange={(e) => setEditSleep(e.target.value)}
-                  className="w-full mt-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] font-bold text-zinc-400 flex items-center gap-1">🔥 Активные калории (ккал)</label>
-                <input
-                  type="number"
-                  value={editActiveKcal}
-                  onChange={(e) => setEditActiveKcal(e.target.value)}
-                  className="w-full mt-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none"
-                />
-              </div>
+
+            {/* Mode Switcher */}
+            <div className="flex p-0.5 rounded-xl bg-black/40 border border-white/10">
+              <button
+                onClick={() => setActiveTab('manual')}
+                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all ${
+                  activeTab === 'manual' 
+                    ? 'bg-[#fc4c02] text-white shadow' 
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                ✏️ Ручной ввод
+              </button>
+              <button
+                onClick={() => setActiveTab('apple_health')}
+                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
+                  activeTab === 'apple_health' 
+                    ? 'bg-emerald-600 text-white shadow' 
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                🍏 Apple Health
+              </button>
             </div>
-            <button
-              onClick={saveMetrics}
-              className="w-full py-2.5 rounded-xl bg-[#fc4c02] text-white font-black text-xs uppercase tracking-wider shadow-lg active:scale-95 transition"
-            >
-              Сохранить
-            </button>
+
+            {activeTab === 'manual' ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[11px] font-bold text-zinc-400 flex items-center gap-1">👟 Шаги</label>
+                  <input
+                    type="number"
+                    value={editSteps}
+                    onChange={(e) => setEditSteps(e.target.value)}
+                    className="w-full mt-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-[#fc4c02]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-zinc-400 flex items-center gap-1">🌙 Сон (часов)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={editSleep}
+                    onChange={(e) => setEditSleep(e.target.value)}
+                    className="w-full mt-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-[#fc4c02]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-zinc-400 flex items-center gap-1">🔥 Активные калории (ккал)</label>
+                  <input
+                    type="number"
+                    value={editActiveKcal}
+                    onChange={(e) => setEditActiveKcal(e.target.value)}
+                    className="w-full mt-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-[#fc4c02]"
+                  />
+                </div>
+                <button
+                  onClick={saveMetrics}
+                  className="w-full py-2.5 rounded-xl bg-[#fc4c02] text-white font-black text-xs uppercase tracking-wider shadow-lg active:scale-95 transition"
+                >
+                  Сохранить показатели
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3 text-left">
+                <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs leading-relaxed">
+                  <div className="font-bold flex items-center gap-1.5 text-white mb-1">
+                    <span>🍏</span> Автоматическая синхронизация
+                  </div>
+                  С помощью родного приложения <b>«Команды» (Shortcuts)</b> на iPhone ваши шаги, сон и калории могут отправляться сюда автоматически каждое утро и вечер!
+                </div>
+
+                {/* Personal Webhook URL */}
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                    Ваш персональный вебхук:
+                  </label>
+                  <div className="mt-1 flex items-center gap-1.5 bg-black/40 border border-white/10 rounded-xl p-2">
+                    <input 
+                      readOnly 
+                      value={shortcutWebhookUrl} 
+                      className="bg-transparent text-[10px] font-mono text-zinc-300 flex-1 truncate focus:outline-none select-all"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard?.writeText(shortcutWebhookUrl);
+                        setCopiedUrl(true);
+                        setTimeout(() => setCopiedUrl(false), 2500);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-[10px] whitespace-nowrap active:scale-95 transition"
+                    >
+                      {copiedUrl ? '✓ Скопировано' : 'Копировать'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick 3-Step Guide */}
+                <div className="space-y-1.5 text-[11px] text-zinc-300 bg-black/20 rounded-2xl p-3 border border-white/5">
+                  <div className="font-black text-[10px] uppercase text-zinc-400 mb-1">Как настроить за 1 минуту:</div>
+                  <div className="flex gap-2 items-start">
+                    <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 text-[10px]">1</span>
+                    <span>Откройте <b>«Команды»</b> на iPhone и нажмите <b>+</b> (создать).</span>
+                  </div>
+                  <div className="flex gap-2 items-start">
+                    <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 text-[10px]">2</span>
+                    <span>Добавьте действия «Найти образцы здоровья» (Шаги, Сон, Калории).</span>
+                  </div>
+                  <div className="flex gap-2 items-start">
+                    <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 text-[10px]">3</span>
+                    <span>Добавьте «Получить содержимое URL» с вашим вебхуком. Готово!</span>
+                  </div>
+                </div>
+
+                {/* Test button */}
+                <button
+                  onClick={handleTestAppleHealthSync}
+                  disabled={testSyncLoading}
+                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider shadow-lg active:scale-95 transition flex items-center justify-center gap-1.5"
+                >
+                  {testSyncLoading ? (
+                    <span>Синхронизация...</span>
+                  ) : (
+                    <>
+                      <span>🧪</span>
+                      <span>Протестировать отправку (10.4k шагов)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -14,7 +14,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
-from fastapi import FastAPI, HTTPException, status, Header, Depends
+from fastapi import FastAPI, HTTPException, status, Header, Depends, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,7 +41,10 @@ def get_current_user_name(
     return "Атлет"
 
 from pydantic import BaseModel
-from database import init_database, get_db, calculate_user_gamification, sync_all_users_gamification_stats
+from database import (
+    init_database, get_db, calculate_user_gamification, sync_all_users_gamification_stats,
+    upsert_health_metrics, get_health_metrics_for_date, get_health_history
+)
 from init_db import seed_exercises, seed_sample_history_if_empty, seed_real_user_history
 from models import (
     ExerciseResponse, ExerciseCreate,
@@ -5014,6 +5017,213 @@ def estimate_meal_text(payload: TextMealEstimateRequest):
             for a in FITNESS_FOOD_DATABASE[:3]
         ]
     }
+
+
+# ==========================================
+# 🍎 APPLE HEALTH / DAILY METRICS API
+# ==========================================
+
+class HealthSyncRequest(BaseModel):
+    user_id: Optional[str] = None
+    steps: Optional[Union[int, float, str]] = None
+    sleep_hours: Optional[Union[int, float, str]] = None
+    sleep: Optional[Union[int, float, str]] = None
+    active_calories: Optional[Union[int, float, str]] = None
+    calories: Optional[Union[int, float, str]] = None
+    kcal: Optional[Union[int, float, str]] = None
+    steps_target: Optional[Union[int, str]] = None
+    sleep_target: Optional[Union[float, str]] = None
+    active_calories_target: Optional[Union[int, str]] = None
+    date: Optional[str] = None
+    source: Optional[str] = "apple_health"
+    notify: Optional[Union[bool, int, str]] = False
+
+
+@app.post("/api/health/sync")
+async def sync_health_metrics(
+    request: Request,
+    payload: Optional[HealthSyncRequest] = None,
+    user_id: Optional[str] = None,
+    steps: Optional[Union[int, str]] = None,
+    sleep: Optional[Union[float, str]] = None,
+    calories: Optional[Union[int, str]] = None,
+    notify: Optional[Union[bool, int, str]] = False
+):
+    """
+    Accepts health metrics from Apple Shortcuts, WebApp, or external webhooks.
+    Works seamlessly with JSON body, query params, or URL-encoded form data.
+    """
+    body_data = {}
+    if payload:
+        body_data = payload.dict(exclude_unset=True)
+    else:
+        try:
+            raw_json = await request.json()
+            if isinstance(raw_json, dict):
+                body_data = raw_json
+        except Exception:
+            pass
+
+    # Resolve user_id: body > query param > header > default
+    uid = (
+        body_data.get("user_id") or 
+        user_id or 
+        request.headers.get("x-telegram-user-id") or 
+        "591306946"
+    )
+    uid = str(uid).strip()
+
+    # Resolve target date
+    req_date = body_data.get("date") or request.query_params.get("date")
+    if not req_date:
+        req_date = datetime.now().strftime("%Y-%m-%d")
+
+    # Resolve steps
+    raw_steps = body_data.get("steps") if body_data.get("steps") is not None else (
+        steps if steps is not None else request.query_params.get("steps")
+    )
+    final_steps = None
+    if raw_steps is not None and str(raw_steps).strip():
+        try:
+            clean_str = str(raw_steps).replace(",", ".").replace(" ", "").strip()
+            final_steps = int(round(float(clean_str)))
+        except Exception:
+            final_steps = None
+
+    # Resolve sleep (hours)
+    raw_sleep = (
+        body_data.get("sleep_hours") if body_data.get("sleep_hours") is not None else (
+            body_data.get("sleep") if body_data.get("sleep") is not None else (
+                sleep if sleep is not None else request.query_params.get("sleep")
+            )
+        )
+    )
+    final_sleep = None
+    if raw_sleep is not None and str(raw_sleep).strip():
+        try:
+            clean_sleep = float(str(raw_sleep).replace(",", ".").strip())
+            # Convert minutes to hours if value > 24
+            if clean_sleep > 24.0:
+                clean_sleep = round(clean_sleep / 60.0, 1)
+            final_sleep = round(clean_sleep, 2)
+        except Exception:
+            final_sleep = None
+
+    # Resolve active calories
+    raw_cal = (
+        body_data.get("active_calories") if body_data.get("active_calories") is not None else (
+            body_data.get("calories") if body_data.get("calories") is not None else (
+                body_data.get("kcal") if body_data.get("kcal") is not None else (
+                    calories if calories is not None else request.query_params.get("calories")
+                )
+            )
+        )
+    )
+    final_cal = None
+    if raw_cal is not None and str(raw_cal).strip():
+        try:
+            clean_cal = str(raw_cal).replace(",", ".").replace(" ", "").strip()
+            final_cal = int(round(float(clean_cal)))
+        except Exception:
+            final_cal = None
+
+    source = body_data.get("source") or request.query_params.get("source") or "apple_health"
+    steps_tgt = body_data.get("steps_target") or request.query_params.get("steps_target")
+    sleep_tgt = body_data.get("sleep_target") or request.query_params.get("sleep_target")
+    cal_tgt = body_data.get("active_calories_target") or request.query_params.get("active_calories_target")
+
+    with get_db() as conn:
+        res = upsert_health_metrics(
+            conn,
+            user_id=uid,
+            date=req_date,
+            steps=final_steps,
+            sleep_hours=final_sleep,
+            active_calories=final_cal,
+            steps_target=steps_tgt,
+            sleep_target=sleep_tgt,
+            active_calories_target=cal_tgt,
+            source=source
+        )
+
+    # Optional Telegram push notification
+    notify_flag = (
+        body_data.get("notify") or 
+        notify or 
+        request.query_params.get("notify")
+    )
+    should_notify = str(notify_flag).lower() in ["1", "true", "yes"]
+    if should_notify:
+        try:
+            token_path = os.path.join(os.path.dirname(__file__), "bot_token.txt")
+            if os.path.exists(token_path):
+                with open(token_path, "r", encoding="utf-8") as f:
+                    bot_tok = f.read().strip()
+                if bot_tok:
+                    chat_id = int(uid.replace("tg_", "")) if uid.replace("tg_", "").isdigit() else None
+                    if chat_id:
+                        msg_text = (
+                            f"🍏 *Apple Health синхронизировано!*\n\n"
+                            f"👟 Шаги: *{res.get('steps', 0):,}* / {res.get('steps_target', 10000):,}\n"
+                            f"🌙 Сон: *{res.get('sleep_hours', 0.0)} ч* / {res.get('sleep_target', 8.0)} ч\n"
+                            f"🔥 Калории: *{res.get('active_calories', 0)}* / {res.get('active_calories_target', 600)} ккал"
+                        )
+                        import urllib.request, json
+                        pld = json.dumps({"chat_id": chat_id, "text": msg_text, "parse_mode": "Markdown"}).encode("utf-8")
+                        r = urllib.request.Request(f"https://api.telegram.org/bot{bot_tok}/sendMessage", data=pld, headers={"Content-Type": "application/json"})
+                        urllib.request.urlopen(r, timeout=4)
+        except Exception:
+            pass
+
+    return {
+        "ok": True,
+        "message": "Health metrics synced successfully",
+        "data": res
+    }
+
+
+@app.get("/api/health/today")
+def get_today_health_metrics(
+    user_id: Optional[str] = None,
+    date: Optional[str] = None,
+    header_uid: str = Depends(get_current_user_id)
+):
+    uid = user_id or header_uid or "591306946"
+    target_date = date or datetime.now().strftime("%Y-%m-%d")
+    with get_db() as conn:
+        metrics = get_health_metrics_for_date(conn, uid, target_date)
+        if metrics:
+            return {
+                "ok": True,
+                "is_synced": True,
+                **metrics
+            }
+        return {
+            "ok": True,
+            "is_synced": False,
+            "user_id": uid,
+            "date": target_date,
+            "steps": 0,
+            "steps_target": 10000,
+            "sleep_hours": 0.0,
+            "sleep_target": 8.0,
+            "active_calories": 0,
+            "active_calories_target": 600,
+            "source": "manual",
+            "updated_at": None
+        }
+
+
+@app.get("/api/health/history")
+def get_health_metrics_history(
+    user_id: Optional[str] = None,
+    days: int = 30,
+    header_uid: str = Depends(get_current_user_id)
+):
+    uid = user_id or header_uid or "591306946"
+    with get_db() as conn:
+        return get_health_history(conn, uid, limit=days)
+
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(STATIC_DIR, exist_ok=True)

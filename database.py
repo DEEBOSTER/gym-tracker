@@ -186,6 +186,25 @@ def init_database():
             pass
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_nutrition_user_date ON nutrition_logs(user_id, date);")
 
+        # Daily health metrics table (Apple Health / Onlyfits rings: steps, sleep, active calories)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS daily_health_metrics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                date TEXT NOT NULL,
+                steps INTEGER DEFAULT 0,
+                steps_target INTEGER DEFAULT 10000,
+                sleep_hours REAL DEFAULT 0.0,
+                sleep_target REAL DEFAULT 8.0,
+                active_calories INTEGER DEFAULT 0,
+                active_calories_target INTEGER DEFAULT 600,
+                source TEXT DEFAULT 'manual',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, date)
+            );
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_health_user_date ON daily_health_metrics(user_id, date);")
+
         # Retroactively calculate and sync gamification progress for all users
         try:
             sync_all_users_gamification_stats(conn)
@@ -400,4 +419,95 @@ def sync_all_users_gamification_stats(conn):
                 );
             """, (uid, int(clean_uid) if clean_uid.isdigit() else None))
         calculate_user_gamification(conn, uid)
+
+
+# ==========================================
+# 🍎 DAILY HEALTH METRICS (APPLE HEALTH / ONLYFITS RINGS)
+# ==========================================
+
+def upsert_health_metrics(conn, user_id, date, steps=None, sleep_hours=None, active_calories=None,
+                          steps_target=None, sleep_target=None, active_calories_target=None, source="apple_health"):
+    """
+    Saves or updates daily health metrics (steps, sleep, active calories)
+    for a user on a given date.
+    """
+    cursor = conn.cursor()
+    user_id = str(user_id).strip()
+    
+    # Check if a record already exists for this user and date
+    cursor.execute("SELECT * FROM daily_health_metrics WHERE user_id = ? AND date = ?;", (user_id, date))
+    existing = cursor.fetchone()
+    
+    if existing:
+        new_steps = int(steps) if steps is not None else existing["steps"]
+        new_sleep = float(sleep_hours) if sleep_hours is not None else existing["sleep_hours"]
+        new_cal = int(active_calories) if active_calories is not None else existing["active_calories"]
+        new_steps_target = int(steps_target) if steps_target is not None else existing["steps_target"]
+        new_sleep_target = float(sleep_target) if sleep_target is not None else existing["sleep_target"]
+        new_cal_target = int(active_calories_target) if active_calories_target is not None else existing["active_calories_target"]
+        new_source = source or existing["source"]
+        
+        cursor.execute("""
+            UPDATE daily_health_metrics
+            SET steps = ?, sleep_hours = ?, active_calories = ?,
+                steps_target = ?, sleep_target = ?, active_calories_target = ?,
+                source = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ? AND date = ?;
+        """, (new_steps, new_sleep, new_cal, new_steps_target, new_sleep_target, new_cal_target, new_source, user_id, date))
+    else:
+        cursor.execute("""
+            INSERT INTO daily_health_metrics (
+                user_id, date, steps, sleep_hours, active_calories,
+                steps_target, sleep_target, active_calories_target, source
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """, (
+            user_id, date,
+            int(steps) if steps is not None else 0,
+            float(sleep_hours) if sleep_hours is not None else 0.0,
+            int(active_calories) if active_calories is not None else 0,
+            int(steps_target) if steps_target is not None else 10000,
+            float(sleep_target) if sleep_target is not None else 8.0,
+            int(active_calories_target) if active_calories_target is not None else 600,
+            source or "apple_health"
+        ))
+        
+    cursor.execute("SELECT * FROM daily_health_metrics WHERE user_id = ? AND date = ?;", (user_id, date))
+    row = cursor.fetchone()
+    return dict(row) if row else {}
+
+
+def get_health_metrics_for_date(conn, user_id, date):
+    """
+    Retrieves health metrics for a specific user and date.
+    Supports user_id variants ('591306946' vs 'tg_591306946').
+    """
+    cursor = conn.cursor()
+    user_id = str(user_id).strip()
+    cursor.execute("SELECT * FROM daily_health_metrics WHERE user_id = ? AND date = ?;", (user_id, date))
+    row = cursor.fetchone()
+    if row:
+        return dict(row)
+        
+    alt_uid = f"tg_{user_id}" if not user_id.startswith("tg_") else user_id.replace("tg_", "")
+    cursor.execute("SELECT * FROM daily_health_metrics WHERE user_id = ? AND date = ?;", (alt_uid, date))
+    row = cursor.fetchone()
+    if row:
+        return dict(row)
+    return None
+
+
+def get_health_history(conn, user_id, limit=30):
+    """
+    Retrieves recent daily health history for trends and progress charts.
+    """
+    cursor = conn.cursor()
+    user_id = str(user_id).strip()
+    alt_uid = f"tg_{user_id}" if not user_id.startswith("tg_") else user_id.replace("tg_", "")
+    cursor.execute("""
+        SELECT * FROM daily_health_metrics 
+        WHERE user_id IN (?, ?) 
+        ORDER BY date DESC LIMIT ?;
+    """, (user_id, alt_uid, limit))
+    return [dict(r) for r in cursor.fetchall()]
+
 
