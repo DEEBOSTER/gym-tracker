@@ -24,12 +24,13 @@
 
   <!-- PWA Meta Tags -->
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#18191d">
-  <meta name="theme-color" content="#18191d" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#18191d" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#08090d">
+  <meta name="theme-color" content="#08090d" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#08090d" media="(prefers-color-scheme: light)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="GymTracker">
+  <meta name="apple-mobile-web-app-title" content="Onlyfits">
+  <title>Onlyfits: Workout & Nutrition</title>
   <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="/static/icon-512.png">
@@ -175,14 +176,14 @@
     body.theme-neu-dark .yt-nav-active-pill,
     html.dark .yt-nav-active-pill,
     html.theme-neu-dark .yt-nav-active-pill {
-      background: rgba(255, 255, 255, 0.18) !important;
-      border: 1px solid rgba(255, 255, 255, 0.14) !important;
-      color: #ffffff !important;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+      background: linear-gradient(135deg, #22e584 0%, #10b981 100%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.25) !important;
+      color: #051a10 !important;
+      box-shadow: 0 4px 16px rgba(34, 229, 132, 0.4) !important;
     }
     body.dark .yt-nav-active-pill *,
     body.theme-neu-dark .yt-nav-active-pill * {
-      color: #ffffff !important;
+      color: #051a10 !important;
     }
 
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) .yt-nav-active-pill,
@@ -271,10 +272,9 @@
     }
 
     /* ==================================================== */
-    /* ⚡ MODERN ATHLETIC DESIGN SYSTEM (Fitbod / NTC / Strava) */
+    /* ⚡ ONLYFITS ELITE LUXURY DARK DESIGN SYSTEM           */
     /* ==================================================== */
 
-    /* 🌙 STRAVA ATHLETIC DARK PALETTE */
     :root,
     :root.dark,
     :root.theme-neu-dark,
@@ -283,47 +283,59 @@
     body.dark,
     body.theme-neu-dark,
     body {
-      --neu-base: #0f1013;
-      --neu-surface: #18191d;
-      --neu-surface-card: #202127;
-      --neu-inset-bg: #121316;
-      --neu-shadow-dark: rgba(0, 0, 0, 0.55);
+      --neu-base: #08090d;
+      --neu-surface: #12141c;
+      --neu-surface-card: #181b26;
+      --neu-inset-bg: #0d0f15;
+      --neu-shadow-dark: rgba(0, 0, 0, 0.7);
       --neu-shadow-light: rgba(255, 255, 255, 0.04);
       --neu-border: rgba(255, 255, 255, 0.08);
       --neu-border-subtle: rgba(255, 255, 255, 0.04);
       --neu-text-primary: #ffffff;
-      --neu-text-secondary: #cbd5e1;
+      --neu-text-secondary: #e2e8f0;
       --neu-text-muted: #94a3b8;
-      --strava-orange: #fc4c02;
-      --strava-orange-hover: #e04302;
-      --strava-orange-glow: rgba(252, 76, 2, 0.3);
-      --neu-accent-emerald: #10b981;
+      
+      /* Onlyfits Signature Neon Accents */
+      --strava-orange: #22e584; /* Signature Onlyfits Neon Lime */
+      --strava-orange-hover: #1bd277;
+      --strava-orange-glow: rgba(34, 229, 132, 0.35);
+      --onlyfits-green: #22e584;
+      --onlyfits-green-dark: #10b981;
+      --onlyfits-coral: #ff5722;
+      --onlyfits-purple: #8b5cf6;
+      --onlyfits-cyan: #38bdf8;
+      
+      --neu-accent-emerald: #22e584;
       --neu-accent-cyan: #38bdf8;
-      --neu-accent-amber: #f59e0b;
-      --neu-lcd-bg: #111215;
-      --neu-lcd-text: #34d399;
-      --neu-dark-pill: #15161a;
-      --neu-dock-bg: rgba(18, 19, 23, 0.96);
+      --neu-accent-amber: #ff9800;
+      --neu-lcd-bg: #0d0f15;
+      --neu-lcd-text: #22e584;
+      --neu-dark-pill: #161822;
+      --neu-dock-bg: rgba(14, 16, 23, 0.94);
     }
 
-    /* ☀️ STRAVA ATHLETIC LIGHT PALETTE */
+    /* ☀️ ONLYFITS CLEAN LIGHT PALETTE */
     :root.theme-neu-light,
     html.theme-neu-light,
     body.theme-neu-light {
-      --neu-base: #f8f8fa;
+      --neu-base: #f8fafc;
       --neu-surface: #ffffff;
-      --neu-surface-card: #f2f3f5;
-      --neu-inset-bg: #ebedf0;
+      --neu-surface-card: #f1f5f9;
+      --neu-inset-bg: #e2e8f0;
       --neu-shadow-dark: rgba(15, 23, 42, 0.06);
       --neu-shadow-light: rgba(255, 255, 255, 0.9);
       --neu-border: rgba(226, 232, 240, 0.9);
       --neu-border-subtle: rgba(226, 232, 240, 0.6);
-      --neu-text-primary: #121214;
-      --neu-text-secondary: #3f3f46;
-      --neu-text-muted: #71717a;
-      --strava-orange: #fc4c02;
-      --strava-orange-hover: #e04302;
-      --strava-orange-glow: rgba(252, 76, 2, 0.25);
+      --neu-text-primary: #090a0f;
+      --neu-text-secondary: #334155;
+      --neu-text-muted: #64748b;
+      --strava-orange: #10b981;
+      --strava-orange-hover: #059669;
+      --strava-orange-glow: rgba(16, 185, 129, 0.25);
+      --onlyfits-green: #10b981;
+      --onlyfits-coral: #ff5722;
+      --onlyfits-purple: #8b5cf6;
+      --onlyfits-cyan: #0284c7;
       --neu-accent-emerald: #059669;
       --neu-accent-cyan: #0284c7;
       --neu-accent-amber: #d97706;
@@ -352,30 +364,34 @@
       -webkit-backdrop-filter: blur(16px);
     }
 
-    /* Core Athletic Primitives */
+    /* Onlyfits Glass Cards */
     .neu-flat {
-      background-color: var(--neu-surface) !important;
-      border: 1px solid var(--neu-border) !important;
-      box-shadow: 0 4px 20px -2px var(--neu-shadow-dark) !important;
+      background: linear-gradient(180deg, rgba(24, 27, 36, 0.95) 0%, rgba(18, 20, 28, 0.98) 100%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.65), inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+      border-radius: 24px !important;
     }
     .neu-flat-sm {
-      background-color: var(--neu-surface) !important;
-      border: 1px solid var(--neu-border) !important;
-      box-shadow: 0 2px 8px -1px var(--neu-shadow-dark) !important;
+      background: rgba(24, 27, 36, 0.9) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.5) !important;
+      border-radius: 18px !important;
     }
     .neu-inset {
-      background-color: var(--neu-inset-bg) !important;
-      border: 1px solid var(--neu-border-subtle) !important;
+      background: rgba(11, 13, 18, 0.8) !important;
+      border: 1px solid rgba(255, 255, 255, 0.05) !important;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5) !important;
+      border-radius: 16px !important;
     }
     .neu-btn {
-      background-color: var(--neu-surface) !important;
-      border: 1px solid var(--neu-border) !important;
-      box-shadow: 0 2px 6px -1px var(--neu-shadow-dark) !important;
-      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      background: rgba(26, 30, 40, 0.9) !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.12) !important;
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
     .neu-btn:active {
-      transform: scale(0.97);
-      opacity: 0.92;
+      transform: scale(0.96) !important;
+      filter: brightness(0.9);
     }
     .neu-dark-pill {
       background-color: var(--neu-dark-pill) !important;
@@ -405,6 +421,30 @@
       border: 1px solid var(--neu-border) !important;
       backdrop-filter: blur(24px) !important;
       -webkit-backdrop-filter: blur(24px) !important;
+    }
+
+    /* Onlyfits Neon Accent Button Overrides */
+    .btn-onlyfits-primary,
+    button.bg-\[\#fc4c02\],
+    .bg-\[\#fc4c02\] {
+      background: linear-gradient(135deg, #22e584 0%, #10b981 100%) !important;
+      color: #051a10 !important;
+      font-weight: 900 !important;
+      border: none !important;
+      box-shadow: 0 4px 20px rgba(34, 229, 132, 0.35) !important;
+    }
+    .btn-onlyfits-primary:hover,
+    button.bg-\[\#fc4c02\]:hover {
+      filter: brightness(1.08) !important;
+    }
+    .text-\[\#fc4c02\] {
+      color: #22e584 !important;
+    }
+    .border-\[\#fc4c02\] {
+      border-color: #22e584 !important;
+    }
+    .ring-\[\#fc4c02\]\/40 {
+      --tw-ring-color: rgba(34, 229, 132, 0.4) !important;
     }
 
     /* 🏗️ Automated Card & Input Styling across entire app */
@@ -807,6 +847,6 @@
   </script>
 
   <!-- React App -->
-  <script type="text/babel" src="/static/app.js?v=69"></script>
+  <script type="text/babel" src="/static/app.js?v=70"></script>
 </body>
 </html>

@@ -487,25 +487,31 @@ function NeuHeaderCard({ theme, onToggleTheme, coachDayTitle }) {
   }, []);
 
   return (
-    <div className="neu-flat rounded-3xl p-4 flex items-center justify-between relative overflow-hidden border border-slate-200/50 dark:border-slate-700/50">
-      {/* Clock and date pill */}
-      <div className="space-y-1.5 z-10">
-        <div className="font-mono text-3xl font-black tracking-tight text-slate-800 dark:text-white leading-none">
-          {timeStr || '09:29'}
+    <div className="neu-flat rounded-3xl p-4 flex items-center justify-between relative overflow-hidden border border-white/10">
+      {/* Greeting and date pill */}
+      <div className="space-y-1 z-10">
+        <div className="flex items-center space-x-1.5">
+          <span className="text-xs">⚡</span>
+          <span className="text-[10px] font-black uppercase tracking-wider text-[#22e584] font-mono">
+            {dateStr || 'Сегодня'}
+          </span>
         </div>
-        <div className="inline-flex items-center space-x-1.5 neu-inset px-2.5 py-0.5 rounded-xl text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300">
-          <span>{dateStr || 'Пт · 08/10'}</span>
+        <div className="text-lg font-black tracking-tight text-white">
+          {userProfile?.name ? `Привет, ${userProfile.name} 👋` : 'Привет, Атлет 👋'}
         </div>
         {coachDayTitle && (
-          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider pt-0.5 flex items-center space-x-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping inline-block" />
+          <div className="text-[10px] text-zinc-300 font-bold uppercase tracking-wider pt-0.5 flex items-center space-x-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#22e584] animate-ping inline-block" />
             <span>{coachDayTitle}</span>
           </div>
         )}
       </div>
 
-      {/* Readiness Tag & Rocker Switch */}
-      <div className="flex flex-col items-end space-y-2 z-10">
+      {/* Clock & Readiness Tag */}
+      <div className="flex flex-col items-end space-y-1.5 z-10">
+        <div className="font-mono text-xl font-black tracking-tight text-white leading-none">
+          {timeStr || '12:00'}
+        </div>
         <AthleticReadinessWidget />
         <NeuThemeToggle theme={theme} onToggle={onToggleTheme} />
       </div>
@@ -4251,19 +4257,19 @@ function OnlyfitsFAB({ onStartWorkout, onOpenNutrition, onOpenMetrics }) {
         <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end space-y-2.5 animate-in slide-in-from-bottom-5">
           <button
             onClick={() => { setIsOpen(false); onStartWorkout?.(); }}
-            className="flex items-center space-x-2 bg-gradient-to-r from-[#fc4c02] to-amber-500 text-white px-3.5 py-2.5 rounded-2xl shadow-xl font-bold text-xs active:scale-95 transition cursor-pointer"
+            className="flex items-center space-x-2 bg-gradient-to-r from-[#22e584] to-[#10b981] text-black px-3.5 py-2.5 rounded-2xl shadow-xl shadow-[#22e584]/25 font-black text-xs active:scale-95 transition cursor-pointer"
           >
             <span>🏋️ Начать тренировку</span>
           </button>
           <button
             onClick={() => { setIsOpen(false); onOpenNutrition?.('scanner'); }}
-            className="flex items-center space-x-2 bg-[#18191d] border border-white/15 text-white px-3.5 py-2.5 rounded-2xl shadow-xl font-bold text-xs active:scale-95 transition cursor-pointer"
+            className="flex items-center space-x-2 bg-[#141722] border border-white/15 text-white px-3.5 py-2.5 rounded-2xl shadow-xl font-bold text-xs active:scale-95 transition cursor-pointer"
           >
             <span>🍴 Сканер еды (AI)</span>
           </button>
           <button
             onClick={() => { setIsOpen(false); onOpenMetrics?.(); }}
-            className="flex items-center space-x-2 bg-[#18191d] border border-white/15 text-white px-3.5 py-2.5 rounded-2xl shadow-xl font-bold text-xs active:scale-95 transition cursor-pointer"
+            className="flex items-center space-x-2 bg-[#141722] border border-white/15 text-white px-3.5 py-2.5 rounded-2xl shadow-xl font-bold text-xs active:scale-95 transition cursor-pointer"
           >
             <span>⚡ Активность & Сон</span>
           </button>
@@ -4275,7 +4281,7 @@ function OnlyfitsFAB({ onStartWorkout, onOpenNutrition, onOpenMetrics }) {
           try { triggerHaptic('medium'); } catch (e) {}
           setIsOpen(!isOpen);
         }}
-        className={`fixed bottom-20 right-4 z-50 w-13 h-13 rounded-full bg-gradient-to-tr from-[#fc4c02] to-amber-500 text-white shadow-2xl flex items-center justify-center font-bold text-2xl transition-transform duration-300 active:scale-95 cursor-pointer ${
+        className={`fixed bottom-20 right-4 z-50 w-13 h-13 rounded-full bg-gradient-to-tr from-[#22e584] to-[#10b981] text-black shadow-2xl shadow-[#22e584]/35 flex items-center justify-center font-black text-2xl transition-transform duration-300 active:scale-95 cursor-pointer ${
           isOpen ? 'rotate-45' : ''
         }`}
         title="Быстрые действия"
@@ -6273,17 +6279,17 @@ function App() {
                 alt="GymTracker" 
                 className="w-8 h-8 rounded-xl object-cover border border-white/10 shadow-sm" 
               />
-              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#fc4c02] ring-2 ring-[var(--neu-surface)]" />
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#22e584] ring-2 ring-[var(--neu-surface)] animate-pulse" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center space-x-1.5">
                 <h1 className="text-sm font-black tracking-tight text-slate-800 dark:text-white uppercase font-sans">
-                  GymTracker
+                  ONLYFITS
                 </h1>
-                <span className="text-[10px] text-[#fc4c02] font-black">PRO</span>
+                <span className="text-[9px] text-[#22e584] font-black uppercase tracking-wider px-1.5 py-0.2 rounded bg-[#22e584]/15 border border-[#22e584]/30">Coach</span>
               </div>
-              <p className="text-[8.5px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider truncate">
-                {userProfile?.fitness_goal === 'strength' ? 'Силовой тренинг' : userProfile?.fitness_goal === 'fat_loss' ? 'Сушка & Рельеф' : 'Набор массы'}
+              <p className="text-[8.5px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-wider truncate">
+                Workout & Nutrition
               </p>
             </div>
           </div>
@@ -6293,9 +6299,9 @@ function App() {
             {activeWorkout ? (
               <button 
                 onClick={() => { setIsMinimized(false); switchTab('workout'); }}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-[#fc4c02] text-white font-black text-xs shadow-md shadow-[#fc4c02]/30 active:scale-95 transition"
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-[#22e584] to-[#10b981] text-black font-black text-xs shadow-md shadow-[#22e584]/30 active:scale-95 transition"
               >
-                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-black animate-pulse" />
                 <span className="tracking-wide">В зале ▶</span>
               </button>
             ) : null}
@@ -7381,7 +7387,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 cursor-pointer shrink-0 border ${
                   selectedDifficulty === diff.id
-                    ? 'bg-[#fc4c02] text-white border-[#fc4c02] shadow-md shadow-[#fc4c02]/20 font-black'
+                    ? 'bg-[#22e584] text-black border-[#22e584] shadow-md shadow-[#22e584]/30 font-black'
                     : 'bg-[var(--neu-surface)] text-slate-600 dark:text-zinc-400 hover:text-white border-[var(--neu-border)]'
                 }`}
               >
@@ -7414,7 +7420,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
                 }}
                 className={`px-3 py-1 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 cursor-pointer shrink-0 border ${
                   selectedMuscleFocus === foc.id
-                    ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20 font-black'
+                    ? 'bg-[#22e584] text-black border-[#22e584] shadow-md shadow-[#22e584]/30 font-black'
                     : 'bg-[var(--neu-surface)] text-slate-600 dark:text-zinc-400 hover:text-white border-[var(--neu-border)]'
                 }`}
               >
@@ -7450,13 +7456,13 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
                       }}
                       className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
                         isSelected
-                          ? 'bg-[#18191d] border-[#fc4c02] ring-2 ring-[#fc4c02]/40 shadow-xl'
+                          ? 'bg-[#141722] border-[#22e584] ring-2 ring-[#22e584]/40 shadow-xl'
                           : 'bg-[var(--neu-surface)] border-[var(--neu-border)] hover:border-white/20'
                       }`}
                     >
                       <div>
                         <div className="flex items-center justify-between gap-1 mb-1.5">
-                          <span className="text-[10px] font-mono font-black text-[#fc4c02] px-2 py-0.5 rounded-md bg-[#fc4c02]/15 border border-[#fc4c02]/25">
+                          <span className="text-[10px] font-mono font-black text-[#22e584] px-2 py-0.5 rounded-md bg-[#22e584]/15 border border-[#22e584]/30">
                             {prog.days_label}
                           </span>
                           <span className="text-[10px] font-bold text-zinc-400 px-2 py-0.5 rounded-md bg-white/5">
@@ -7475,7 +7481,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
                         <span className="text-zinc-400 font-mono">
                           {prog.days?.length || 3} тренировочных дня
                         </span>
-                        <span className={`font-bold ${isSelected ? 'text-[#fc4c02]' : 'text-zinc-500'}`}>
+                        <span className={`font-bold ${isSelected ? 'text-[#22e584]' : 'text-zinc-500'}`}>
                           {isSelected ? '✓ Выбрано' : 'Выбрать →'}
                         </span>
                       </div>
@@ -7516,14 +7522,14 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
                       }}
                       className={`p-2 rounded-xl text-center transition flex flex-col items-center justify-center active:scale-95 cursor-pointer relative border ${
                         isDayActive
-                          ? 'bg-[#fc4c02] text-white border-[#fc4c02] shadow-lg shadow-[#fc4c02]/25 font-black'
+                          ? 'bg-[#22e584] text-black border-[#22e584] shadow-lg shadow-[#22e584]/25 font-black'
                           : 'bg-[var(--neu-surface)] text-slate-600 dark:text-zinc-400 hover:text-white border-[var(--neu-border)]'
                       }`}
                     >
                       <div className="text-[11px] font-black tracking-tight truncate w-full">
                         День {d.day_num || dIdx + 1}
                       </div>
-                      <span className={`text-[9px] truncate max-w-full mt-0.5 ${isDayActive ? 'text-white/85' : 'text-zinc-500'}`}>
+                      <span className={`text-[9px] truncate max-w-full mt-0.5 ${isDayActive ? 'text-black/80 font-bold' : 'text-zinc-500'}`}>
                         {d.title.split(':')[1]?.trim() || d.title}
                       </span>
                     </button>
@@ -7787,13 +7793,13 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
                 </div>
               )}
 
-              {/* Primary Start Workout Action */}
+              {/* Primary Start Workout Action (Onlyfits Neon Gradient CTA) */}
               <button
                 onClick={() => handleStartDay(activeDay.type, activeDay.variant, activeDay.periodization_week || 1, activeDay.key, activeDay.program_id)}
-                className="w-full py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-xl shadow-[#fc4c02]/30 bg-[#fc4c02] hover:bg-[#e04302] text-white active:scale-98 cursor-pointer"
+                className="w-full py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-xl shadow-[#22e584]/30 bg-gradient-to-r from-[#22e584] to-[#10b981] hover:brightness-110 text-black active:scale-98 cursor-pointer"
               >
-                <Icons.Play className="w-4 h-4 fill-current" />
-                <span>
+                <Icons.Play className="w-4 h-4 fill-black text-black" />
+                <span className="text-black font-black">
                   НАЧАТЬ ТРЕНИРОВКУ {activeDay.title?.toUpperCase()}
                 </span>
               </button>
@@ -7942,7 +7948,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
             type="button"
             onClick={handleFinishWorkout}
             title="Завершить тренировку и сохранить в историю"
-            className="w-full text-center text-xs font-black text-white bg-[#fc4c02] hover:bg-[#e04402] py-2 px-1 rounded-xl border border-[#fc4c02]/50 shadow-md shadow-[#fc4c02]/25 active:scale-95 transition flex items-center justify-center space-x-1"
+            className="w-full text-center text-xs font-black text-black bg-gradient-to-r from-[#22e584] to-[#10b981] hover:brightness-110 py-2 px-1 rounded-xl shadow-md shadow-[#22e584]/25 active:scale-95 transition flex items-center justify-center space-x-1"
           >
             <span>✓</span>
             <span>Завершить</span>
