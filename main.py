@@ -158,10 +158,14 @@ if os.path.exists(GUIDES_FILE_PATH):
 
 @app.get("/api/exercises/guides")
 def get_exercise_guides():
+    if os.path.exists(GUIDES_FILE_PATH):
+        try:
+            with open(GUIDES_FILE_PATH, "r", encoding="utf-8") as f:
+                content = json.load(f)
+                return JSONResponse(content=content, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+        except Exception as _e:
+            print(f"Error reading exercise guides: {_e}")
     content = GUIDES_CACHE if GUIDES_CACHE else {}
-    if not content and os.path.exists(GUIDES_FILE_PATH):
-        with open(GUIDES_FILE_PATH, "r", encoding="utf-8") as f:
-            content = json.load(f)
     return JSONResponse(content=content, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 # --- COACH & PROGRESSIVE OVERLOAD DEFINITIONS ---
@@ -2275,7 +2279,8 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default", loa
     estimated_1rm = round(rec_weight * (1.0 + (target_max / 30.0)), 1) if rec_weight > 0 else 0.0
 
     guide_info = GUIDES_CACHE.get(ex_name, {})
-    image_url = guide_info.get("local_video") or guide_info.get("remote_video") or ""
+    raw_img = guide_info.get("local_video") or guide_info.get("remote_video") or ""
+    image_url = f"{raw_img}?v=76" if raw_img and raw_img.startswith("/static/videos/") else raw_img
     primary_muscle = guide_info.get("primary_muscle") or ""
 
     return {
@@ -5039,6 +5044,7 @@ class HealthSyncRequest(BaseModel):
     notify: Optional[Union[bool, int, str]] = False
 
 
+@app.get("/api/health/sync")
 @app.post("/api/health/sync")
 async def sync_health_metrics(
     request: Request,
@@ -5063,6 +5069,8 @@ async def sync_health_metrics(
                 body_data = raw_json
         except Exception:
             pass
+
+    print(f"[HEALTH SYNC] From {request.client.host if request.client else 'unknown'}: params={dict(request.query_params)}, body={body_data}")
 
     # Resolve user_id: body > query param > header > default
     uid = (
@@ -5234,7 +5242,14 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 def serve_index():
     index_path = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_path):
-        return FileResponse(index_path)
+        return FileResponse(
+            index_path,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+        )
     return {"message": "GymTracker PWA Backend Running"}
 
 @app.get("/manifest.json")
@@ -5243,7 +5258,15 @@ def serve_manifest():
 
 @app.get("/sw.js")
 def serve_sw():
-    return FileResponse(os.path.join(STATIC_DIR, "sw.js"), media_type="application/javascript")
+    return FileResponse(
+        os.path.join(STATIC_DIR, "sw.js"),
+        media_type="application/javascript",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
 
 @app.get("/healthz")
 def healthz():

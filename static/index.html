@@ -188,13 +188,13 @@
 
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) .yt-nav-active-pill,
     html.theme-neu-light:not(.dark):not(.theme-neu-dark) .yt-nav-active-pill {
-      background: #121316 !important;
-      border: 1px solid rgba(0, 0, 0, 0.15) !important;
-      color: #ffffff !important;
-      box-shadow: 0 3px 10px rgba(18, 19, 22, 0.25) !important;
+      background: linear-gradient(135deg, #22e584 0%, #10b981 100%) !important;
+      border: 1px solid rgba(16, 185, 129, 0.4) !important;
+      color: #051a10 !important;
+      box-shadow: 0 3px 12px rgba(34, 229, 132, 0.35) !important;
     }
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) .yt-nav-active-pill * {
-      color: #ffffff !important;
+      color: #051a10 !important;
     }
 
     /* ↔️ SCREEN SLIDE ANIMATIONS FOR SWIPE & TAB SWITCH */
@@ -321,7 +321,7 @@
       --neu-base: #f8fafc;
       --neu-surface: #ffffff;
       --neu-surface-card: #f1f5f9;
-      --neu-inset-bg: #e2e8f0;
+      --neu-inset-bg: #f1f5f9;
       --neu-shadow-dark: rgba(15, 23, 42, 0.06);
       --neu-shadow-light: rgba(255, 255, 255, 0.9);
       --neu-border: rgba(226, 232, 240, 0.9);
@@ -329,10 +329,10 @@
       --neu-text-primary: #090a0f;
       --neu-text-secondary: #334155;
       --neu-text-muted: #64748b;
-      --strava-orange: #10b981;
-      --strava-orange-hover: #059669;
-      --strava-orange-glow: rgba(16, 185, 129, 0.25);
-      --onlyfits-green: #10b981;
+      --strava-orange: #059669;
+      --strava-orange-hover: #047857;
+      --strava-orange-glow: rgba(5, 150, 105, 0.25);
+      --onlyfits-green: #059669;
       --onlyfits-coral: #ff5722;
       --onlyfits-purple: #8b5cf6;
       --onlyfits-cyan: #0284c7;
@@ -341,7 +341,7 @@
       --neu-accent-amber: #d97706;
       --neu-lcd-bg: #e2e8f0;
       --neu-lcd-text: #0f172a;
-      --neu-dark-pill: #1e293b;
+      --neu-dark-pill: #f1f5f9;
       --neu-dock-bg: rgba(255, 255, 255, 0.96);
     }
 
@@ -364,34 +364,128 @@
       -webkit-backdrop-filter: blur(16px);
     }
 
-    /* Onlyfits Glass Cards */
-    .neu-flat {
+    /* 🌙 ONLYFITS LUXURY DARK GLASS CARDS */
+    body.dark .neu-flat,
+    body.theme-neu-dark .neu-flat,
+    html.dark .neu-flat,
+    html.theme-neu-dark .neu-flat {
       background: linear-gradient(180deg, rgba(24, 27, 36, 0.95) 0%, rgba(18, 20, 28, 0.98) 100%) !important;
       border: 1px solid rgba(255, 255, 255, 0.08) !important;
       box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.65), inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
       border-radius: 24px !important;
+      color: #ffffff !important;
     }
-    .neu-flat-sm {
+    body.dark .neu-flat-sm,
+    body.theme-neu-dark .neu-flat-sm,
+    html.dark .neu-flat-sm,
+    html.theme-neu-dark .neu-flat-sm {
       background: rgba(24, 27, 36, 0.9) !important;
       border: 1px solid rgba(255, 255, 255, 0.08) !important;
       box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.5) !important;
       border-radius: 18px !important;
+      color: #ffffff !important;
     }
-    .neu-inset {
+    body.dark .neu-inset,
+    body.theme-neu-dark .neu-inset,
+    html.dark .neu-inset,
+    html.theme-neu-dark .neu-inset {
       background: rgba(11, 13, 18, 0.8) !important;
       border: 1px solid rgba(255, 255, 255, 0.05) !important;
       box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5) !important;
       border-radius: 16px !important;
+      color: #ffffff !important;
     }
-    .neu-btn {
+    body.dark .neu-btn,
+    body.theme-neu-dark .neu-btn,
+    html.dark .neu-btn,
+    html.theme-neu-dark .neu-btn {
       background: rgba(26, 30, 40, 0.9) !important;
       border: 1px solid rgba(255, 255, 255, 0.1) !important;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.12) !important;
       transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      color: #ffffff !important;
     }
-    .neu-btn:active {
+    body.dark .neu-btn:active,
+    body.theme-neu-dark .neu-btn:active {
       transform: scale(0.96) !important;
       filter: brightness(0.9);
+    }
+
+    /* ☀️ ONLYFITS CLEAN LUXURY LIGHT CARDS */
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .neu-flat,
+    html.theme-neu-light:not(.dark):not(.theme-neu-dark) .neu-flat,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .neu-flat,
+    html.theme-soft-neu:not(.dark):not(.theme-neu-dark) .neu-flat {
+      background: #ffffff !important;
+      background-image: none !important;
+      border: 1px solid rgba(226, 232, 240, 0.9) !important;
+      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+      border-radius: 24px !important;
+      color: #0f172a !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .neu-flat-sm,
+    html.theme-neu-light:not(.dark):not(.theme-neu-dark) .neu-flat-sm,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .neu-flat-sm,
+    html.theme-soft-neu:not(.dark):not(.theme-neu-dark) .neu-flat-sm {
+      background: #ffffff !important;
+      background-image: none !important;
+      border: 1px solid rgba(226, 232, 240, 0.9) !important;
+      box-shadow: 0 2px 8px -1px rgba(15, 23, 42, 0.05) !important;
+      border-radius: 18px !important;
+      color: #0f172a !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .neu-inset,
+    html.theme-neu-light:not(.dark):not(.theme-neu-dark) .neu-inset,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .neu-inset,
+    html.theme-soft-neu:not(.dark):not(.theme-neu-dark) .neu-inset {
+      background: #f1f5f9 !important;
+      background-image: none !important;
+      border: 1px solid rgba(226, 232, 240, 0.8) !important;
+      box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+      border-radius: 16px !important;
+      color: #0f172a !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .neu-btn,
+    html.theme-neu-light:not(.dark):not(.theme-neu-dark) .neu-btn,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .neu-btn,
+    html.theme-soft-neu:not(.dark):not(.theme-neu-dark) .neu-btn {
+      background: #ffffff !important;
+      background-image: none !important;
+      border: 1px solid rgba(203, 213, 225, 0.9) !important;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 1) !important;
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      color: #0f172a !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .neu-btn:active,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .neu-btn:active {
+      background: #f8fafc !important;
+      transform: scale(0.96) !important;
+    }
+
+    /* Fallback default neu- styles */
+    .neu-flat {
+      background-color: var(--neu-surface) !important;
+      border: 1px solid var(--neu-border) !important;
+      box-shadow: 0 8px 24px -4px var(--neu-shadow-dark) !important;
+      border-radius: 24px !important;
+    }
+    .neu-flat-sm {
+      background-color: var(--neu-surface) !important;
+      border: 1px solid var(--neu-border) !important;
+      box-shadow: 0 4px 14px -2px var(--neu-shadow-dark) !important;
+      border-radius: 18px !important;
+    }
+    .neu-inset {
+      background-color: var(--neu-inset-bg) !important;
+      border: 1px solid var(--neu-border-subtle) !important;
+      box-shadow: inset 0 2px 4px var(--neu-shadow-dark) !important;
+      border-radius: 16px !important;
+    }
+    .neu-btn {
+      background-color: var(--neu-surface) !important;
+      border: 1px solid var(--neu-border) !important;
+      box-shadow: 0 2px 8px var(--neu-shadow-dark) !important;
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
     .neu-dark-pill {
       background-color: var(--neu-dark-pill) !important;
@@ -578,19 +672,19 @@
       transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) .nav-btn-active {
-      background-color: #121316 !important;
-      color: #ffffff !important;
-      box-shadow: 0 4px 14px rgba(18, 19, 22, 0.28) !important;
-      border: 1px solid rgba(0, 0, 0, 0.18) !important;
+      background: linear-gradient(135deg, #22e584 0%, #10b981 100%) !important;
+      color: #051a10 !important;
+      box-shadow: 0 4px 14px rgba(34, 229, 132, 0.35) !important;
+      border: 1px solid rgba(16, 185, 129, 0.4) !important;
     }
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) .nav-btn-active * {
-      color: #ffffff !important;
+      color: #051a10 !important;
     }
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) .nav-btn-active [class*="text-[#fc4c02]"],
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) .nav-btn-active svg,
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) .nav-btn-active div.scale-110,
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) .nav-btn-active div.scale-110 * {
-      color: #fc4c02 !important;
+      color: #051a10 !important;
     }
     body.dark .nav-btn-active,
     body.theme-neu-dark .nav-btn-active {
@@ -714,6 +808,32 @@
     body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-rose-300,
     body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-rose-300 {
       color: #be123c !important;
+    }
+
+    /* ☀️ Onlyfits Light Theme Accents & Badges */
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .text-\[\#22e584\],
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .text-\[\#22e584\],
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) [class*="text-[#22e584]"],
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) [class*="text-[#22e584]"] {
+      color: #059669 !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .bg-\[\#22e584\]\/15,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .bg-\[\#22e584\]\/15 {
+      background-color: rgba(16, 185, 129, 0.12) !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) .border-\[\#22e584\]\/30,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) .border-\[\#22e584\]\/30 {
+      border-color: rgba(16, 185, 129, 0.3) !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) [class*="bg-[#141722]"],
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) [class*="bg-[#141722]"] {
+      background-color: var(--neu-surface) !important;
+      border-color: var(--neu-border) !important;
+      color: var(--neu-text-primary) !important;
+    }
+    body.theme-neu-light:not(.dark):not(.theme-neu-dark) [class*="bg-[#141722]"] *,
+    body.theme-soft-neu:not(.dark):not(.theme-neu-dark) [class*="bg-[#141722]"] * {
+      color: var(--neu-text-primary) !important;
     }
 
     /* Dark Theme Typography Overrides */
@@ -847,6 +967,6 @@
   </script>
 
   <!-- React App -->
-  <script type="text/babel" src="/static/app.js?v=70"></script>
+  <script type="text/babel" src="/static/app.js?v=80"></script>
 </body>
 </html>

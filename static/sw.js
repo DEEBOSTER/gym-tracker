@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gymtracker-v70';
+const CACHE_NAME = 'gymtracker-v80';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',
@@ -97,7 +97,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // 2. Network-first for HTML, JS and dynamic files so fresh code is always loaded
-  if (url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname.endsWith('.js')) {
+  if (url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname.endsWith('.js') || url.pathname.startsWith('/static/videos/')) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {

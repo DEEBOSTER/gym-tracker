@@ -464,7 +464,7 @@ function NeuThemeToggle({ theme, onToggle }) {
 }
 
 // 4. Hero Athletic Clock & Session Header Card
-function NeuHeaderCard({ theme, onToggleTheme, coachDayTitle }) {
+function NeuHeaderCard({ theme, onToggleTheme, coachDayTitle, userProfile }) {
   const [timeStr, setTimeStr] = useState('');
   const [dateStr, setDateStr] = useState('');
 
@@ -486,6 +486,8 @@ function NeuHeaderCard({ theme, onToggleTheme, coachDayTitle }) {
     return () => clearInterval(interval);
   }, []);
 
+  const displayName = (userProfile && userProfile.name) || (typeof window !== 'undefined' && window.gymUser && window.gymUser.first_name) || 'Атлет';
+
   return (
     <div className="neu-flat rounded-3xl p-4 flex items-center justify-between relative overflow-hidden border border-white/10">
       {/* Greeting and date pill */}
@@ -497,7 +499,7 @@ function NeuHeaderCard({ theme, onToggleTheme, coachDayTitle }) {
           </span>
         </div>
         <div className="text-lg font-black tracking-tight text-white">
-          {userProfile?.name ? `Привет, ${userProfile.name} 👋` : 'Привет, Атлет 👋'}
+          {displayName ? `Привет, ${displayName} 👋` : 'Привет, Атлет 👋'}
         </div>
         {coachDayTitle && (
           <div className="text-[10px] text-zinc-300 font-bold uppercase tracking-wider pt-0.5 flex items-center space-x-1">
@@ -1170,19 +1172,55 @@ function AthleticLiquidWaterWidget({ userProfile }) {
 // ==========================================
 // 🥗 ATHLETIC NUTRITION & KBJU WIDGET
 // ==========================================
+function calculateClientDailyMacroTargets(profile) {
+  const weight = parseFloat(profile?.weight || 80.0);
+  const height = parseFloat(profile?.height || 186.0);
+  const age = parseInt(profile?.age || 26, 10);
+  const gender = profile?.gender || 'male';
+  const goal = profile?.fitness_goal || 'hypertrophy';
+
+  let bmr;
+  if (gender === 'female') {
+    bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+  } else {
+    bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+  }
+
+  const tdee = bmr * 1.45;
+  let targetKcal, targetProtein, targetFat;
+
+  if (goal === 'fat_loss') {
+    targetKcal = Math.round(Math.max(1400.0, tdee - 450.0));
+    targetProtein = Math.round(weight * 2.2 * 10) / 10;
+    targetFat = Math.round(weight * 0.8 * 10) / 10;
+  } else if (goal === 'strength') {
+    targetKcal = Math.round(tdee + 200.0);
+    targetProtein = Math.round(weight * 1.9 * 10) / 10;
+    targetFat = Math.round(weight * 1.0 * 10) / 10;
+  } else {
+    // hypertrophy (+350 kcal)
+    targetKcal = Math.round(tdee + 350.0);
+    targetProtein = Math.round(weight * 2.0 * 10) / 10;
+    targetFat = Math.round(weight * 1.0 * 10) / 10;
+  }
+
+  const targetCarbs = Math.round(Math.max(50.0, (targetKcal - (targetProtein * 4.0 + targetFat * 9.0)) / 4.0) * 10) / 10;
+  const targetWaterMl = Math.max(2000, Math.round((weight * 35) / 250) * 250);
+
+  return {
+    target_calories: targetKcal,
+    target_protein: targetProtein,
+    target_fat: targetFat,
+    target_carbs: targetCarbs,
+    target_water_ml: targetWaterMl
+  };
+}
+
 function AthleticNutritionWidget({ userProfile, onOpenScanner, refreshTrigger }) {
   const [nutrition, setNutrition] = useState(() => {
-    const weight = parseFloat(userProfile?.weight || 78);
-    const goal = userProfile?.fitness_goal || 'hypertrophy';
-    let cal = 2400;
-    let p = Math.round(weight * 2.0);
-    let f = Math.round(weight * 1.0);
-    if (goal === 'fat_loss') { cal = 1950; p = Math.round(weight * 2.2); f = Math.round(weight * 0.8); }
-    else if (goal === 'strength') { cal = 2650; p = Math.round(weight * 1.9); f = Math.round(weight * 1.0); }
-    const c = Math.round((cal - (p * 4 + f * 9)) / 4);
-
+    const targets = calculateClientDailyMacroTargets(userProfile);
     return {
-      targets: { target_calories: cal, target_protein: p, target_fat: f, target_carbs: c },
+      targets: targets,
       consumed: { calories: 0, protein: 0, fat: 0, carbs: 0 },
       meals: []
     };
@@ -1251,6 +1289,7 @@ function AthleticNutritionWidget({ userProfile, onOpenScanner, refreshTrigger })
         const c = Math.round(localTodayMeals.reduce((s, m) => s + (parseFloat(m.carbs) || 0), 0) * 10) / 10;
         setNutrition(prev => ({
           ...prev,
+          targets: prev.targets || calculateClientDailyMacroTargets(userProfile),
           consumed: { calories: cal, protein: p, fat: f, carbs: c },
           meals: localTodayMeals
         }));
@@ -1262,9 +1301,19 @@ function AthleticNutritionWidget({ userProfile, onOpenScanner, refreshTrigger })
 
   useEffect(() => {
     loadNutrition();
-  }, [refreshTrigger, userProfile?.weight, userProfile?.fitness_goal]);
+  }, [refreshTrigger, userProfile?.weight, userProfile?.height, userProfile?.age, userProfile?.fitness_goal]);
 
-  const targets = nutrition.targets || { target_calories: 2400, target_protein: 160, target_fat: 70, target_carbs: 260 };
+  useEffect(() => {
+    if (userProfile) {
+      setNutrition(prev => ({
+        ...prev,
+        targets: prev?.targets?.target_calories ? prev.targets : calculateClientDailyMacroTargets(userProfile)
+      }));
+    }
+  }, [userProfile?.weight, userProfile?.height, userProfile?.age, userProfile?.fitness_goal]);
+
+  const fallbackTargets = useMemo(() => calculateClientDailyMacroTargets(userProfile), [userProfile?.weight, userProfile?.height, userProfile?.age, userProfile?.fitness_goal]);
+  const targets = (nutrition && nutrition.targets && nutrition.targets.target_calories) ? nutrition.targets : fallbackTargets;
   const consumed = nutrition.consumed || { calories: 0, protein: 0, fat: 0, carbs: 0 };
   const calPct = Math.min(100, Math.round((consumed.calories / targets.target_calories) * 100));
   const remainingKcal = Math.max(0, targets.target_calories - consumed.calories);
@@ -4090,107 +4139,146 @@ function OnlyfitsHealthRingsWidget({ userProfile }) {
         </div>
       </div>
 
-      {showEditModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-3xl p-5 max-w-sm w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            
+      {/* Portaled Edit Modal to prevent scroll clipping */}
+      {showEditModal && typeof ReactDOM !== 'undefined' && ReactDOM.createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowEditModal(false);
+          }}
+        >
+          <div 
+            className="neu-flat border border-slate-200/50 dark:border-white/10 rounded-3xl p-5 max-w-sm w-full shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto relative my-auto animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
-            <div className="flex items-center justify-between pb-1 border-b border-white/10">
-              <div className="flex items-center gap-1.5">
-                <span className="text-base">⭕</span>
-                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white">Активность & Здоровье</h3>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-white/10">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">⭕</span>
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white font-sans">
+                    Активность & Здоровье
+                  </h3>
+                  <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-medium">
+                    Шаги, сон и калории
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setShowEditModal(false)} className="text-zinc-400 hover:text-white text-lg">✕</button>
+              <button 
+                type="button"
+                onClick={() => setShowEditModal(false)} 
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-base transition active:scale-90"
+              >
+                ✕
+              </button>
             </div>
 
             {/* Mode Switcher */}
-            <div className="flex p-0.5 rounded-xl bg-black/40 border border-white/10">
+            <div className="flex p-1 rounded-2xl neu-inset">
               <button
+                type="button"
                 onClick={() => setActiveTab('manual')}
-                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all ${
+                className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${
                   activeTab === 'manual' 
-                    ? 'bg-[#fc4c02] text-white shadow' 
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'btn-onlyfits-primary text-[#051a10] shadow-md' 
+                    : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 ✏️ Ручной ввод
               </button>
               <button
+                type="button"
                 onClick={() => setActiveTab('apple_health')}
-                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
+                className={`flex-1 py-2 text-xs font-black rounded-xl transition-all flex items-center justify-center space-x-1 ${
                   activeTab === 'apple_health' 
-                    ? 'bg-emerald-600 text-white shadow' 
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'btn-onlyfits-primary text-[#051a10] shadow-md' 
+                    : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                🍏 Apple Health
+                <span>🍏</span>
+                <span>Apple Health</span>
               </button>
             </div>
 
             {activeTab === 'manual' ? (
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 <div>
-                  <label className="text-[11px] font-bold text-zinc-400 flex items-center gap-1">👟 Шаги</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-zinc-300 flex items-center space-x-1 mb-1">
+                    <span>👟</span>
+                    <span>Шаги за сегодня</span>
+                  </label>
                   <input
                     type="number"
                     value={editSteps}
                     onChange={(e) => setEditSteps(e.target.value)}
-                    className="w-full mt-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-[#fc4c02]"
+                    className="w-full bg-white dark:bg-black/30 border border-slate-300 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-[#22e584]"
+                    placeholder="напр. 8500"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-zinc-400 flex items-center gap-1">🌙 Сон (часов)</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-zinc-300 flex items-center space-x-1 mb-1">
+                    <span>🌙</span>
+                    <span>Сон (часов)</span>
+                  </label>
                   <input
                     type="number"
                     step="0.5"
                     value={editSleep}
                     onChange={(e) => setEditSleep(e.target.value)}
-                    className="w-full mt-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-[#fc4c02]"
+                    className="w-full bg-white dark:bg-black/30 border border-slate-300 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-[#22e584]"
+                    placeholder="напр. 7.5"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-zinc-400 flex items-center gap-1">🔥 Активные калории (ккал)</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-zinc-300 flex items-center space-x-1 mb-1">
+                    <span>🔥</span>
+                    <span>Активные калории (ккал)</span>
+                  </label>
                   <input
                     type="number"
                     value={editActiveKcal}
                     onChange={(e) => setEditActiveKcal(e.target.value)}
-                    className="w-full mt-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-[#fc4c02]"
+                    className="w-full bg-white dark:bg-black/30 border border-slate-300 dark:border-white/10 rounded-2xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-[#22e584]"
+                    placeholder="напр. 550"
                   />
                 </div>
                 <button
+                  type="button"
                   onClick={saveMetrics}
-                  className="w-full py-2.5 rounded-xl bg-[#fc4c02] text-white font-black text-xs uppercase tracking-wider shadow-lg active:scale-95 transition"
+                  className="btn-onlyfits-primary w-full py-3 rounded-2xl text-[#051a10] font-black text-xs uppercase tracking-wider shadow-lg active:scale-95 transition cursor-pointer"
                 >
                   Сохранить показатели
                 </button>
               </div>
             ) : (
               <div className="space-y-3 text-left">
-                <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs leading-relaxed">
-                  <div className="font-bold flex items-center gap-1.5 text-white mb-1">
-                    <span>🍏</span> Автоматическая синхронизация
+                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-800 dark:text-emerald-300 text-xs leading-relaxed">
+                  <div className="font-black flex items-center space-x-1.5 text-slate-900 dark:text-white mb-1">
+                    <span>🍏</span>
+                    <span>Автоматическая синхронизация</span>
                   </div>
-                  С помощью родного приложения <b>«Команды» (Shortcuts)</b> на iPhone ваши шаги, сон и калории могут отправляться сюда автоматически каждое утро и вечер!
+                  С помощью родного приложения <b>«Команды» (Shortcuts)</b> на iPhone ваши шаги, сон и калории отправляются в Onlyfits автоматически каждое утро и вечер!
                 </div>
 
                 {/* Personal Webhook URL */}
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">
                     Ваш персональный вебхук:
                   </label>
-                  <div className="mt-1 flex items-center gap-1.5 bg-black/40 border border-white/10 rounded-xl p-2">
+                  <div className="mt-1 flex items-center space-x-1.5 neu-inset p-2 rounded-2xl">
                     <input 
                       readOnly 
                       value={shortcutWebhookUrl} 
-                      className="bg-transparent text-[10px] font-mono text-zinc-300 flex-1 truncate focus:outline-none select-all"
+                      className="bg-transparent text-[11px] font-mono text-slate-800 dark:text-zinc-200 flex-1 truncate focus:outline-none select-all px-1"
                     />
                     <button
+                      type="button"
                       onClick={() => {
                         navigator.clipboard?.writeText(shortcutWebhookUrl);
                         setCopiedUrl(true);
                         setTimeout(() => setCopiedUrl(false), 2500);
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-[10px] whitespace-nowrap active:scale-95 transition"
+                      className="px-3 py-1.5 rounded-xl bg-white dark:bg-white/10 hover:bg-slate-50 text-slate-800 dark:text-white font-black text-[11px] whitespace-nowrap active:scale-95 transition shadow-sm cursor-pointer"
                     >
                       {copiedUrl ? '✓ Скопировано' : 'Копировать'}
                     </button>
@@ -4198,27 +4286,28 @@ function OnlyfitsHealthRingsWidget({ userProfile }) {
                 </div>
 
                 {/* Quick 3-Step Guide */}
-                <div className="space-y-1.5 text-[11px] text-zinc-300 bg-black/20 rounded-2xl p-3 border border-white/5">
-                  <div className="font-black text-[10px] uppercase text-zinc-400 mb-1">Как настроить за 1 минуту:</div>
-                  <div className="flex gap-2 items-start">
-                    <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 text-[10px]">1</span>
+                <div className="space-y-2 text-[11px] text-slate-700 dark:text-zinc-300 neu-inset rounded-2xl p-3.5">
+                  <div className="font-black text-[10px] uppercase text-slate-500 dark:text-zinc-400 mb-1">Как настроить за 1 минуту:</div>
+                  <div className="flex space-x-2 items-start">
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black flex items-center justify-center shrink-0 text-[10px]">1</span>
                     <span>Откройте <b>«Команды»</b> на iPhone и нажмите <b>+</b> (создать).</span>
                   </div>
-                  <div className="flex gap-2 items-start">
-                    <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 text-[10px]">2</span>
+                  <div className="flex space-x-2 items-start">
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black flex items-center justify-center shrink-0 text-[10px]">2</span>
                     <span>Добавьте действия «Найти образцы здоровья» (Шаги, Сон, Калории).</span>
                   </div>
-                  <div className="flex gap-2 items-start">
-                    <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 text-[10px]">3</span>
-                    <span>Добавьте «Получить содержимое URL» с вашим вебхуком. Готово!</span>
+                  <div className="flex space-x-2 items-start">
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black flex items-center justify-center shrink-0 text-[10px]">3</span>
+                    <span>Добавьте «Получить содержимое URL» с методом POST и вашим вебхуком. Готово!</span>
                   </div>
                 </div>
 
                 {/* Test button */}
                 <button
+                  type="button"
                   onClick={handleTestAppleHealthSync}
                   disabled={testSyncLoading}
-                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider shadow-lg active:scale-95 transition flex items-center justify-center gap-1.5"
+                  className="btn-onlyfits-primary w-full py-3 rounded-2xl text-[#051a10] font-black text-xs uppercase tracking-wider shadow-lg active:scale-95 transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-50"
                 >
                   {testSyncLoading ? (
                     <span>Синхронизация...</span>
@@ -4232,7 +4321,8 @@ function OnlyfitsHealthRingsWidget({ userProfile }) {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
@@ -5093,7 +5183,10 @@ function ExerciseVideoModal({ isOpen, onClose, exerciseName, guide }) {
                 <div className="relative w-full flex flex-col items-center justify-center py-2 bg-gradient-to-b from-gym-950 via-gym-900/50 to-gym-950">
                   {currentGuide.local_video || currentGuide.remote_video ? (
                     <img 
-                      src={currentGuide.local_video || currentGuide.remote_video} 
+                      src={(() => {
+                        const v = currentGuide.local_video || currentGuide.remote_video;
+                        return v && v.startsWith('/static/videos/') && !v.includes('?v=') ? `${v}?v=76` : v;
+                      })()} 
                       alt={exerciseName}
                       className="max-h-64 object-contain rounded-xl"
                     />
@@ -6534,6 +6627,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
   const [selectedDayKey, setSelectedDayKey] = useState('fullbody_1');
   const [warmupCollapsed, setWarmupCollapsed] = useState(false);
   const [showPplPeriodization, setShowPplPeriodization] = useState(false);
+  const [showCatalogFilters, setShowCatalogFilters] = useState(false);
 
   const handleSelectWeek = (w) => {
     setSelectedPeriodizationWeek(w);
@@ -7317,6 +7411,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
             theme={theme} 
             onToggleTheme={onToggleTheme} 
             coachDayTitle={recommendedDay ? `План: ${recommendedDay.title.split('—')[0]}` : null}
+            userProfile={userProfile}
           />
 
           {/* Athletic Gamification HUD Card (XP, FitPoints, Level, Tier, Volume, PRs) */}
@@ -7365,133 +7460,219 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
           </p>
         </div>
 
-        {/* 1. Onlyfits Difficulty Filters */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between px-1 text-[11px] font-bold text-slate-500 dark:text-zinc-400">
-            <span>Уровень сложности:</span>
-          </div>
-          <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pb-1">
-            {[
-              { id: 'all', label: 'Все' },
-              { id: 'beginner', label: '🪺 Beginner' },
-              { id: 'intermediate', label: '🐣 Intermediate' },
-              { id: 'enthusiast', label: '🐥 Enthusiast' },
-              { id: 'advance', label: '🦅 Advance' }
-            ].map(diff => (
+        {/* Collapsible Dropdown: Program Selection & Filters */}
+        {(() => {
+          const currentProg = (coachPrograms || ONLYFITS_PROGRAMS_META).find(p => p.id === selectedProgramId) || (coachPrograms || ONLYFITS_PROGRAMS_META)[0];
+          const filteredProgs = (coachPrograms || ONLYFITS_PROGRAMS_META).filter(p => {
+            if (selectedDifficulty !== 'all' && p.difficulty !== selectedDifficulty) return false;
+            if (selectedMuscleFocus !== 'All' && p.focus !== selectedMuscleFocus && !p.focus_label?.toLowerCase().includes(selectedMuscleFocus.toLowerCase())) return false;
+            return true;
+          });
+          const progsToRender = filteredProgs.length > 0 ? filteredProgs : (coachPrograms || ONLYFITS_PROGRAMS_META);
+
+          return (
+            <div className="space-y-2">
               <button
-                key={diff.id}
                 type="button"
                 onClick={() => {
                   try { triggerHaptic('light'); } catch (e) {}
-                  setSelectedDifficulty(diff.id);
+                  setShowCatalogFilters(prev => !prev);
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 cursor-pointer shrink-0 border ${
-                  selectedDifficulty === diff.id
-                    ? 'bg-[#22e584] text-black border-[#22e584] shadow-md shadow-[#22e584]/30 font-black'
-                    : 'bg-[var(--neu-surface)] text-slate-600 dark:text-zinc-400 hover:text-white border-[var(--neu-border)]'
-                }`}
+                className="w-full py-3 px-3.5 rounded-2xl bg-[var(--neu-surface)] border border-[var(--neu-border)] flex items-center justify-between transition-all active:scale-[0.99] cursor-pointer shadow-sm group hover:border-[#22e584]/50"
               >
-                {diff.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 2. Onlyfits Muscle Group Focus Filters */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between px-1 text-[11px] font-bold text-slate-500 dark:text-zinc-400">
-            <span>Мышечный фокус:</span>
-          </div>
-          <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pb-1">
-            {[
-              { id: 'All', label: 'Все' },
-              { id: 'Balanced', label: 'Баланс' },
-              { id: 'Glutes', label: 'Ягодицы' },
-              { id: 'Back', label: 'Спина' },
-              { id: 'Delts', label: 'Дельты' },
-              { id: 'Legs', label: 'Ноги' }
-            ].map(foc => (
-              <button
-                key={foc.id}
-                type="button"
-                onClick={() => {
-                  try { triggerHaptic('light'); } catch (e) {}
-                  setSelectedMuscleFocus(foc.id);
-                }}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 cursor-pointer shrink-0 border ${
-                  selectedMuscleFocus === foc.id
-                    ? 'bg-[#22e584] text-black border-[#22e584] shadow-md shadow-[#22e584]/30 font-black'
-                    : 'bg-[var(--neu-surface)] text-slate-600 dark:text-zinc-400 hover:text-white border-[var(--neu-border)]'
-                }`}
-              >
-                {foc.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 3. Program Cards Selector */}
-        <div className="space-y-2">
-          {(() => {
-            const filteredProgs = (coachPrograms || ONLYFITS_PROGRAMS_META).filter(p => {
-              if (selectedDifficulty !== 'all' && p.difficulty !== selectedDifficulty) return false;
-              if (selectedMuscleFocus !== 'All' && p.focus !== selectedMuscleFocus && !p.focus_label?.toLowerCase().includes(selectedMuscleFocus.toLowerCase())) return false;
-              return true;
-            });
-            const progsToRender = filteredProgs.length > 0 ? filteredProgs : (coachPrograms || ONLYFITS_PROGRAMS_META);
-
-            return (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {progsToRender.map(prog => {
-                  const isSelected = selectedProgramId === prog.id;
-                  return (
-                    <div
-                      key={prog.id}
-                      onClick={() => {
-                        try { triggerHaptic('light'); } catch (e) {}
-                        setSelectedProgramId(prog.id);
-                        if (prog.days && prog.days.length > 0) {
-                          setSelectedDayKey(prog.days[0].key);
-                        }
-                      }}
-                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
-                        isSelected
-                          ? 'bg-[#141722] border-[#22e584] ring-2 ring-[#22e584]/40 shadow-xl'
-                          : 'bg-[var(--neu-surface)] border-[var(--neu-border)] hover:border-white/20'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between gap-1 mb-1.5">
-                          <span className="text-[10px] font-mono font-black text-[#22e584] px-2 py-0.5 rounded-md bg-[#22e584]/15 border border-[#22e584]/30">
-                            {prog.days_label}
-                          </span>
-                          <span className="text-[10px] font-bold text-zinc-400 px-2 py-0.5 rounded-md bg-white/5">
-                            {prog.difficulty_badge}
-                          </span>
-                        </div>
-                        <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
-                          {prog.title}
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5 leading-snug">
-                          {prog.subtitle}
-                        </p>
-                      </div>
-
-                      <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
-                        <span className="text-zinc-400 font-mono">
-                          {prog.days?.length || 3} тренировочных дня
-                        </span>
-                        <span className={`font-bold ${isSelected ? 'text-[#22e584]' : 'text-zinc-500'}`}>
-                          {isSelected ? '✓ Выбрано' : 'Выбрать →'}
-                        </span>
-                      </div>
+                <div className="flex items-center space-x-3 min-w-0">
+                  <span className="w-9 h-9 rounded-xl bg-[#22e584]/15 border border-[#22e584]/30 text-[#22e584] flex items-center justify-center text-base font-bold shrink-0">
+                    ⚡
+                  </span>
+                  <div className="text-left min-w-0">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-xs font-black text-slate-800 dark:text-zinc-200 truncate">
+                        {currentProg?.title || 'Программа тренировок'}
+                      </span>
+                      <span className="text-[10px] font-mono font-black text-[#22e584] px-1.5 py-0.2 rounded bg-[#22e584]/10 border border-[#22e584]/30 shrink-0">
+                        {currentProg?.days_label}
+                      </span>
                     </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
-        </div>
+                    <div className="text-[10px] text-slate-500 dark:text-zinc-400 truncate mt-0.5">
+                      {showCatalogFilters 
+                        ? 'Нажмите, чтобы скрыть меню выбора' 
+                        : `${currentProg?.subtitle || 'Нажмите, чтобы сменить программу'} · Выбрать ▼`
+                      }
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 shrink-0 pl-2">
+                  <span className="text-[11px] font-mono font-bold text-[#22e584] hidden xs:inline">
+                    {showCatalogFilters ? 'Свернуть' : 'Сменить'}
+                  </span>
+                  <div className={`w-7 h-7 rounded-full bg-black/10 dark:bg-white/5 flex items-center justify-center text-slate-400 dark:text-zinc-400 text-xs font-mono transition-transform duration-200 ${showCatalogFilters ? 'rotate-180 bg-[#22e584]/15 text-[#22e584]' : ''}`}>
+                    ▼
+                  </div>
+                </div>
+              </button>
+
+              {/* Dropdown Content */}
+              {showCatalogFilters && (
+                <div className="bg-[var(--neu-surface)] border border-[var(--neu-border)] rounded-2xl p-3.5 space-y-3.5 shadow-inner animate-in fade-in slide-in-from-top-2 duration-150">
+                  {/* 1. Onlyfits Difficulty Filters */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between px-1 text-[11px] font-bold text-slate-500 dark:text-zinc-400">
+                      <span>Уровень сложности:</span>
+                      {selectedDifficulty !== 'all' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            try { triggerHaptic('light'); } catch (e) {}
+                            setSelectedDifficulty('all');
+                          }}
+                          className="text-[10px] font-bold text-[#22e584] hover:underline cursor-pointer"
+                        >
+                          Сбросить
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pb-1">
+                      {[
+                        { id: 'all', label: 'Все' },
+                        { id: 'beginner', label: '🪺 Beginner' },
+                        { id: 'intermediate', label: '🐣 Intermediate' },
+                        { id: 'enthusiast', label: '🐥 Enthusiast' },
+                        { id: 'advance', label: '🦅 Advance' }
+                      ].map(diff => (
+                        <button
+                          key={diff.id}
+                          type="button"
+                          onClick={() => {
+                            try { triggerHaptic('light'); } catch (e) {}
+                            setSelectedDifficulty(diff.id);
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 cursor-pointer shrink-0 border ${
+                            selectedDifficulty === diff.id
+                              ? 'bg-[#22e584] text-black border-[#22e584] shadow-md shadow-[#22e584]/30 font-black'
+                              : 'bg-black/10 dark:bg-white/5 text-slate-600 dark:text-zinc-400 hover:text-white border-[var(--neu-border)]'
+                          }`}
+                        >
+                          {diff.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 2. Onlyfits Muscle Group Focus Filters */}
+                  <div className="space-y-1.5 pt-2 border-t border-[var(--neu-border)]">
+                    <div className="flex items-center justify-between px-1 text-[11px] font-bold text-slate-500 dark:text-zinc-400">
+                      <span>Мышечный фокус:</span>
+                      {selectedMuscleFocus !== 'All' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            try { triggerHaptic('light'); } catch (e) {}
+                            setSelectedMuscleFocus('All');
+                          }}
+                          className="text-[10px] font-bold text-[#22e584] hover:underline cursor-pointer"
+                        >
+                          Сбросить
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pb-1">
+                      {[
+                        { id: 'All', label: 'Все' },
+                        { id: 'Balanced', label: 'Баланс' },
+                        { id: 'Glutes', label: 'Ягодицы' },
+                        { id: 'Back', label: 'Спина' },
+                        { id: 'Delts', label: 'Дельты' },
+                        { id: 'Legs', label: 'Ноги' }
+                      ].map(foc => (
+                        <button
+                          key={foc.id}
+                          type="button"
+                          onClick={() => {
+                            try { triggerHaptic('light'); } catch (e) {}
+                            setSelectedMuscleFocus(foc.id);
+                          }}
+                          className={`px-3 py-1 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 cursor-pointer shrink-0 border ${
+                            selectedMuscleFocus === foc.id
+                              ? 'bg-[#22e584] text-black border-[#22e584] shadow-md shadow-[#22e584]/30 font-black'
+                              : 'bg-black/10 dark:bg-white/5 text-slate-600 dark:text-zinc-400 hover:text-white border-[var(--neu-border)]'
+                          }`}
+                        >
+                          {foc.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 3. Program Cards Grid inside Dropdown */}
+                  <div className="space-y-2 pt-2 border-t border-[var(--neu-border)]">
+                    <div className="flex items-center justify-between px-1 text-[11px] font-bold text-slate-500 dark:text-zinc-400">
+                      <span>Выберите программу ({progsToRender.length}):</span>
+                      {(selectedDifficulty !== 'all' || selectedMuscleFocus !== 'All') && (
+                        <span className="text-[10px] font-mono text-[#22e584]">
+                          Фильтр активен
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[380px] overflow-y-auto pr-0.5">
+                      {progsToRender.map(prog => {
+                        const isSelected = selectedProgramId === prog.id;
+                        return (
+                          <div
+                            key={prog.id}
+                            onClick={() => {
+                              try { triggerHaptic('light'); } catch (e) {}
+                              setSelectedProgramId(prog.id);
+                              if (prog.days && prog.days.length > 0) {
+                                setSelectedDayKey(prog.days[0].key);
+                              }
+                              // Automatically collapse dropdown upon selection
+                              setShowCatalogFilters(false);
+                            }}
+                            className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                              isSelected
+                                ? 'bg-[#141722] border-[#22e584] ring-2 ring-[#22e584]/40 shadow-xl'
+                                : 'bg-black/10 dark:bg-white/5 border-[var(--neu-border)] hover:border-white/20'
+                            }`}
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-1 mb-1.5">
+                                <span className="text-[10px] font-mono font-black text-[#22e584] px-2 py-0.5 rounded-md bg-[#22e584]/15 border border-[#22e584]/30">
+                                  {prog.days_label}
+                                </span>
+                                <span className="text-[10px] font-bold text-zinc-400 px-2 py-0.5 rounded-md bg-white/5">
+                                  {prog.difficulty_badge}
+                                </span>
+                              </div>
+                              <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+                                {prog.title}
+                              </h3>
+                              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5 leading-snug">
+                                {prog.subtitle}
+                              </p>
+                            </div>
+
+                            <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
+                              <span className="text-zinc-400 font-mono">
+                                {prog.days?.length || 3} тренировочных дня
+                              </span>
+                              <span className={`font-bold ${isSelected ? 'text-[#22e584]' : 'text-zinc-500'}`}>
+                                {isSelected ? '✓ Выбрано' : 'Выбрать →'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* 4. Days Tabs of Selected Program */}
         {(() => {
@@ -7653,7 +7834,8 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
                   {(activeDay.exercises || []).map((ex, i) => {
                     const cleanName = ex.name.split('(')[0].trim();
                     const isOverload = ex.progression_status === 'INCREASE';
-                    const gifUrl = ex.image_url || exerciseGuides[ex.name]?.local_video || exerciseGuides[ex.name]?.remote_video || '/static/videos/barbell_bench_press.gif';
+                    const rawGif = ex.image_url || exerciseGuides[ex.name]?.local_video || exerciseGuides[ex.name]?.remote_video || '/static/videos/barbell_bench_press.gif';
+                    const gifUrl = rawGif && rawGif.startsWith('/static/videos/') && !rawGif.includes('?v=') ? `${rawGif}?v=76` : rawGif;
 
                     return (
                       <div
@@ -7735,7 +7917,8 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
                   {(activeDay.exercises || []).map((ex, i) => {
                     const cleanName = ex.name.split('(')[0].trim();
                     const isOverload = ex.progression_status === 'INCREASE';
-                    const gifUrl = ex.image_url || exerciseGuides[ex.name]?.local_video || exerciseGuides[ex.name]?.remote_video || '/static/videos/barbell_bench_press.gif';
+                    const rawGif = ex.image_url || exerciseGuides[ex.name]?.local_video || exerciseGuides[ex.name]?.remote_video || '/static/videos/barbell_bench_press.gif';
+                    const gifUrl = rawGif && rawGif.startsWith('/static/videos/') && !rawGif.includes('?v=') ? `${rawGif}?v=76` : rawGif;
 
                     return (
                       <div 
@@ -12390,6 +12573,46 @@ function ProfileScreen({ profile, onUpdateProfile, onRestartOnboarding, onOpenAc
   );
 }
 
+// Global Error Boundary to prevent black/blank screens
+class GlobalErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    console.error('[GlobalErrorBoundary caught]', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#08090d] text-white flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-[#12141c] border border-red-500/30 flex items-center justify-center shadow-xl mb-4">
+            <span className="text-3xl">⚠️</span>
+          </div>
+          <div className="text-base font-black text-white">Что-то пошло не так</div>
+          <div className="text-xs text-zinc-400 mt-2 max-w-sm font-mono break-words bg-black/40 p-3 rounded-xl border border-white/5">
+            {String(this.state.error?.message || this.state.error || 'Ошибка отрисовки')}
+          </div>
+          <button 
+            onClick={() => { localStorage.clear(); window.location.reload(); }}
+            className="mt-4 px-5 py-2.5 bg-[#22e584] text-[#08090d] font-black text-xs rounded-xl shadow-lg active:scale-95 transition"
+          >
+            Перезагрузить приложение
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // Mount React Root
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+root.render(
+  <GlobalErrorBoundary>
+    <App />
+  </GlobalErrorBoundary>
+);
