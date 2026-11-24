@@ -179,10 +179,10 @@ PPL_PROGRAMS = {
         "focus": "Грудь, жим на плечи, махи дельт, трицепс",
         "exercises": [
             {
-                "name": "Жим штанги лежа",
+                "name": "Жим в Хаммере",
                 "target_sets": 3,
                 "target_reps": "8–10",
-                "tip": "Локти чуть согнуты вверху, без отбива от груди",
+                "tip": "Сходящаяся дуга Хаммера: максимальная защита локтей, мощное пиковое сжатие без щелчка в суставе",
                 "alternatives": ["Жим гантелей на горизонтальной скамье", "Сведение рук в кроссовере"]
             },
             {
@@ -241,7 +241,7 @@ PPL_PROGRAMS = {
                 "target_sets": 3,
                 "target_reps": "10–12",
                 "tip": "Слегка согнутые локти зафиксированы, пиковое сжатие груди 1 сек",
-                "alternatives": ["Жим гантелей на горизонтальной скамье", "Жим штанги лежа"]
+                "alternatives": ["Жим гантелей на горизонтальной скамье", "Жим в Хаммере"]
             },
             {
                 "name": "Армейский жим штанги стоя",
@@ -509,10 +509,10 @@ PPL_PROGRAMS = {
         "focus": "Втягивание & Памп: жим, наклонный жим, плечи, трицепс (RIR 3-4)",
         "exercises": [
             {
-                "name": "Жим штанги лежа",
+                "name": "Жим в Хаммере",
                 "target_sets": 3,
                 "target_reps": "12–15",
-                "tip": "Лёгкая неделя: 60-65% веса, темп 2-0-1, взрывной подъем, запас RIR 3-4",
+                "tip": "Лёгкая неделя: безопасный угол для локтей, темп 2-0-1, пампинг и кровенаполнение груди (RIR 3-4)",
                 "alternatives": ["Жим гантелей на горизонтальной скамье", "Сведение рук в кроссовере"]
             },
             {
@@ -563,10 +563,10 @@ PPL_PROGRAMS = {
         "focus": "Рабочий объём: жим, наклонный жим, армейский жим, трицепс (RIR 2)",
         "exercises": [
             {
-                "name": "Жим штанги лежа",
+                "name": "Жим в Хаммере",
                 "target_sets": 4,
                 "target_reps": "8–10",
-                "tip": "Средняя неделя: рабочий гипертрофийный вес (~75%), запас RIR 2",
+                "tip": "Средняя неделя: гипертрофийный вес, сходящаяся дуга без боли в локтях, запас RIR 2",
                 "alternatives": ["Жим гантелей на горизонтальной скамье", "Сведение рук в кроссовере"]
             },
             {
@@ -617,10 +617,10 @@ PPL_PROGRAMS = {
         "focus": "Пиковая сила: околомаксимальные веса, брусья, дельты (RIR 0-1)",
         "exercises": [
             {
-                "name": "Жим штанги лежа",
+                "name": "Жим в Хаммере",
                 "target_sets": 4,
-                "target_reps": "5–6",
-                "tip": "Тяжёлая неделя: околомаксимальная сила (~85% 1RM), RIR 0-1, мощный срыв с груди",
+                "target_reps": "6–8",
+                "tip": "Тяжёлая неделя: силовой жим в безопасной траектории Хаммера, сохраняем мягкие локти (RIR 0-1)",
                 "alternatives": ["Жим гантелей на горизонтальной скамье"]
             },
             {
@@ -1040,10 +1040,10 @@ PPL_PROGRAMS = {
                 "alternatives": ["Жим ногами в тренажере", "Приседания в Гакк-тренажере"]
             },
             {
-                "name": "Жим штанги лежа",
+                "name": "Жим в Хаммере",
                 "target_sets": 3,
                 "target_reps": "8–10",
-                "tip": "Горизонтальный жим: сведение лопаток, контроль опускания",
+                "tip": "Горизонтальный жим в Хаммере: изоляция груди, безопасная траектория для локтей и плеч",
                 "alternatives": ["Жим гантелей на горизонтальной скамье"]
             },
             {
@@ -1180,10 +1180,10 @@ PPL_PROGRAMS = {
         "focus": "Тяжелый горизонтальный жим, тяга штанги, плечи, руки",
         "exercises": [
             {
-                "name": "Жим штанги лежа",
+                "name": "Жим в Хаммере",
                 "target_sets": 4,
-                "target_reps": "6–8",
-                "tip": "Силовой жим: жесткий мост, упор ногами в пол",
+                "target_reps": "8–10",
+                "tip": "Базовый жим верха тела: мощный сходящийся жим в Хаммере, лопатки сведены, без щелчка в локтях",
                 "alternatives": ["Жим гантелей на горизонтальной скамье"]
             },
             {
@@ -1376,10 +1376,10 @@ PPL_PROGRAMS = {
         "focus": "Грудь, жим под углом, армейский жим, махи, трицепс",
         "exercises": [
             {
-                "name": "Жим штанги лежа",
+                "name": "Жим в Хаммере",
                 "target_sets": 4,
-                "target_reps": "6–8",
-                "tip": "Базовый жим: мощный срыв с груди",
+                "target_reps": "8–10",
+                "tip": "Базовый толкающий стимул: сходящаяся дуга Хаммера для максимальной накачки груди и защиты локтей",
                 "alternatives": ["Жим гантелей на горизонтальной скамье"]
             },
             {
@@ -2026,6 +2026,9 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default", loa
     if "колен" in injuries:
         if any(w in ex_name.lower() for w in ["ног", "присед", "выпад", "разгибан"]):
             injury_notes.append("🛡️ Профиль: берегите колени (не блокировать сустав в замок)")
+    if "локт" in injuries or "локот" in injuries:
+        if any(w in ex_name.lower() for w in ["жим", "брусья", "французск", "разгибан"]):
+            injury_notes.append("🛡️ Профиль: защита локтей (не выпрямлять до щелчка, мягкие локти, тренажер Хаммер)")
     if "кист" in injuries:
         if any(w in ex_name.lower() for w in ["жим", "бицепс", "французск"]):
             injury_notes.append("🛡️ Профиль: используйте нейтральный хват или бинты")
@@ -4176,6 +4179,25 @@ FITNESS_FOOD_DATABASE = [
     }
 ]
 
+# 🥗 ONLYFITS RECIPES DATABASE & INTEGRATION
+from recipes_data import ONLYFITS_RECIPES_DATABASE
+
+for _recipe in ONLYFITS_RECIPES_DATABASE:
+    _g = float(_recipe.get("portion_grams") or 100)
+    _mult = 100.0 / _g if _g > 0 else 1.0
+    FITNESS_FOOD_DATABASE.append({
+        "id": _recipe["id"],
+        "name": _recipe["name"],
+        "keywords": _recipe.get("keywords", []) + [_recipe["name"].lower()],
+        "serving_default_g": _recipe["portion_grams"],
+        "cal_per_100g": round(_recipe["calories"] * _mult),
+        "protein_per_100g": round(_recipe["protein"] * _mult, 1),
+        "fat_per_100g": round(_recipe["fat"] * _mult, 1),
+        "carbs_per_100g": round(_recipe["carbs"] * _mult, 1),
+        "category": _recipe.get("category_label", "Рецепты Onlyfits"),
+        "ingredients": _recipe.get("ingredients", [])
+    })
+
 def calculate_daily_macro_targets(profile: dict) -> dict:
     weight = float(profile.get("weight") or 78.0)
     height = float(profile.get("height") or 178.0)
@@ -4898,6 +4920,30 @@ def analyze_meal_photo(
             for a in alternatives
         ]
     }
+
+@app.get("/api/nutrition/recipes")
+def get_onlyfits_recipes(category: Optional[str] = None, q: Optional[str] = None):
+    """
+    Returns pre-calculated Onlyfits fitness recipes with category and query filtering.
+    """
+    results = ONLYFITS_RECIPES_DATABASE
+    if category and category.lower() not in ["all", "все"]:
+        cat = category.lower().strip()
+        results = [r for r in results if r.get("category", "").lower() == cat or cat in r.get("category_label", "").lower()]
+    
+    if q and q.strip():
+        query = q.strip().lower()
+        matched = []
+        for r in results:
+            if query in r["name"].lower():
+                matched.append(r)
+            elif any(query in kw or kw in query for kw in r.get("keywords", [])):
+                matched.append(r)
+            elif any(query in ing.lower() for ing in r.get("ingredients", [])):
+                matched.append(r)
+        results = matched
+
+    return results
 
 @app.get("/api/nutrition/foods")
 def get_nutrition_foods_catalog(q: Optional[str] = None):

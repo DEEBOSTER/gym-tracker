@@ -1859,6 +1859,47 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
   // Editing meal modal in History tab
   const [editingMeal, setEditingMeal] = useState(null);
 
+  // Onlyfits recipes state
+  const [recipesList, setRecipesList] = useState([]);
+  const [selectedRecipeCategory, setSelectedRecipeCategory] = useState('all');
+  const [recipeQuery, setRecipeQuery] = useState('');
+  const [isLoadingRecipes, setIsLoadingRecipes] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'quick' && recipesList.length === 0) {
+      setIsLoadingRecipes(true);
+      fetch('/api/nutrition/recipes')
+        .then(r => r.ok ? r.json() : [])
+        .then(data => {
+          if (Array.isArray(data) && data.length > 0) setRecipesList(data);
+          setIsLoadingRecipes(false);
+        })
+        .catch(() => setIsLoadingRecipes(false));
+    }
+  }, [activeTab]);
+
+  const handleCustomizeRecipe = (recipe) => {
+    triggerHaptic('light');
+    setActiveTab('manual');
+    setManualDishName(recipe.name);
+    const pG = recipe.portion_grams || 150;
+    setManualPortionGrams(pG);
+    const per100 = {
+      calories: Math.round(((recipe.calories || 0) / pG) * 100),
+      protein: Math.round(((recipe.protein || 0) / pG) * 100 * 10) / 10,
+      fat: Math.round(((recipe.fat || 0) / pG) * 100 * 10) / 10,
+      carbs: Math.round(((recipe.carbs || 0) / pG) * 100 * 10) / 10
+    };
+    setManualPer100g(per100);
+    setManualCalories(String(recipe.calories || ''));
+    setManualProtein(String(recipe.protein || ''));
+    setManualFat(String(recipe.fat || ''));
+    setManualCarbs(String(recipe.carbs || ''));
+    if (Array.isArray(recipe.ingredients)) {
+      setManualIngredients(recipe.ingredients.map(i => ({ name: typeof i === 'string' ? i : i.name })));
+    }
+  };
+
   const resetManualState = () => {
     setManualDishName('');
     setManualPortionGrams(0);
@@ -2558,8 +2599,8 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
                 : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <span>⚡</span>
-            <span>Быстро</span>
+            <span>🥗</span>
+            <span>Рецепты Onlyfits</span>
           </button>
           <button
             type="button"
@@ -3272,35 +3313,151 @@ function FoodPhotoAnalysisModal({ isOpen, onClose, userProfile, onMealLogged, in
             </div>
           )}
 
-          {activeTab === 'quick' && (
-            <div className="space-y-3">
-              <div className="text-xs text-zinc-400">
-                Выберите популярное спортивное блюдо для мгновенной записи:
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {QUICK_FOODS.map((food, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => handleQuickAdd(food)}
-                    className="bg-[#121316] border border-white/5 hover:border-emerald-500/50 p-3 rounded-2xl flex items-center justify-between cursor-pointer active:scale-98 transition"
-                  >
-                    <div className="flex items-center space-x-2.5 min-w-0 pr-2">
-                      <span className="text-2xl shrink-0">{food.icon}</span>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-white truncate">{food.name}</div>
-                        <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
-                          {food.portion_grams}г · Б: {food.protein}г · Ж: {food.fat}г · У: {food.carbs}г
+          {activeTab === 'quick' && (() => {
+            const displayRecipes = (recipesList && recipesList.length > 0) ? recipesList : QUICK_FOODS.map(q => ({
+              ...q,
+              id: q.name,
+              category: 'all',
+              category_label: 'Популярное',
+              ingredients: []
+            }));
+
+            const filteredRecipes = displayRecipes.filter(r => {
+              if (selectedRecipeCategory !== 'all') {
+                if (r.category && r.category !== selectedRecipeCategory) return false;
+              }
+              if (recipeQuery.trim()) {
+                const qLower = recipeQuery.toLowerCase().trim();
+                const nameMatch = (r.name || '').toLowerCase().includes(qLower);
+                const kwMatch = Array.isArray(r.keywords) && r.keywords.some(k => k.toLowerCase().includes(qLower));
+                const ingMatch = Array.isArray(r.ingredients) && r.ingredients.some(i => (typeof i === 'string' ? i : i.name || '').toLowerCase().includes(qLower));
+                if (!nameMatch && !kwMatch && !ingMatch) return false;
+              }
+              return true;
+            });
+
+            return (
+              <div className="space-y-3">
+                {/* Search Bar */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={recipeQuery}
+                    onChange={(e) => setRecipeQuery(e.target.value)}
+                    placeholder="Поиск по рецептам Onlyfits (сырники, боул, чиа)..."
+                    className="w-full bg-[#121316] border border-white/10 rounded-2xl px-3.5 py-2.5 text-xs font-bold text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition"
+                  />
+                  {recipeQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setRecipeQuery('')}
+                      className="absolute right-3 top-2.5 text-zinc-500 hover:text-white text-xs cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Category Pills */}
+                <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 no-scrollbar text-[11px]">
+                  {[
+                    { id: 'all', label: `Все (${displayRecipes.length})` },
+                    { id: 'breakfast', label: '🍳 Завтраки' },
+                    { id: 'main', label: '🍗 Горячее' },
+                    { id: 'salad', label: '🥗 Салаты' },
+                    { id: 'soup', label: '🍲 Супы' },
+                    { id: 'snack', label: '🥜 Снеки' }
+                  ].map(cat => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => { setSelectedRecipeCategory(cat.id); triggerHaptic('light'); }}
+                      className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-bold transition cursor-pointer ${
+                        selectedRecipeCategory === cat.id
+                          ? 'bg-emerald-500 text-gym-950 font-black shadow-sm'
+                          : 'bg-white/5 hover:bg-white/10 text-zinc-300'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Recipe Count & Loader */}
+                <div className="flex items-center justify-between text-[11px] text-zinc-400 px-0.5">
+                  <span>Найдено блюд: <strong className="text-white font-mono">{filteredRecipes.length}</strong></span>
+                  {isLoadingRecipes && <span className="text-emerald-400 animate-pulse font-bold">Обновление...</span>}
+                </div>
+
+                {/* Recipes Cards List */}
+                {filteredRecipes.length === 0 ? (
+                  <div className="py-8 text-center text-zinc-500 text-xs">
+                    Ничего не найдено по запросу «{recipeQuery}». Попробуйте другое название.
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {filteredRecipes.map((recipe, idx) => (
+                      <div
+                        key={recipe.id || idx}
+                        className="bg-[#121316] border border-white/5 hover:border-emerald-500/40 p-3 rounded-2xl flex flex-col space-y-2 transition shadow-sm"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center space-x-2.5 min-w-0 pr-2">
+                            <span className="text-2xl shrink-0 p-1.5 rounded-xl bg-white/5 border border-white/5">
+                              {recipe.icon || '🥗'}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="text-xs font-black text-white leading-tight">
+                                {recipe.name}
+                              </div>
+                              <div className="text-[10px] text-zinc-400 font-mono mt-1 flex items-center space-x-1.5 flex-wrap">
+                                <span className="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                                  {recipe.portion_grams}г
+                                </span>
+                                <span>·</span>
+                                <span className="text-[#fc4c02] font-black">
+                                  {recipe.calories} ккал
+                                </span>
+                                <span>·</span>
+                                <span>Б: <strong className="text-zinc-200">{recipe.protein}г</strong></span>
+                                <span>Ж: <strong className="text-zinc-200">{recipe.fat}г</strong></span>
+                                <span>У: <strong className="text-zinc-200">{recipe.carbs}г</strong></span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Ingredients preview if available */}
+                        {Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0 && (
+                          <div className="text-[10px] text-zinc-500 line-clamp-1 bg-black/30 px-2 py-1 rounded-lg">
+                            🛒 {recipe.ingredients.map(i => typeof i === 'string' ? i : i.name).join(' · ')}
+                          </div>
+                        )}
+
+                        {/* Action buttons */}
+                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/5">
+                          <button
+                            type="button"
+                            onClick={() => handleCustomizeRecipe(recipe)}
+                            className="py-1.5 px-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 font-bold text-[11px] flex items-center justify-center space-x-1 cursor-pointer transition active:scale-95"
+                          >
+                            <span>⚖️ Настроить вес</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleQuickAdd(recipe)}
+                            className="py-1.5 px-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gym-950 font-black text-[11px] flex items-center justify-center space-x-1 cursor-pointer transition active:scale-95 shadow-md shadow-emerald-500/20"
+                          >
+                            <span>✓ Записать</span>
+                          </button>
                         </div>
                       </div>
-                    </div>
-                    <span className="text-xs font-black font-mono text-[#fc4c02] shrink-0">
-                      {food.calories} ккал
-                    </span>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {activeTab === 'history' && (
             <div className="space-y-2">
@@ -9871,7 +10028,7 @@ function AddPastWorkoutModal({ isOpen, onClose, exercises = [], onSaved }) {
   const [title, setTitle] = useState('День 1: Push (Жим & Грудь)');
   const [notes, setNotes] = useState('Внесено вручную');
   const [rows, setRows] = useState([
-    { exercise_name: 'Жим штанги лежа', weight: 60, reps: 10, sets_count: 3 },
+    { exercise_name: 'Жим в Хаммере', weight: 40, reps: 10, sets_count: 3 },
     { exercise_name: 'Жим гантелей на наклонной скамье (30°)', weight: 20, reps: 10, sets_count: 3 }
   ]);
   const [pasteText, setPasteText] = useState('');

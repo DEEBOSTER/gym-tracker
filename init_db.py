@@ -11,6 +11,7 @@ from database import init_database, get_db
 
 DEFAULT_EXERCISES = [
     # Push A & B
+    "Жим в Хаммере",
     "Жим гантелей на наклонной скамье (30°)",
     "Жим штанги на наклонной скамье",
     "Жим штанги лежа",
@@ -81,15 +82,19 @@ def seed_exercises():
             except Exception:
                 print(f"  - Упражнение уже существует: {name}")
                 
-        # Ensure 'Пуловер в тренажере' and 'Жим на плечи в тренажере' are present
+        # Ensure 'Жим в Хаммере', 'Пуловер в тренажере' and 'Жим на плечи в тренажере' are present
         try:
+            cursor.execute("SELECT id FROM exercises WHERE name = 'Жим в Хаммере';")
+            if not cursor.fetchone():
+                cursor.execute("INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);", ('Жим в Хаммере', 'Грудь'))
             cursor.execute("SELECT id FROM exercises WHERE name = 'Пуловер в тренажере';")
             if not cursor.fetchone():
                 cursor.execute("INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);", ('Пуловер в тренажере', 'Спина'))
             cursor.execute("SELECT id FROM exercises WHERE name = 'Жим на плечи в тренажере';")
             if not cursor.fetchone():
                 cursor.execute("INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);", ('Жим на плечи в тренажере', 'Плечи'))
-            # If user had active workout notes with old pullover, update notes
+            # If user had active workout notes with old bench press or pullover, update notes
+            cursor.execute("UPDATE workouts SET notes = REPLACE(notes, 'Жим штанги лежа', 'Жим в Хаммере') WHERE end_time IS NULL;")
             cursor.execute("UPDATE workouts SET notes = REPLACE(notes, 'Пуловер с гантелью на скамье', 'Пуловер в тренажере') WHERE end_time IS NULL;")
         except Exception as mig_err:
             print(f"  [i] Migration note: {mig_err}")
