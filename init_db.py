@@ -11,6 +11,7 @@ from database import init_database, get_db
 
 DEFAULT_EXERCISES = [
     # Push A & B
+    "Жим гантелей на наклонной скамье нейтральным хватом (30°)",
     "Жим в Хаммере",
     "Жим гантелей на наклонной скамье (30°)",
     "Жим штанги на наклонной скамье",
@@ -87,6 +88,9 @@ def seed_exercises():
                 
         # Ensure 'Жим в Хаммере', 'Пуловер в тренажере' and 'Жим на плечи в тренажере' are present
         try:
+            cursor.execute("SELECT id FROM exercises WHERE name = 'Жим гантелей на наклонной скамье нейтральным хватом (30°)';")
+            if not cursor.fetchone():
+                cursor.execute("INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);", ('Жим гантелей на наклонной скамье нейтральным хватом (30°)', 'Грудь'))
             cursor.execute("SELECT id FROM exercises WHERE name = 'Жим в Хаммере';")
             if not cursor.fetchone():
                 cursor.execute("INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);", ('Жим в Хаммере', 'Грудь'))
