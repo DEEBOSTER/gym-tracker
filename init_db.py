@@ -43,6 +43,9 @@ DEFAULT_EXERCISES = [
     "Сгибания на скамье Скотта",
     "Концентрированные сгибания на бицепс",
     "Молотки с гантелями",
+    # Предплечья (Защита локтей & Сила хвата)
+    "Сгибания запястий с гантелями на скамье",
+    "Разгибания запястий с гантелями на скамье",
     "Тяга верхнего блока прямыми руками (Straight-arm)",
     "Peck-Deck на заднюю дельту",
     "Тяга каната к лицу (Face pulls)",
@@ -93,6 +96,11 @@ def seed_exercises():
             cursor.execute("SELECT id FROM exercises WHERE name = 'Жим на плечи в тренажере';")
             if not cursor.fetchone():
                 cursor.execute("INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);", ('Жим на плечи в тренажере', 'Плечи'))
+            # Ensure Forearm exercises for elbow protection are present
+            for fe_name in ['Сгибания запястий с гантелями на скамье', 'Разгибания запястий с гантелями на скамье']:
+                cursor.execute("SELECT id FROM exercises WHERE name = ?;", (fe_name,))
+                if not cursor.fetchone():
+                    cursor.execute("INSERT OR IGNORE INTO exercises (name, category) VALUES (?, ?);", (fe_name, 'Предплечья'))
             # If user had active workout notes with old bench press or pullover, update notes
             cursor.execute("UPDATE workouts SET notes = REPLACE(notes, 'Жим штанги лежа', 'Жим в Хаммере') WHERE end_time IS NULL;")
             cursor.execute("UPDATE workouts SET notes = REPLACE(notes, 'Пуловер с гантелью на скамье', 'Пуловер в тренажере') WHERE end_time IS NULL;")
