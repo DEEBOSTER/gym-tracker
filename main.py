@@ -2309,13 +2309,15 @@ def enrich_exercise_item(ex, cursor, profile=None, user_id: str = "default", loa
         rec_note = f"🟡 Средняя неделя (Рабочий объём): гипертрофийный вес {rec_weight} кг (~75% 1RM), {rec_reps} повт., запас RIR 2. Базовый гипертрофийный объём."
 
     # 6. Scientific Warmup Pyramid Protocol (Brzycki / Poliquin method & Elbow Rehabilitation)
-    is_elbow_press = ("локт" in injuries or "локот" in injuries) and any(w in ex_name.lower() for w in ["жим", "грудь"])
+    is_elbow_press = (
+        ("локт" in injuries or "локот" in injuries) and any(w in ex_name.lower() for w in ["жим", "грудь"])
+    ) or ("нейтральн" in ex_name.lower() and "жим" in ex_name.lower()) or ("хаммер" in ex_name.lower())
     if is_elbow_press:
         warmup_pyramid = [
-            {"code": "P1", "weight": 5.0, "reps": 20, "stage": "🔥 Преактивация: 15–20 разгибаний с канатом"},
-            {"code": "P2", "weight": 3.0, "reps": 15, "stage": "🔥 Эксцентрика предплечья (гантель 2–4 кг, опускание 3 сек)"},
-            {"code": "W1", "weight": max(6.0, round((rec_weight * 0.4) / 2.0) * 2.0), "reps": 10, "stage": "Нейтральный жим: мост + мертвая хватка"},
-            {"code": "W2", "weight": max(10.0, round((rec_weight * 0.7) / 2.0) * 2.0), "reps": 5, "stage": "Подводящий к рабочему весу"}
+            {"code": "P1", "weight": 5.0, "reps": 20, "stage": "🔥 Преактивация: разгибания на блоке с канатом", "target": "Разогрев сухожилия трицепса, стимуляция синовиальной жидкости"},
+            {"code": "P2", "weight": 3.0, "reps": 15, "stage": "🔥 Эксцентрика предплечья (гантель 2–4 кг, опускание 3 сек)", "target": "Включение стабилизаторов кисти до рабочего веса"},
+            {"code": "W1", "weight": max(6.0, round((rec_weight * 0.4) / 2.0) * 2.0), "reps": 10, "stage": "Нейтральный жим (разминка)", "target": "Контроль «моста», сведение лопаток и мертвая хватка"},
+            {"code": "W2", "weight": max(10.0, round((rec_weight * 0.7) / 2.0) * 2.0), "reps": 5, "stage": "Подводящий к рабочему весу", "target": "Подготовка ЦНС к рабочему сету"}
         ]
     elif rec_weight >= 25.0:
         warmup_pyramid = [

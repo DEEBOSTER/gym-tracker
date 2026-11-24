@@ -4545,6 +4545,18 @@ function OnlyfitsFAB({ onStartWorkout, onOpenNutrition, onOpenMetrics }) {
 // ==========================================
 function calculateWarmupLadder(targetWeight, exerciseName = '') {
   const w = parseFloat(targetWeight) || 20;
+  const isElbowRehab = (exerciseName || '').toLowerCase().includes('нейтральн') || 
+                       (exerciseName || '').toLowerCase().includes('хаммер') ||
+                       (exerciseName || '').toLowerCase().includes('локт');
+  if (isElbowRehab) {
+    return [
+      { step: 'P1', label: '🔥 Преактивация: разгибания на блоке с канатом', weight: 5, reps: 20, pct: 'Суставы' },
+      { step: 'P2', label: '🔥 Эксцентрика предплечья (гантель 2–4 кг, опускание 3 сек)', weight: 3, reps: 15, pct: 'Сухожилия' },
+      { step: 'W1', label: 'Нейтральный жим (разминка): контроль моста и мертвая хватка', weight: Math.max(6, Math.round((w * 0.4) / 2.0) * 2.0), reps: 10, pct: '40%' },
+      { step: 'W2', label: 'Подводящий подход к рабочему весу', weight: Math.max(10, Math.round((w * 0.7) / 2.0) * 2.0), reps: 5, pct: '70%' },
+      { step: 'Цель', label: 'Целевой рабочий подход', weight: w, reps: 10, pct: '100%', isTarget: true }
+    ];
+  }
   const isDumbbell = (exerciseName || '').toLowerCase().includes('гантел');
   const barWeight = isDumbbell ? 6 : 20;
 
@@ -5177,7 +5189,7 @@ function WarmupLadderModal({ isOpen, onClose, exerciseName, targetWeight, onSele
                     <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
                       step.isTarget ? 'bg-emerald-500 text-gym-950' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                     }`}>
-                      {step.isTarget ? 'РАБОЧИЙ' : `ШАГ ${step.step} (${step.pct})`}
+                      {step.isTarget ? 'РАБОЧИЙ' : (String(step.step).startsWith('P') || String(step.step).startsWith('W') ? `${step.step} (${step.pct})` : `ШАГ ${step.step} (${step.pct})`)}
                     </span>
                     <span className="text-sm font-black text-white">{step.weight} кг × {step.reps} повт.</span>
                   </div>
@@ -5210,7 +5222,7 @@ function WarmupLadderModal({ isOpen, onClose, exerciseName, targetWeight, onSele
 // ==========================================
 // 🎬 EXERCISE VIDEO & TECHNIQUE MODAL
 // ==========================================
-function ExerciseVideoModal({ isOpen, onClose, exerciseName, guide }) {
+function ExerciseVideoModal({ isOpen, onClose, exerciseName, guide, warmupPyramid }) {
   const [videoTab, setVideoTab] = useState('animation'); // 'animation' | 'youtube'
 
   useEffect(() => {
@@ -5262,6 +5274,18 @@ function ExerciseVideoModal({ isOpen, onClose, exerciseName, guide }) {
       joint_safety: "Контролируйте углы в суставах, не блокируйте локти и колени до щелчка."
     };
   }
+
+  const activeWarmupPyramid = warmupPyramid || currentGuide?.warmup_pyramid || (
+    exerciseName && (
+      exerciseName.toLowerCase().includes('нейтральн') ||
+      exerciseName.toLowerCase().includes('хаммер')
+    ) ? [
+      { code: "P1", weight: 5.0, reps: 20, stage: "🔥 Преактивация: разгибания на блоке с канатом", target: "Разогрев сухожилия трицепса, стимуляция притока синовиальной жидкости" },
+      { code: "P2", weight: 3.0, reps: 15, stage: "🔥 Эксцентрика предплечья (гантель 2–4 кг, опускание 3 сек)", target: "Включение стабилизаторов кисти до того, как взят рабочий вес" },
+      { code: "W1", weight: 8.0, reps: 10, stage: "Нейтральный жим (разминка): мост + мертвая хватка", target: "Контроль «моста», сведение лопаток и мертвая хватка" },
+      { code: "W2", weight: 14.0, reps: 5, stage: "Подводящий к рабочему весу", target: "Подготовка ЦНС к рабочему сету" }
+    ] : null
+  );
 
   return (
     <div 
@@ -5369,6 +5393,59 @@ function ExerciseVideoModal({ isOpen, onClose, exerciseName, guide }) {
               )}
             </div>
           </div>
+
+          {/* ⚡ WARMUP PRE-ACTIVATION PROTOCOL (FOR JOINT REHAB / ELBOW SAFETY) */}
+          {activeWarmupPyramid && activeWarmupPyramid.length > 0 && (
+            <div className="bg-[#141722] border border-amber-500/40 rounded-2xl p-3.5 space-y-2.5 shadow-lg shadow-amber-500/10">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <div className="flex items-center space-x-1.5">
+                  <span className="text-amber-400 text-sm">⚡</span>
+                  <span className="text-xs font-black uppercase text-amber-300 tracking-wide font-sans">
+                    Точечный протокол преактивации локтей
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-bold">
+                  Warm-up Protocol
+                </span>
+              </div>
+
+              <p className="text-[11px] text-zinc-300 leading-relaxed">
+                Автоматический протокол подготовки сухожилий перед рабочими весами:
+              </p>
+
+              <div className="space-y-1.5">
+                {activeWarmupPyramid.map((step, sIdx) => (
+                  <div key={sIdx} className="bg-[#18191d] border border-white/5 rounded-xl p-2.5 flex items-center justify-between">
+                    <div className="flex items-center space-x-2.5 min-w-0 pr-2">
+                      <span className="w-8 h-8 rounded-lg flex items-center justify-center font-mono font-black text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                        {step.code || `W${sIdx + 1}`}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-white leading-snug">
+                          {step.stage || step.label}
+                        </div>
+                        {step.target && (
+                          <div className="text-[10px] text-zinc-400 mt-0.5 leading-tight">
+                            Цель: {step.target}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 font-mono">
+                      <span className="text-xs font-bold text-amber-300 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20">
+                        {step.weight} кг × {step.reps}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-200/90 flex items-center space-x-1.5 font-sans">
+                <span>💡</span>
+                <span>В окне активной тренировки эти разминочные шаги отмечаются автоматически в 1 тап прямо перед основным жимом.</span>
+              </div>
+            </div>
+          )}
 
           {/* Structured Step-by-Step Technique Instructions */}
           <div className="space-y-2.5 pt-1">
@@ -7991,6 +8068,9 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
                   {(activeDay.exercises || []).map((ex, i) => {
                     const cleanName = ex.name.split('(')[0].trim();
                     const isOverload = ex.progression_status === 'INCREASE';
+                    const hasElbowWarmup = (ex.warmup_pyramid || []).some(w => w.code && w.code.startsWith('P')) || 
+                                           ex.name.toLowerCase().includes('нейтральн') || 
+                                           ex.name.toLowerCase().includes('хаммер');
                     const rawGif = ex.image_url || exerciseGuides[ex.name]?.local_video || exerciseGuides[ex.name]?.remote_video || '/static/videos/barbell_bench_press.gif';
                     const gifUrl = rawGif && rawGif.startsWith('/static/videos/') && !rawGif.includes('?v=') ? `${rawGif}?v=76` : rawGif;
 
@@ -8023,6 +8103,19 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
                             <span className="text-[#fc4c02]">#</span>
                             <span>{String(i + 1).padStart(2, '0')}</span>
                           </div>
+
+                          {/* Top Right Badge: Elbow Pre-activation or Overload */}
+                          {hasElbowWarmup ? (
+                            <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-lg bg-amber-500 text-gym-950 font-black text-[9px] uppercase tracking-wider flex items-center space-x-0.5 shadow-md">
+                              <span>⚡</span>
+                              <span>Преактивация</span>
+                            </div>
+                          ) : isOverload ? (
+                            <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-lg bg-emerald-500 text-gym-950 font-black text-[9px] uppercase tracking-wider flex items-center space-x-0.5 shadow-md">
+                              <span>▲</span>
+                              <span>Прогрессия</span>
+                            </div>
+                          ) : null}
 
                           {/* Bottom Overlay on Image */}
                           <div className="absolute bottom-1.5 left-2 right-2 flex items-center justify-between pointer-events-none">
@@ -8074,6 +8167,9 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
                   {(activeDay.exercises || []).map((ex, i) => {
                     const cleanName = ex.name.split('(')[0].trim();
                     const isOverload = ex.progression_status === 'INCREASE';
+                    const hasElbowWarmup = (ex.warmup_pyramid || []).some(w => w.code && w.code.startsWith('P')) || 
+                                           ex.name.toLowerCase().includes('нейтральн') || 
+                                           ex.name.toLowerCase().includes('хаммер');
                     const rawGif = ex.image_url || exerciseGuides[ex.name]?.local_video || exerciseGuides[ex.name]?.remote_video || '/static/videos/barbell_bench_press.gif';
                     const gifUrl = rawGif && rawGif.startsWith('/static/videos/') && !rawGif.includes('?v=') ? `${rawGif}?v=76` : rawGif;
 
@@ -8105,6 +8201,12 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
                               {cleanName}
                             </div>
                             <div className="flex items-center space-x-1.5 mt-0.5">
+                              {hasElbowWarmup && (
+                                <span className="text-[9px] font-black font-mono text-amber-300 px-1 py-0.2 bg-amber-500/15 border border-amber-500/30 rounded flex items-center space-x-0.5">
+                                  <span>⚡</span>
+                                  <span>Преактивация</span>
+                                </span>
+                              )}
                               {isOverload ? (
                                 <span className="text-[9px] font-black font-mono text-emerald-400 px-1 py-0.2 bg-emerald-500/15 border border-emerald-500/30 rounded">
                                   ↗ {ex.progression_badge || '+2.5 кг'}
@@ -8216,11 +8318,13 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
           isOpen={!!previewGuideEx}
           onClose={() => setPreviewGuideEx(null)}
           exerciseName={previewGuideEx?.name}
+          warmupPyramid={previewGuideEx?.warmup_pyramid}
           guide={exerciseGuides[previewGuideEx?.name] || (previewGuideEx ? {
             name: previewGuideEx.name,
             local_video: previewGuideEx.image_url,
             primary_muscle: previewGuideEx.primary_muscle,
-            tip: previewGuideEx.tip
+            tip: previewGuideEx.tip,
+            warmup_pyramid: previewGuideEx.warmup_pyramid
           } : null)}
         />
       </div>
@@ -9018,6 +9122,7 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
         isOpen={showVideoModal}
         onClose={() => setShowVideoModal(false)}
         exerciseName={currentPlanEx?.name}
+        warmupPyramid={currentPlanEx?.warmup_pyramid}
         guide={exerciseGuides[currentPlanEx?.name]}
       />
 
@@ -9026,11 +9131,13 @@ function GuidedWorkoutScreen({ activeWorkout, exercises, coachDays, coachProgram
         isOpen={!!previewGuideEx}
         onClose={() => setPreviewGuideEx(null)}
         exerciseName={previewGuideEx?.name}
+        warmupPyramid={previewGuideEx?.warmup_pyramid}
         guide={exerciseGuides[previewGuideEx?.name] || (previewGuideEx ? {
           name: previewGuideEx.name,
           local_video: previewGuideEx.image_url,
           primary_muscle: previewGuideEx.primary_muscle,
-          tip: previewGuideEx.tip
+          tip: previewGuideEx.tip,
+          warmup_pyramid: previewGuideEx.warmup_pyramid
         } : null)}
       />
 
